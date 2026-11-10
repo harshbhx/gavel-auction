@@ -40,21 +40,21 @@ describe('limit box and slider (UIX-44)', () => {
   });
 
   it('moves the box when the slider moves', () => {
-    const { box, slider } = toLimitStep();
+    const { box, slider } = toLimitStep({ maxCents: 100_000 });
     fireEvent.keyDown(slider, { key: 'End' });
     expect(box.value).toBe('1,000');
     expect(slider.getAttribute('aria-valuenow')).toBe('100000');
   });
 
   it('stretches the slider range to a typed limit, up to the cap', () => {
-    const { box, slider } = toLimitStep();
-    expect(slider.getAttribute('aria-valuemax')).toBe('100000');
-    fireEvent.change(box, { target: { value: '3000' } });
-    expect(slider.getAttribute('aria-valuemax')).toBe('300000');
+    const { box, slider } = toLimitStep({ maxCents: 5_000_000 });
+    expect(slider.getAttribute('aria-valuemax')).toBe('1000000');
+    fireEvent.change(box, { target: { value: '30000' } });
+    expect(slider.getAttribute('aria-valuemax')).toBe('3000000');
     fireEvent.keyDown(slider, { key: 'ArrowLeft' });
-    expect(slider.getAttribute('aria-valuemax')).toBe('300000');
-    fireEvent.change(box, { target: { value: '9000' } });
-    expect(slider.getAttribute('aria-valuemax')).toBe('500000');
+    expect(slider.getAttribute('aria-valuemax')).toBe('3000000');
+    fireEvent.change(box, { target: { value: '90000' } });
+    expect(slider.getAttribute('aria-valuemax')).toBe('5000000');
   });
 
   it('says the real cap when the limit is above it and blocks the hold', () => {
@@ -80,8 +80,9 @@ describe('limit box and slider (UIX-44)', () => {
 
   it('computes the slider top', () => {
     expect(sliderMax(100, 100_000, [10_000], null)).toBe(100_000);
-    expect(sliderMax(100, 500_000, [10_000], 250_000)).toBe(250_000);
-    expect(sliderMax(100, 500_000, [10_000], 900_000)).toBe(500_000);
+    expect(sliderMax(100, 5_000_000, [10_000], null)).toBe(1_000_000);
+    expect(sliderMax(100, 5_000_000, [10_000], 2_500_000)).toBe(2_500_000);
+    expect(sliderMax(100, 5_000_000, [10_000], 9_000_000)).toBe(5_000_000);
   });
 });
 
@@ -186,5 +187,41 @@ describe('open limit above $1,000 (UIX-59)', () => {
     expect(scaledPicks(100, 10_000_000, presets, 400_000)).toEqual([200_000, 300_000]);
     expect(scaledPicks(100, 500_000, presets, 600_000)).toEqual([]);
     expect(scaledPicks(150_000, 10_000_000, presets, 200_000)).toEqual([150_000]);
+  });
+});
+
+describe('open limit up to $50,000,000 (UIX-59)', () => {
+  const HUGE = {
+    minCents: 100,
+    maxCents: 5_000_000_000,
+    presetsCents: [10_000, 25_000, 50_000, 100_000],
+  };
+
+  it('keeps the usual slider span at $10,000', () => {
+    const { slider } = toLimitStep(HUGE);
+    expect(slider.getAttribute('aria-valuemax')).toBe('1000000');
+  });
+
+  it('stretches the slider to a typed $50,000,000 and lets it be selected', () => {
+    const { onApprove, box, slider } = toLimitStep(HUGE);
+    fireEvent.change(box, { target: { value: '50000000' } });
+    expect(box.value).toBe('50,000,000');
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(slider.getAttribute('aria-valuemax')).toBe('5000000000');
+    expect(slider.getAttribute('aria-valuenow')).toBe('5000000000');
+    fireEvent.keyDown(slider, { key: 'Home' });
+    fireEvent.keyDown(slider, { key: 'End' });
+    expect(box.value).toBe('50,000,000');
+    confirmHold();
+    expect(onApprove).toHaveBeenCalledWith({ name: 'Priya', ceilingCents: 5_000_000_000 });
+  });
+
+  it('refuses only above the cap and keeps the ticks readable', () => {
+    const { box } = toLimitStep(HUGE);
+    fireEvent.change(box, { target: { value: '50000001' } });
+    expect(screen.getByRole('alert').textContent).toContain(
+      t('reg.overCap', { max: '$50,000,000' }),
+    );
+    expect(5_000_000_000 / sliderStep(100, 5_000_000_000)).toBeLessThanOrEqual(24);
   });
 });

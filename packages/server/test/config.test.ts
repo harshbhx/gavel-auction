@@ -15,12 +15,12 @@ const paypal = {
 
 describe('GAVEL_MAX_CEILING_CENTS range (FIX-118)', () => {
   it('refuses values the engine cannot run and names the variable', () => {
-    for (const bad of ['50', '99', '100000001', '200000000']) {
+    for (const bad of ['50', '99', '5000000001', '9000000000']) {
       const r = parseConfig({ ...good, GAVEL_MAX_CEILING_CENTS: bad });
       expect(r.ok).toBe(false);
       expect(JSON.stringify(r)).toContain('GAVEL_MAX_CEILING_CENTS');
     }
-    for (const ok of ['100', '100000000']) {
+    for (const ok of ['100', '5000000000']) {
       expect(parseConfig({ ...good, GAVEL_MAX_CEILING_CENTS: ok }).ok).toBe(true);
     }
   });

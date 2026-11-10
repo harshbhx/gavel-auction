@@ -11,7 +11,7 @@ export type Result<T, E> = { ok: true; value: T } | { ok: false; errors: E };
 export const DEFAULT_AUCTION_CONFIG: AuctionConfig = {
   currency: 'USD',
   holdScope: 'event',
-  maxCeilingCents: 10_000_000,
+  maxCeilingCents: 5_000_000_000,
   confirmBelowBps: 8500,
   fallbackPolicy: 'runner_up',
   maxFallbackDepth: 2,
@@ -79,9 +79,9 @@ export function validateAuctionConfig(x: unknown): Result<AuctionConfig, ConfigE
     else add('holdScope', 'bad_value', 'holdScope must be event or lot');
   }
   if (o['maxCeilingCents'] !== undefined) {
-    if (inRange(o['maxCeilingCents'], 100, 100_000_000)) v.maxCeilingCents = o['maxCeilingCents'];
+    if (inRange(o['maxCeilingCents'], 100, 5_000_000_000)) v.maxCeilingCents = o['maxCeilingCents'];
     else
-      add('maxCeilingCents', 'bad_value', 'maxCeilingCents must be an integer in 100..100000000');
+      add('maxCeilingCents', 'bad_value', 'maxCeilingCents must be an integer in 100..5000000000');
   }
   if (o['confirmBelowBps'] !== undefined) {
     if (inRange(o['confirmBelowBps'], 0, 10000)) v.confirmBelowBps = o['confirmBelowBps'];

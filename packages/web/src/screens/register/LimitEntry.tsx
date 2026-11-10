@@ -8,10 +8,10 @@ import { customCeilingCents, parseWholeDollars } from './validate';
 
 const CUSTOM = 'custom';
 /** The slider's usual span; a typed limit above it stretches the slider up to the server cap. */
-const DEFAULT_SLIDER_MAX_CENTS = 100000;
+const DEFAULT_SLIDER_MAX_CENTS = 1000000;
 const STEP_CHOICES: readonly number[] = [
   1000, 2500, 5000, 10000, 25000, 50000, 100000, 250000, 500000, 1000000, 2500000, 5000000,
-  10000000,
+  10000000, 25000000, 50000000, 100000000, 250000000, 500000000,
 ];
 const MAX_TICKS = 24;
 
@@ -21,7 +21,7 @@ export function sliderStep(minCents: number, maxCents: number): number {
   return (
     STEP_CHOICES.find((s) => span / s <= MAX_TICKS) ??
     STEP_CHOICES[STEP_CHOICES.length - 1] ??
-    10000000
+    500000000
   );
 }
 

@@ -34,7 +34,7 @@ describe('raising a limit during an open lot', () => {
     const s = open(scene(), L1);
     expect(
       errCode(() =>
-        run(s, mk(300, { type: 'RegisterBidder', bidderId: A, ceilingCents: 10_000_001 })),
+        run(s, mk(300, { type: 'RegisterBidder', bidderId: A, ceilingCents: 5_000_000_001 })),
       ),
     ).toBe('bad_ceiling');
   });
@@ -45,9 +45,9 @@ describe('raising a limit during an open lot', () => {
     expect(big.state.bidders[A]?.ceilingCents).toBe(250_000);
     const higher = run(
       big.state,
-      mk(310, { type: 'RegisterBidder', bidderId: A, ceilingCents: 10_000_000 }),
+      mk(310, { type: 'RegisterBidder', bidderId: A, ceilingCents: 5_000_000_000 }),
     );
     expect(higher.entries.map((e) => e.type)).toEqual(['CEILING_RAISED']);
-    expect(higher.state.bidders[A]?.ceilingCents).toBe(10_000_000);
+    expect(higher.state.bidders[A]?.ceilingCents).toBe(5_000_000_000);
   });
 });

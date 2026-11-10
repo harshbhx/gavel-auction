@@ -85,7 +85,7 @@ describe('decideSetup', () => {
 
   it('R-ENG-040: out-of-range ceilings fail bad_ceiling', () => {
     const s = run(initialState, create as SetupCommand);
-    for (const c of [99, 10_000_001]) {
+    for (const c of [99, 5_000_000_001]) {
       expect(
         errCode(() =>
           decideSetup(s, { ...base, type: 'RegisterBidder', bidderId: A, ceilingCents: c }),

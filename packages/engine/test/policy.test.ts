@@ -10,7 +10,7 @@ describe('policy', () => {
   it('T-ENG-013 R-ENG-014: presets and bounds', () => {
     expect([...CEILING_PRESETS_CENTS]).toEqual([10000, 25000, 50000, 100000]);
     expect(MIN_CEILING_CENTS).toBe(100);
-    expect(DEFAULT_MAX_CEILING_CENTS).toBe(10_000_000);
+    expect(DEFAULT_MAX_CEILING_CENTS).toBe(5_000_000_000);
   });
 
   it('T-ENG-013 R-ENG-040: out-of-range ceilings fail bad_ceiling', () => {
