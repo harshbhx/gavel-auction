@@ -1,0 +1,30 @@
+name: cleanup-scan
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/cleanup-scan.yml'
+permissions:
+  contents: read
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: ./.github/actions/setup
+      - name: knip
+        continue-on-error: true
+        run: npx --yes knip@5.43.6 --no-progress --reporter json > knip.json 2> knip.err; npx --yes knip@5.43.6 --no-progress > knip.txt 2>&1 || true
+      - name: jscpd
+        continue-on-error: true
+        run: npx --yes jscpd@4.0.5 packages scripts --min-lines 25 --min-tokens 200 --ignore "**/node_modules/**,**/dist/**,**/*.test.*" --reporters json,console --output jscpd-out > jscpd.txt 2>&1 || true
+      - name: todos
+        run: grep -rnE "TODO|FIXME|XXX|HACK" packages scripts --include=*.ts --include=*.tsx --include=*.mjs --exclude-dir=node_modules --exclude-dir=dist > todos.txt || true
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: cleanup-scan
+          path: |
+            knip.*
+            jscpd.txt
+            jscpd-out
+            todos.txt
