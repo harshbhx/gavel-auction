@@ -211,7 +211,7 @@ function setup(h){
   CREDITS.forEach(function(c,i){
     var x = 300 + i*420;
     html += '<div class="ln" style="left:' + x + 'px;top:582px;width:410px;height:44px"><span class="d cr" style="font-size:34px;line-height:44px">' + c[0] + '</span></div>';
-    html += '<div class="ln" style="left:' + x + 'px;top:630px;width:400px;height:40px"><span class="m cr" style="font-size:13px;line-height:20px;color:#6f6250;text-transform:none;letter-spacing:0">' + c[1] + '</span></div>';
+    html += '<div class="ln" style="left:' + x + 'px;top:630px;width:400px;height:20px"><span class="m cr" style="font-size:13px;line-height:20px;color:#6f6250;text-transform:none;letter-spacing:0">' + c[1] + '</span></div>';
   });
   html += '<div class="rl rr" style="left:64px;top:704px;width:1072px"></div>';
   h.$('#lnk').innerHTML = html;
