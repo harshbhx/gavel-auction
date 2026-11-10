@@ -586,6 +586,19 @@ card('proof', 10.5, [
   },
 ]);
 
+card('pagespeed', 6, [
+  {
+    a: 0.3,
+    b: 3.2,
+    text: 'Four 100s. Twice. Performance, accessibility, best practices and SEO, 100 each, on mobile and desktop.',
+  },
+  {
+    a: 3.2,
+    b: 6,
+    text: 'PageSpeed Insights, landing page, 10 Nov 2026. Lighthouse 13.6.0. Mobile LCP 1.1 s, TBT 10 ms, CLS 0.',
+  },
+]);
+
 // 15. judges: terminal (real answers) plus the recorded key field and the docs page in a paper panel
 {
   const dur = 10.5;

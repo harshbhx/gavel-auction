@@ -855,6 +855,114 @@ export function Judges({ sc }: P) {
   );
 }
 
+/* ---------- 15. page speed: four rolling 100s, mobile and desktop (no third-party logo) ---------- */
+const PS_CATS = ['Performance', 'Accessibility', 'Best practices', 'SEO'];
+function ScoreRing({
+  t,
+  a,
+  x,
+  y,
+  label,
+}: {
+  t: number;
+  a: number;
+  x: number;
+  y: number;
+  label: string;
+}) {
+  const p = pr(t, a, 1.1, IO);
+  if (p <= 0) return null;
+  const r = 66;
+  const circ = 2 * Math.PI * r;
+  const n = Math.round(100 * p);
+  return (
+    <div style={{ position: 'absolute', left: x, top: y, width: 220, textAlign: 'center' }}>
+      <svg
+        width={160}
+        height={160}
+        viewBox="0 0 160 160"
+        style={{ display: 'block', margin: '0 auto' }}
+      >
+        <circle cx={80} cy={80} r={r} fill="none" stroke={PAPER} strokeWidth={2} opacity={0.25} />
+        <circle
+          cx={80}
+          cy={80}
+          r={r}
+          fill="none"
+          stroke={ORANGE}
+          strokeWidth={8}
+          strokeDasharray={`${(circ * p).toFixed(2)} ${circ.toFixed(2)}`}
+          transform="rotate(-90 80 80)"
+        />
+        <text
+          x={80}
+          y={96}
+          textAnchor="middle"
+          fill={PAPER}
+          style={{
+            fontFamily: DISPLAY,
+            fontWeight: 800,
+            fontSize: 56,
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          {n}
+        </text>
+      </svg>
+      <Mono x={0} y={166} w={220} size={15} color={DIM} align="center">
+        {label}
+      </Mono>
+    </div>
+  );
+}
+export function PageSpeed(_p: P) {
+  const t = useT();
+  return (
+    <AbsoluteFill style={{ background: INK }}>
+      <Chrome world="ink" t={t} />
+      <Push t={t} dur={6} amount={0.02}>
+        <Rise t={t} a={0.3} d={0.8} x={90} y={128} w={1750} size={130} color={PAPER}>
+          Four <span style={{ color: ORANGE }}>100s.</span> Twice.
+        </Rise>
+        {(['Mobile', 'Desktop'] as const).map((device, row) => {
+          const y = 300 + row * 300;
+          return (
+            <div key={device}>
+              <Rise
+                t={t}
+                a={0.8 + row * 0.9}
+                x={96}
+                y={y + 70}
+                w={240}
+                size={26}
+                f="m"
+                color={ORANGE}
+              >
+                {device}
+              </Rise>
+              <Rule t={t} a={0.8 + row * 0.9} d={0.7} x={96} y={y + 120} w={240} color={PAPER} />
+              {PS_CATS.map((c, i) => (
+                <ScoreRing
+                  key={c}
+                  t={t}
+                  a={1.0 + row * 0.9 + i * 0.12}
+                  x={420 + i * 300}
+                  y={y}
+                  label={c}
+                />
+              ))}
+            </div>
+          );
+        })}
+        <Mono x={96} y={930} w={1728} size={18} color={DIM} upper={false} opacity={pr(t, 3.2, 0.6)}>
+          PageSpeed Insights, landing page, 10 Nov 2026. Lighthouse 13.6.0. Mobile: LCP 1.1 s, TBT
+          10 ms, CLS 0. gavel.dualmindlab.tech
+        </Mono>
+      </Push>
+    </AbsoluteFill>
+  );
+}
+
 /* ---------- 16. built with: partner marks, cream background, clear space ---------- */
 export function BuiltWith({ sc }: P) {
   const t = useT();
