@@ -26,7 +26,7 @@
 }
 
 .gv-screen[data-state='soft'] {
-  --screen-state: var(--color-warning);
+  --screen-state: var(--color-danger);
 }
 
 .gv-screen[data-state='sold'] {
@@ -42,7 +42,7 @@
 }
 
 .gv-screen[data-state='lobby'] {
-  --screen-state: var(--color-border);
+  --screen-state: var(--color-fg);
 }
 
 .gv-screen__head {
@@ -52,7 +52,7 @@
   align-items: center;
   gap: var(--space-5);
   padding-block-end: var(--space-4);
-  border-block-end: var(--border-width-strong) solid var(--color-rule);
+  border-block-end: var(--border-width-strong) solid var(--color-fg);
 }
 
 .gv-screen__lot {
@@ -88,11 +88,14 @@
   gap: var(--space-4);
   min-width: 0;
   container-type: inline-size;
-  padding: var(--space-6) var(--space-7);
-  border: var(--border-width-strong) solid var(--screen-state);
+  padding: calc(var(--space-6) + var(--space-3)) var(--space-7) var(--space-6);
+  border: var(--border-width-strong) solid var(--color-fg);
   border-radius: var(--radius-md);
   background: var(--color-surface);
-  box-shadow: var(--shadow-2);
+  /* A heavy band along the top carries the state colour; the words and the clock still say it too. */
+  box-shadow:
+    inset 0 var(--space-3) 0 var(--screen-state),
+    var(--shadow-2);
 }
 
 .gv-screen__price {
@@ -133,7 +136,7 @@
 }
 
 .gv-screen__clock[data-soft='true'] {
-  color: var(--color-warning);
+  color: var(--color-danger);
 }
 
 .gv-screen__sold {
@@ -146,7 +149,9 @@
   margin: 0;
   align-self: flex-start;
   padding: 0 var(--space-5);
+  border: var(--border-width-strong) solid var(--color-fg);
   border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
   font-family: var(--font-display);
   font-size: min(16vh, 6.4vw);
   overflow-wrap: anywhere;
@@ -241,7 +246,7 @@
   margin-block-start: auto;
   min-width: 0;
   padding: var(--space-4);
-  border: var(--border-width-strong) solid var(--color-border);
+  border: var(--border-width-strong) solid var(--color-fg);
   border-radius: var(--radius-md);
   background: var(--color-surface);
   box-shadow: var(--shadow-2);
@@ -361,7 +366,9 @@
   flex-direction: column;
   min-width: 0;
   padding: var(--space-2) var(--space-4);
-  border: var(--border-width) solid var(--color-rule);
+  border: var(--border-width) solid var(--color-fg);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
   color: var(--color-fg-muted);
 }
 
@@ -389,12 +396,14 @@
 }
 
 .gv-story__step[data-status='now'] {
-  border: var(--border-width-strong) solid var(--screen-state);
-  background: var(--color-surface);
-  color: var(--color-fg);
+  border: var(--border-width-strong) solid var(--color-fg);
+  background: var(--color-action);
+  box-shadow: var(--shadow-1);
+  color: var(--color-on-action);
 }
 
 .gv-story__step[data-status='done'] {
+  background: var(--color-surface);
   color: var(--color-fg);
 }
 
@@ -452,7 +461,7 @@
   }
 
   .gv-screen:not(.gv-screen--preview) .gv-screen__board {
-    padding: var(--space-4);
+    padding: calc(var(--space-4) + var(--space-3)) var(--space-4) var(--space-4);
   }
 
   .gv-screen:not(.gv-screen--preview) .gv-screen__price {
