@@ -342,6 +342,7 @@ function LiveRoute({
             }}
             stopped={stopped}
             onJoin={() => navigate(`/r/${encodeURIComponent(roomId)}/register`)}
+            {...(scripted?.attach === undefined ? {} : { recorded: true })}
             onHome={() => navigate('/')}
             onJoinCode={() => navigate('/?join=1')}
             onReceipt={() => navigate(`/r/${encodeURIComponent(roomId)}/receipt`)}
