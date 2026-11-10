@@ -23,6 +23,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const log = (...a) => console.log('[record]', ...a);
 const marks = []; // { id, start, end, ok, note } in epoch seconds
 const events = []; // named instants inside shots: { id, t }
+const rects = []; // element boxes in actor CSS px, for the film's macro crops: { id, actor, x, y, w, h }
 const actors = {}; // name -> { page, ctx, cdp, frames, dir, w, h, dsf, cur }
 let room = null;
 let code = null;
@@ -217,6 +218,15 @@ async function shot(id, fn) {
   log(`  ${id} took ${(Date.now() / 1000 - start).toFixed(1)} s`);
 }
 const ev = (id) => events.push({ id, t: Date.now() / 1000 });
+/** Remembers where an element sits in an actor's viewport (for camera moves). Never throws. */
+async function rect(id, a, loc) {
+  try {
+    const b = await loc.first().boundingBox({ timeout: 3000 });
+    if (b) rects.push({ id, actor: a.name, x: b.x, y: b.y, w: b.width, h: b.height });
+  } catch {
+    /* no box, no rect */
+  }
+}
 
 function writeMeta() {
   for (const a of Object.values(actors)) a.flush?.();
@@ -226,6 +236,7 @@ function writeMeta() {
     ),
     marks,
     events,
+    rects,
     room: Boolean(room),
   };
   writeFileSync(path.join(OUT, 'meta.json'), JSON.stringify(meta));
@@ -253,6 +264,31 @@ async function main() {
   for (const a of [phoneA, phoneB, cons, screen]) await a.page.goto('about:blank');
   await sleep(800);
 
+  // 0. the judge key field on /try (a password field: the throwaway key of this run shows as dots
+  //    and is never in the frames). Needs JUDGE_KEY on the API host; without it the shot fails and
+  //    the film falls back to type only.
+  await shot('key', async () => {
+    await go(host, `${WEB}/try`, { wait: 1500 });
+    const field = host.page.getByLabel(/judge key/i).first();
+    await field.waitFor({ state: 'visible', timeout: 12000 });
+    await rect('key.field', host, field);
+    await glide(host, 700, 400, 600);
+    await sleep(700);
+    await typeSlow(host, field, process.env.JUDGE_KEY ?? '', 45);
+    await sleep(500);
+    const unlock = btn(host, /^unlock$/i);
+    await rect('key.unlock', host, unlock);
+    await click(host, unlock, { ms: 700 });
+    ev('key.unlock');
+    await host.page
+      .getByText(/judge key accepted/i)
+      .first()
+      .waitFor({ timeout: 15000 });
+    ev('key.accepted');
+    await rect('key.accepted', host, host.page.getByText(/judge key accepted/i));
+    await sleep(2600);
+  });
+
   // 1. the judge page, start a room
   await shot('try', async () => {
     await go(host, `${WEB}/try`, { wait: 1500 });
@@ -260,6 +296,7 @@ async function main() {
     await sleep(1000);
     const start = btn(host, /start (a |your )?(demo|live|sandbox|room)/i);
     await start.waitFor({ state: 'visible' });
+    await rect('try.start', host, start);
     await click(host, start, { ms: 900, pause: 400 });
     ev('try.clicked');
     await host.page.waitForURL(/\/r\/[^/]+\/hub/, { timeout: 60000 });
@@ -274,6 +311,8 @@ async function main() {
     await sleep(1800);
     const flaps = await host.page.locator('.gv-hub__flap').allInnerTexts();
     code = flaps.join('').replace(/\s/g, '') || null;
+    await rect('hub.flaps', host, host.page.locator('.gv-hub__flaps'));
+    await rect('hub.qr', host, host.page.locator('canvas, svg[aria-label*="QR" i], img[alt*="QR" i]'));
     log('code', code ? code.length + ' chars' : 'MISSING');
     const anchors = await host.page.locator('a[href]').evaluateAll((as) =>
       as.map((a) => ({
@@ -310,6 +349,7 @@ async function main() {
   await shot('joinA', async () => {
     await go(phoneA, `${WEB}/`, { wait: 1800 });
     const input = phoneA.page.locator('input').first();
+    await rect('joinA.input', phoneA, input);
     await typeSlow(phoneA, input, code ?? '');
     await sleep(400);
     await click(phoneA, btn(phoneA, /join with a code/i), { ms: 600 });
@@ -332,11 +372,16 @@ async function main() {
     await click(phoneA, btn(phoneA, /continue to bidding|continue/i), { ms: 600 });
     await sleep(1400);
     const radios = phoneA.page.getByRole('radio');
+    await rect('holdA.ceiling', phoneA, phoneA.page.getByRole('radiogroup'));
     if ((await radios.count()) > 1) await click(phoneA, radios.nth(1), { ms: 600 });
     else if ((await radios.count()) > 0) await click(phoneA, radios.first(), { ms: 600 });
+    ev('holdA.ceiling');
     await sleep(1500);
     // press and hold the approve button for 3 seconds
     const hold = phoneA.page.getByRole('button', { name: /approve|your hold|hold/i }).first();
+    await hold.scrollIntoViewIfNeeded().catch(() => {});
+    await sleep(200);
+    await rect('holdA.hold', phoneA, hold);
     ev('holdA.press');
     await pressHold(phoneA, hold, 3400);
     ev('holdA.released');
@@ -382,6 +427,7 @@ async function main() {
     await restoreCursor(cons);
     const open = btn(cons, /open lot/i);
     await open.waitFor({ state: 'visible', timeout: 15000 });
+    await rect('open.button', cons, open);
     await sleep(1000);
     await click(cons, open, { ms: 800 });
     await sleep(2200);
@@ -437,6 +483,7 @@ async function main() {
     const hb = (await dlg.isVisible().catch(() => false))
       ? dlg.getByRole('button', { name: /hold to hammer|hold/i }).first()
       : cons.page.getByRole('button', { name: /hold to hammer|hold 3 seconds/i }).first();
+    await rect('hammer.hold', cons, hb);
     ev('hammer.press');
     await pressHold(cons, hb, 3400);
     ev('hammer.released');
@@ -459,6 +506,7 @@ async function main() {
       await click(phoneA, make, { ms: 700 });
       await sleep(2200);
     }
+    await rect('receipt.qr', phoneA, phoneA.page.locator('canvas, img[alt*="QR" i], svg[aria-label*="QR" i]'));
     await sleep(800);
   });
 
@@ -490,7 +538,9 @@ async function main() {
       .waitFor({ timeout: 20000 });
     ev('verify.clicked');
     await badge.scrollIntoViewIfNeeded();
-    await sleep(2200);
+    await sleep(300);
+    await rect('verify.badge', host, badge);
+    await sleep(1900);
     // one entry is edited after sealing
     await click(host, area, { ms: 800 });
     await area.fill(edited);
@@ -506,7 +556,9 @@ async function main() {
       .getByText(/chain broken/i)
       .first()
       .scrollIntoViewIfNeeded();
-    await sleep(2800);
+    await sleep(300);
+    await rect('verify.broken', host, host.page.locator('.gv-chain__badge'));
+    await sleep(2500);
   });
 
   // 12. the ledger lab: AG Grid, and one edited entry

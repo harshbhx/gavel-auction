@@ -3,8 +3,9 @@ name: silent-video
 # (Devpost forbids third-party music; the voice-over is added later). Manual dispatch only, no secrets.
 # 1. Builds the web app and boots the real server (judge rooms on, simulated holds, fake payments, a
 #    memory store) on loopback, then records the judge flow with one browser per actor (graphics/
-#    motion-silent/record.mjs) and runs the judge API calls against a second keyed server instance
-#    (api-run.mjs; the key is generated here and masked).
+#    motion-silent/record.mjs) and runs the judge API calls against a second server instance
+#    (api-run.mjs). These steps are the composite action .github/actions/record-ui, shared with
+#    launch-film.yml; the throwaway judge key is generated there and masked.
 # 2. Composes the broadside cards, the captions and the recorded panes with ffmpeg (compose.mjs).
 # Artifacts: silent-raw (the recording, reusable through the raw_run input) and silent-video (MP4, WebM,
 # poster, SRT, contact sheets, report). Commit the final files to brand/video/silent-cut/.
@@ -56,51 +57,15 @@ jobs:
           npx playwright install --with-deps chromium
           sudo apt-get install -y -qq ffmpeg
           ffmpeg -version | head -1
-      - uses: ./.github/actions/setup
+      - name: Build, boot and record the judge flow
         if: ${{ inputs.raw_run == '' }}
-      - name: Build the web app against the local API
-        if: ${{ inputs.raw_run == '' }}
-        working-directory: packages/web
-        env:
-          VITE_API_BASE: http://127.0.0.1:8787
-          VITE_WS_BASE: ws://127.0.0.1:8787
-          VITE_SANDBOX: 'true'
-          VITE_PAYMENTS: fake
-          VITE_ALLOW_FAKE: 'true'
-          VITE_PAYPAL_CLIENT_ID: sandbox-client
-        run: npx vite build
-      - name: Start the servers
-        if: ${{ inputs.raw_run == '' }}
-        run: |
-          JUDGE_KEY="$(openssl rand -hex 24)"
-          echo "::add-mask::$JUDGE_KEY"
-          echo "JUDGE_KEY=$JUDGE_KEY" >> "$GITHUB_ENV"
-          start_server() { # port, extra env pairs...
-            local port="$1"; shift
-            (cd packages/server && env NODE_ENV=test PORT="$port" PUBLIC_URL="http://127.0.0.1:$port" \
-              TOKEN_SECRET="$(openssl rand -hex 32)" ADMIN_KEY="$(openssl rand -hex 24)" \
-              STORE=memory PAYMENTS=fake PAYPAL_ENV=sandbox JUDGE_ROOMS=true JUDGE_SIM_HOLDS=1 \
-              CORS_ORIGINS="http://127.0.0.1:$WEB_PORT" WEB_ORIGIN="http://127.0.0.1:$WEB_PORT" "$@" \
-              npx vite-node src/main.ts > "$GITHUB_WORKSPACE/server-$port.log" 2>&1 &)
-          }
-          start_server "$API_PORT"
-          start_server "$KEYED_PORT" JUDGE_KEY="$JUDGE_KEY"
-          (cd packages/web && npx vite preview --host 127.0.0.1 --port "$WEB_PORT" --strictPort > "$GITHUB_WORKSPACE/web.log" 2>&1 &)
-          for url in "http://127.0.0.1:$API_PORT/healthz" "http://127.0.0.1:$KEYED_PORT/healthz" "http://127.0.0.1:$WEB_PORT/"; do
-            for i in $(seq 1 60); do curl -fsS -o /dev/null "$url" && break; sleep 2; done
-            curl -fsS -o /dev/null "$url"
-          done
-          curl -fsS "http://127.0.0.1:$API_PORT/api/judge/capabilities"; echo
-      - name: Record the judge flow
-        if: ${{ inputs.raw_run == '' }}
-        run: |
-          mkdir -p "$RAW"
-          PW_DIR="$RUNNER_TEMP/pw" WEB_URL="http://127.0.0.1:$WEB_PORT" API_URL="http://127.0.0.1:$API_PORT" node graphics/motion-silent/record.mjs "$RAW" | tee "$RAW/record.log"
-      - name: Run the judge API calls
-        if: ${{ inputs.raw_run == '' }}
-        run: |
-          API_URL="http://127.0.0.1:$KEYED_PORT" node graphics/motion-silent/api-run.mjs "$RAW/api.json"
-          cat "$RAW/api.json"
+        uses: ./.github/actions/record-ui
+        with:
+          raw: ${{ env.RAW }}
+          pw_dir: ${{ runner.temp }}/pw
+          web_port: ${{ env.WEB_PORT }}
+          api_port: ${{ env.API_PORT }}
+          keyed_port: ${{ env.KEYED_PORT }}
       - name: Upload the raw recording
         if: ${{ !cancelled() && inputs.raw_run == '' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

@@ -1,0 +1,127 @@
+name: launch-film
+# Renders the GAVEL launch film (GFX-15): about 3:20, 1920x1080, 60 fps (or 30 for a quick pass), no
+# audio track, captions on screen. Manual dispatch only, no secrets.
+# 1. Records the judge flow of the real web app on a local stack (composite action record-ui, shared
+#    with silent-video.yml), or reuses the silent-raw artifact of an earlier run (raw_run).
+# 2. graphics/motion-film/compose.mjs renders every scene as a deterministic function of time in a
+#    browser (type, graphics and the recorded panes), encodes with ffmpeg and writes the MP4 (kept under
+#    50 MB), poster, SRT, timeline, contact sheets and a report.
+# Artifacts: silent-raw (the recording, reusable by both films) and launch-film (the cut). Commit the
+# final files to brand/video/launch-film/.
+on:
+  workflow_dispatch:
+    inputs:
+      raw_run:
+        description: 'Reuse the silent-raw artifact of this run id (silent-video or launch-film) and only compose'
+        required: false
+        default: ''
+        type: string
+      fps:
+        description: 'Frames per second of the cut (60 for the final, 30 for a quick pass)'
+        required: false
+        default: '60'
+        type: choice
+        options: ['60', '30']
+      record_only:
+        description: 'Only record, do not compose'
+        required: false
+        default: false
+        type: boolean
+      webm:
+        description: 'Also encode a WebM (slow at 60 fps)'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: launch-film
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  film:
+    if: ${{ github.repository == 'harshbhx/gavel-auction' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      WEB_PORT: '4180'
+      API_PORT: '8787'
+      KEYED_PORT: '8788'
+      RAW: ${{ github.workspace }}/out/raw
+      FINAL: ${{ github.workspace }}/out/final
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install Playwright, chromium and ffmpeg
+        run: |
+          mkdir -p "$RUNNER_TEMP/pw" && cd "$RUNNER_TEMP/pw"
+          npm init -y >/dev/null && npm install --no-audit --no-fund playwright@1.55.1
+          npx playwright install --with-deps chromium
+          sudo apt-get install -y -qq ffmpeg
+          ffmpeg -version | head -1
+      - name: Build, boot and record the judge flow
+        if: ${{ inputs.raw_run == '' }}
+        uses: ./.github/actions/record-ui
+        with:
+          raw: ${{ env.RAW }}
+          pw_dir: ${{ runner.temp }}/pw
+          web_port: ${{ env.WEB_PORT }}
+          api_port: ${{ env.API_PORT }}
+          keyed_port: ${{ env.KEYED_PORT }}
+      - name: Upload the raw recording
+        if: ${{ !cancelled() && inputs.raw_run == '' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: silent-raw
+          path: |
+            out/raw
+            server-*.log
+            web.log
+          if-no-files-found: warn
+          retention-days: 7
+          compression-level: 0
+      - name: Fetch the raw recording of an earlier run
+        if: ${{ inputs.raw_run != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p "$RAW"
+          gh run download "${{ inputs.raw_run }}" -R "$GITHUB_REPOSITORY" -n silent-raw -D "$RUNNER_TEMP/rawdl"
+          cp -r "$RUNNER_TEMP/rawdl/out/raw/." "$RAW/" 2>/dev/null || cp -r "$RUNNER_TEMP/rawdl/." "$RAW/"
+          ls "$RAW" | head
+      - name: Compose the film
+        if: ${{ !inputs.record_only }}
+        env:
+          FPS: ${{ inputs.fps }}
+          WEBM: ${{ inputs.webm && '1' || '' }}
+        run: |
+          mkdir -p "$FINAL"
+          PW_DIR="$RUNNER_TEMP/pw" node graphics/motion-film/compose.mjs "$RAW" "$FINAL"
+      - name: Job summary
+        if: ${{ !cancelled() }}
+        run: |
+          {
+            echo '### launch-film'
+            if [ -f "$RAW/record.log" ]; then echo '```'; tail -n 30 "$RAW/record.log"; echo '```'; fi
+            if [ -f "$FINAL/report.txt" ]; then echo '```'; cat "$FINAL/report.txt"; echo '```'; fi
+            find "$FINAL" -maxdepth 1 -type f -printf '%s %f\n' 2>/dev/null | sort -k2
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload the film
+        if: ${{ !cancelled() && !inputs.record_only }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: launch-film
+          path: out/final
+          if-no-files-found: error
+          retention-days: 30
+      - name: Stop the servers
+        if: ${{ always() }}
+        run: pkill -f vite-node || true; pkill -f "vite preview" || true
