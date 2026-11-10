@@ -68,7 +68,7 @@ import {
 } from '@gavel/shared';
 import { DEFAULT_CAPS, type CapLimits } from '../limits/caps';
 import type { RateLimiter } from '../limits/rate-limiter';
-import type { OpsRoomView } from '../http/ops';
+import type { OpsRoomView, OpsSagaView } from '../http/ops';
 import { FencedStore } from '../room/fence';
 import { Room, type RoomDeps } from '../room/room';
 import type { HammerResult, SettlePort, SettlementReport } from '../room/settle-port';
@@ -211,6 +211,11 @@ export interface AuctionService {
   stats(): { rooms: number; connections: number; mailboxDepth: number };
   /** The loaded rooms, for `GET /ops/rooms`. */
   opsRooms(): OpsRoomView[];
+  /**
+   * Settlement saga state per lot for the ops page and the saga metrics (R-QA-047): one row
+   * for every auction with a journal, read from the journal store.
+   */
+  opsSagas(): Promise<OpsSagaView[]>;
   registerBidder(input: RegisterBidderInput): Promise<void>;
   /**
    * Kill switch before the hammer: when the switch is engaged, ends every auction that has
@@ -574,6 +579,19 @@ class Service implements AuctionService, SettlePort {
   opsRooms(): OpsRoomView[] {
     const out: OpsRoomView[] = [];
     for (const [id, room] of this.ready) if (this.rooms.has(id)) out.push(room.opsView());
+    return out;
+  }
+
+  async opsSagas(): Promise<OpsSagaView[]> {
+    const out: OpsSagaView[] = [];
+    for (const id of await this.deps.store.listAuctions()) {
+      const lotId = lotIdOf(id);
+      const journal = await this.deps.journals.load(lotId);
+      if (journal === null) continue;
+      const transitions: Record<string, number> = {};
+      for (const h of journal.history) transitions[h.to] = (transitions[h.to] ?? 0) + 1;
+      out.push({ auctionId: id, lotId, state: journal.state, transitions });
+    }
     return out;
   }
 

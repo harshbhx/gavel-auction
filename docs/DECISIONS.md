@@ -138,6 +138,7 @@ Alternatives:
 Consequences:
 
 - An uptime workflow probes the health routes.
+- Update 10 Nov 2026: the 4-minute ping is not implemented. The Render service runs on the Starter plan, which does not idle, and GitHub cron runs hours apart. An external 5-minute monitor is still the owner's choice (see `infra/uptime.md`); this entry is amended when one exists.
 
 Evidence: SPEC-quality R-QA-045.
 

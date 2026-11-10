@@ -66,6 +66,8 @@ export interface AuctionService {
     idle(): Promise<void>;
     // Warning: (ae-forgotten-export) The symbol "OpsRoomView" needs to be exported by the entry point index.d.ts
     opsRooms(): OpsRoomView[];
+    // Warning: (ae-forgotten-export) The symbol "OpsSagaView" needs to be exported by the entry point index.d.ts
+    opsSagas(): Promise<OpsSagaView[]>;
     reconcile(auctionId: AuctionId): Promise<ReconcileReport>;
     // (undocumented)
     registerBidder(input: RegisterBidderInput): Promise<void>;
@@ -366,7 +368,7 @@ export interface RoomDeps {
     maxCeilingCents?: number;
     metrics?: {
         bidAccepted(): void;
-        bidRejected(): void;
+        bidRejected(reason?: string): void;
         rateLimitHit(): void;
         bidLatencyMs?(ms: number): void;
         storeAppendMs?(ms: number): void;

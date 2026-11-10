@@ -78,6 +78,7 @@ import { createLogger, type LogSink } from '../log/logger';
 import { RateLimiter } from '../limits/rate-limiter';
 import { MetricsCollector } from '../ops/metrics';
 import { createLogRing } from '../obs/logring';
+import { meteredGateway } from '../obs/metered-gateway';
 import { createOpsSummaryRoute, createPrometheusRoute } from '../obs/ops-summary';
 import { createWarmupRoute, type WarmupStep } from '../warmup/warmup';
 import { createAuctionService, type AuctionService } from '../runtime/auction-service';
@@ -468,6 +469,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     rooms: () => serviceStats().rooms,
     mailboxDepth: () => serviceStats().mailboxDepth,
   });
+  payments.gateway = meteredGateway(payments.gateway, metrics, () => clock.now());
   const limiter = new RateLimiter(clock, limitsFromConfig(config));
   const boundary = boundaryFromEnv(env, killSelf, config);
   const service = createAuctionService({
@@ -604,13 +606,13 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
   const opsSummaryRoute = createOpsSummaryRoute({
     adminKey: config.ADMIN_KEY,
     logs: () => logRing.lines(),
-    sagas: () =>
-      service.opsRooms().map((r) => ({ auctionId: r.auctionId, lotId: '-', state: r.status })),
+    sagas: () => service.opsSagas(),
     metrics: () => metrics.snapshot(),
   });
   const prometheusRoute = createPrometheusRoute({
     adminKey: config.ADMIN_KEY,
     metrics: () => metrics.snapshot(),
+    sagas: () => service.opsSagas(),
   });
   // The web approval flow (R-PAY-030, issue 1074): the same hold store, audit sink and kill
   // switch as the settlement, so every PayPal call is audited and refused while payments are

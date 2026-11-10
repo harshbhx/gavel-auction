@@ -8,6 +8,8 @@ export interface OpsSagaRow {
   auctionId: string;
   lotId: string;
   state: string;
+  /** Count of saga transitions into each state, from the journal history. */
+  transitions?: Record<string, number>;
 }
 
 export interface OpsSummary {
@@ -15,13 +17,15 @@ export interface OpsSummary {
   sagas: OpsSagaRow[];
   /** PayPal call outcomes: webhook intake counts by outcome. */
   paypal: Record<string, number>;
+  /** PayPal gateway calls by `<operation>.<ok|error>`, with latency in `metrics`. */
+  paypalCalls: Record<string, number>;
   metrics: MetricsSnapshot;
 }
 
 export interface OpsSummaryDeps {
   adminKey: string;
   logs(): string[];
-  sagas(): OpsSagaRow[];
+  sagas(): OpsSagaRow[] | Promise<OpsSagaRow[]>;
   metrics(): MetricsSnapshot;
 }
 
@@ -34,12 +38,13 @@ function send(res: ServerResponse, status: number, type: string, body: string): 
   res.end(body);
 }
 
-export function buildOpsSummary(deps: Omit<OpsSummaryDeps, 'adminKey'>): OpsSummary {
+export async function buildOpsSummary(deps: Omit<OpsSummaryDeps, 'adminKey'>): Promise<OpsSummary> {
   const metrics = deps.metrics();
   return {
     logs: deps.logs(),
-    sagas: deps.sagas(),
+    sagas: await deps.sagas(),
     paypal: { ...metrics.webhookOutcomes },
+    paypalCalls: { ...metrics.paypalCalls },
     metrics,
   };
 }
@@ -58,7 +63,10 @@ export function createOpsSummaryRoute(
       send(res, 401, 'application/json', '{"error":"unauthorized"}');
       return;
     }
-    send(res, 200, 'application/json', JSON.stringify(buildOpsSummary(deps)));
+    buildOpsSummary(deps).then(
+      (summary) => send(res, 200, 'application/json', JSON.stringify(summary)),
+      () => send(res, 500, 'application/json', '{"error":"internal"}'),
+    );
   };
 }
 
@@ -66,6 +74,7 @@ export function createOpsSummaryRoute(
 export function createPrometheusRoute(deps: {
   adminKey: string;
   metrics(): MetricsSnapshot;
+  sagas?(): OpsSagaRow[] | Promise<OpsSagaRow[]>;
 }): (req: IncomingMessage, res: ServerResponse) => void {
   return (req, res) => {
     if (req.method !== 'GET') {
@@ -77,6 +86,9 @@ export function createPrometheusRoute(deps: {
       send(res, 401, 'application/json', '{"error":"unauthorized"}');
       return;
     }
-    send(res, 200, PROMETHEUS_CONTENT_TYPE, formatPrometheus(deps.metrics()));
+    Promise.resolve(deps.sagas?.() ?? []).then(
+      (sagas) => send(res, 200, PROMETHEUS_CONTENT_TYPE, formatPrometheus(deps.metrics(), sagas)),
+      () => send(res, 500, 'application/json', '{"error":"internal"}'),
+    );
   };
 }

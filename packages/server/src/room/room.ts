@@ -201,7 +201,7 @@ export interface RoomDeps {
   /** Counters fed from the bid path (R-RT-122, R-RT-135). */
   metrics?: {
     bidAccepted(): void;
-    bidRejected(): void;
+    bidRejected(reason?: string): void;
     rateLimitHit(): void;
     bidLatencyMs?(ms: number): void;
     storeAppendMs?(ms: number): void;
@@ -1135,7 +1135,7 @@ export class Room {
       this.noteHighBid(event.bidderId, event.amount);
     } else this.rejectedCount += 1;
     if (event.type === 'bid_accepted') this.deps.metrics?.bidAccepted();
-    else this.deps.metrics?.bidRejected();
+    else this.deps.metrics?.bidRejected(event.reason);
     this.pushAudit(audit);
     const reply = this.replyFor(event);
     if (reply) this.keepReply(key, { reply, digest: bidDigest(msg.amount, audit.source) });

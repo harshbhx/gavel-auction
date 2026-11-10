@@ -13,6 +13,15 @@ export interface OpsRoomView {
   mailboxDepth: number;
 }
 
+/** Settlement saga state of one lot, as the ops page lists it (R-QA-047). */
+export interface OpsSagaView {
+  auctionId: string;
+  lotId: string;
+  state: string;
+  /** Count of saga transitions into each state, from the journal history. */
+  transitions: Record<string, number>;
+}
+
 export interface OpsRoomsDeps {
   adminKey: string;
   /** Snapshot of the rooms the host has loaded; read on every request. */

@@ -28,6 +28,66 @@ describe('deploy workflows', () => {
   });
 });
 
+describe('production gate and rollback (R-QA-042, R-QA-049)', () => {
+  const prod = wf('deploy-prod.yml');
+
+  it('deploys only on a tag or by hand, never on a push to a branch', () => {
+    assert.match(prod, /tags: \['v\*'\]/);
+    assert.match(prod, /workflow_dispatch:/);
+    assert.doesNotMatch(prod, /branches:/);
+    assert.doesNotMatch(prod, /pull_request/);
+  });
+
+  it('runs the deploy job in the production environment so the reviewer gate applies', () => {
+    assert.match(prod, /deploy:\n(?:.*\n)*?\s+environment: production/);
+  });
+
+  it('keeps secrets in the environment and never echoes them', () => {
+    assert.match(prod, /secrets\.RENDER_API_KEY/);
+    assert.match(prod, /secrets\.RENDER_DEPLOY_HOOK_URL/);
+    assert.doesNotMatch(prod, /echo[^\n]*\$RENDER_(API_KEY|DEPLOY_HOOK_URL)/);
+  });
+
+  it('records the live deploy, rolls back by deploy id and verifies /version', () => {
+    assert.match(prod, /rollback:\n\s+description:/);
+    assert.match(prod, /Record the live deploy before changing anything/);
+    assert.match(prod, /\/rollback"/);
+    assert.match(prod, /wait-version\.sh "\$PRODUCTION_URL" "\$expected"/);
+    assert.match(prod, /TARGET_COMMIT/);
+    assert.match(prod, /scripts\/smoke\.sh/);
+  });
+
+  it('documents the rollback and its rehearsal table', () => {
+    const doc = readFileSync('infra/rollback.md', 'utf8');
+    assert.match(doc, /rollback_deploy_id/);
+    assert.match(doc, /## Rehearsal/);
+    assert.match(doc, /\/version/);
+  });
+});
+
+describe('uptime workflow (R-QA-045, R-QA-048)', () => {
+  const up = wf('uptime.yml');
+
+  it('probes the health, readiness and warmup routes plus web and docs', () => {
+    for (const path of ['/healthz', '/readyz', '/warmup']) assert.ok(up.includes(path), path);
+    assert.match(up, /WEB_URL/);
+    assert.match(up, /DOCS_URL/);
+  });
+
+  it('fails a warmup slower than the 3 s budget and logs every probe time', () => {
+    assert.match(up, /WARMUP_BUDGET_MS: '3000'/);
+    assert.match(up, /over the \$\{WARMUP_BUDGET_MS\}ms budget/);
+    assert.match(up, /GITHUB_STEP_SUMMARY/);
+  });
+
+  it('re-probes once and then raises an error annotation and a Needs-you issue', () => {
+    assert.match(up, /sleep 30/);
+    assert.match(up, /::error title=Uptime probe failed::/);
+    assert.match(up, /gh issue create/);
+    assert.match(up, /issues: write/);
+  });
+});
+
 describe('backup workflow', () => {
   const text = wf('backup.yml');
 
