@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { t } from '../../copy/t';
+import { ActionGroup } from '../../design/primitives/ActionGroup';
 import { Provenance } from '../../design/Provenance';
 import { SCRIPTED_BID_PATH, SCRIPTED_DEMO_PATH } from '../../net/scriptedMode';
 import '../flows.css';
@@ -20,17 +21,21 @@ export function ScriptedJoin() {
       </h1>
       <Provenance kind="scripted" />
       <p>{t('scriptedJoin.lead')}</p>
-      <a className="gv-flow__action" href={SCRIPTED_BID_PATH}>
-        {t('scriptedJoin.bidder')}
-      </a>
-      <a className="gv-flow__action gv-flow__action--plain" href={SCRIPTED_DEMO_PATH}>
-        {t('scriptedJoin.screen')}
-      </a>
+      <ActionGroup>
+        <a className="gv-flow__action" href={SCRIPTED_BID_PATH}>
+          {t('scriptedJoin.bidder')}
+        </a>
+        <a className="gv-flow__action gv-flow__action--outline" href={SCRIPTED_DEMO_PATH}>
+          {t('scriptedJoin.screen')}
+        </a>
+      </ActionGroup>
       <div className="gv-help">
         <p>{t('scriptedJoin.liveHint')}</p>
-        <a className="gv-flow__action" href="/demo">
-          {t('scriptedJoin.live')}
-        </a>
+        <ActionGroup>
+          <a className="gv-flow__action" href="/demo">
+            {t('scriptedJoin.live')}
+          </a>
+        </ActionGroup>
       </div>
     </main>
   );
