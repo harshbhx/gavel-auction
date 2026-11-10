@@ -10,9 +10,26 @@
 
 .gv-console-columns {
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--space-5);
-  align-items: start;
+  align-items: stretch;
+}
+
+/* One column of panels. The panels share one gap so the two columns line up. */
+.gv-console-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  min-width: 0;
+}
+
+/* The two columns end together: the last panel of each takes the spare height. */
+.gv-console-columns > .gv-console-col > :last-child {
+  flex-grow: 1;
+}
+
+.gv-console-header:empty {
+  display: none;
 }
 
 .gv-console-panel {
@@ -21,8 +38,6 @@
   background: var(--color-raised, var(--color-surface));
   color: var(--color-fg);
   border: var(--border-width, 2px) solid var(--color-rule, var(--color-border));
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-1);
 }
 
 .gv-console-panel > h2 {
@@ -74,51 +89,166 @@
   color: var(--color-fg);
 }
 
-/* Controls and the hammer. */
+/* Controls and the hammer. Every control has a fixed slot: equal columns, same order, and
+ * nothing that appears or disappears changes a slot's size. */
 
 .gv-console-controls {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: var(--space-3);
   padding-top: var(--space-4);
 }
 
+.gv-console-controls__bar {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+@media (max-width: 639px) {
+  .gv-console-controls__bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .gv-console-controls__item {
+  min-width: 0;
   display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+}
+
+.gv-console-controls__item > .gv-btn {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-inline: var(--space-2);
+  white-space: nowrap;
+  position: relative;
+  justify-content: center;
+}
+
+/* The spinner sits at the end of the clicked button; the label keeps its place. */
+.gv-console-controls__spinner {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: var(--space-2);
+  margin-block: auto;
+  inline-size: 1em;
+  block-size: 1em;
+  border: 2px solid currentColor;
+  border-inline-end-color: transparent;
+  border-radius: 50%;
+  animation: gv-console-spin 0.8s linear infinite;
+}
+
+@keyframes gv-console-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gv-console-controls__spinner {
+    animation: none;
+    border-inline-end-color: currentColor;
+  }
+}
+
+/* One line each, always there, so a message never moves what is below it. */
+.gv-console-controls__reason,
+.gv-console-controls__result {
+  margin: 0;
+  min-height: 1.5em;
+  line-height: 1.5;
   font-size: var(--font-size-1);
+}
+
+.gv-console-controls__reason {
   color: var(--color-fg-muted);
 }
 
-.gv-console-controls > [role='status'] {
-  flex-basis: 100%;
-  margin: 0;
-  min-height: 1.5em;
+.gv-console-controls__result {
+  min-height: 2.5em;
+  line-height: 1.25;
+  font-size: var(--font-size-2);
 }
 
 .gv-console-hammer {
-  flex-basis: 100%;
-  order: 10;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   padding: var(--space-4);
-  border: var(--border-width-strong, 3px) solid var(--color-rule, var(--color-border));
-  border-radius: var(--radius-md);
+  border: var(--border-width, 2px) solid var(--color-rule, var(--color-border));
   background: var(--color-surface);
   color: var(--color-fg);
+}
+
+/* Danger zone: a calm bordered section at the bottom of the lot column. */
+.gv-console-danger {
+  display: grid;
+  gap: var(--space-3);
 }
 
 .gv-console-kill {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: var(--space-3);
   padding: var(--space-4);
-  border: var(--border-width-strong, 3px) solid var(--color-danger);
-  border-radius: var(--radius-md);
+  border: var(--border-width, 2px) solid var(--color-danger);
   background: var(--color-surface);
   color: var(--color-fg);
+}
+
+/* The hold button already says how it works; its spoken note stays for screen readers only. */
+.gv-console-hammer .ui-hold__note,
+.gv-console-kill .ui-hold__note {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Manual floor bid: paddle, amount and send on one row. */
+.gv-manual {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto;
+  gap: var(--space-3);
+  align-items: start;
+}
+
+.gv-manual .gv-field {
+  min-width: 0;
+}
+
+.gv-manual__send {
+  /* Level with the inputs, which sit below their labels. */
+  margin-top: calc(1.5em + var(--space-1));
+}
+
+.gv-manual__foot {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 2.75rem;
+}
+
+.gv-manual__status {
+  flex: 1 1 auto;
+  margin: 0;
+  min-height: 1.5em;
+}
+
+@media (max-width: 479px) {
+  .gv-manual {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  }
+
+  .gv-manual__send {
+    grid-column: 1 / -1;
+    margin-top: 0;
+  }
 }
 
 .gv-console-hammer__alt {
@@ -130,45 +260,58 @@
 /* Bidder ladder. */
 
 .gv-console-ladder {
-  padding-top: var(--space-4);
+  padding-top: 0;
 }
 
 .gv-console-ladder__list {
-  display: grid;
-  gap: var(--space-2);
+  display: block;
+  border-block-start: 1px solid var(--color-rule);
 }
 
 .gv-console-ladder__row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-3);
-  padding: var(--space-2) var(--space-3);
-  border: var(--border-width, 2px) solid var(--color-rule, var(--color-border));
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-4);
+  padding: var(--space-3) var(--space-2);
+  border-block-end: 1px solid var(--color-rule);
   color: var(--color-fg);
 }
 
-.gv-console-ladder__row[data-leader='true'] {
-  border-color: var(--color-win);
-  box-shadow: var(--shadow-1);
-}
-
-.gv-console-ladder__row[data-hold='none'] {
-  border-style: dashed;
-}
-
 .gv-console-ladder__who {
-  flex: 1 1 8ch;
   font-weight: 600;
+  min-width: 0;
 }
 
 .gv-console-ladder__amt {
+  grid-column: 2;
+  text-align: end;
   font-family: var(--font-mono);
-  font-size: var(--font-size-1);
+  font-size: var(--font-size-2);
   font-variant-numeric: tabular-nums;
+  color: var(--color-fg);
+}
+
+.gv-console-ladder__mark {
+  grid-column: 1;
+  font-weight: 700;
+}
+
+.gv-console-ladder__mark[data-tone='win'] {
+  color: var(--color-win);
+}
+
+.gv-console-ladder__hold {
+  grid-column: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-1);
   color: var(--color-fg-muted);
+}
+
+.gv-console-ladder__hold[data-warn='true'] {
+  color: var(--color-warning-fg, var(--color-fg));
 }
 
 /* Voice transcript feed and the confirm queue. */
@@ -207,51 +350,6 @@
   border-radius: var(--radius-md);
   background: var(--color-raised, var(--color-surface));
   color: var(--color-fg);
-}
-
-/* Phone and narrow laptop: one panel at a time under tabs. */
-
-.gv-console-tabs {
-  display: flex;
-  gap: var(--space-2);
-  margin-bottom: var(--space-4);
-}
-
-.gv-console-tabs [role='tab'] {
-  flex: 1;
-  padding: var(--space-3);
-  border: var(--border-width, 2px) solid var(--color-rule, var(--color-border));
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-fg);
-  font-family: var(--font-mono);
-  font-size: var(--font-size-2);
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.gv-console-tabs [role='tab'][aria-selected='true'] {
-  background: var(--color-action);
-  color: var(--color-on-action);
-  /* A dark border and underline besides the orange fill, which is only 2.6:1 on the others. */
-  border-color: var(--color-fg);
-  box-shadow: inset 0 -4px 0 var(--color-fg);
-}
-
-@media (forced-colors: active) {
-  .gv-console-tabs [role='tab'][aria-selected='true'] {
-    forced-color-adjust: none;
-    background: Highlight;
-    color: HighlightText;
-    border-color: HighlightText;
-    outline: 3px solid Highlight;
-    outline-offset: 2px;
-  }
-}
-
-.gv-console-tabs [role='tab']:focus-visible {
-  outline: var(--border-width-strong, 3px) solid var(--color-focus);
-  outline-offset: 2px;
 }
 
 [data-layout='stacked'].gv-console {
@@ -324,6 +422,10 @@
   }
 
   .gv-console-columns {
+    gap: var(--space-6);
+  }
+
+  .gv-console-col {
     gap: var(--space-6);
   }
 }

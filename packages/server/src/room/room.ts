@@ -77,6 +77,9 @@ import {
   canClock,
 } from './settle-port';
 
+/** The error message of a conflict caused by a controlId that was used for another action. */
+export const CONTROL_REUSED = 'control_reused';
+
 /** One live connection as the room sees it. Identity comes from the verified token only. */
 export interface Connection {
   id: ConnId;
@@ -1496,7 +1499,7 @@ export class Room {
   private controlReused(conn: Connection, cmd: ControlCommand): boolean {
     const first = this.controlIds.get(cmd.controlId);
     if (first === undefined) return false;
-    if (first !== cmd.action) this.sendError(conn, 'conflict');
+    if (first !== cmd.action) this.sendError(conn, 'conflict', undefined, CONTROL_REUSED);
     return true;
   }
 

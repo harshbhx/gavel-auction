@@ -32,6 +32,27 @@ const WRONG_STATE_REASON: Readonly<Record<ControlName, ReasonKey>> = {
   hammer: 'controls.reason.notOpen',
 };
 
+/** The slots, in the order they always appear. A slot never moves, it only enables or disables. */
+export const CONTROL_ORDER: readonly ControlName[] = [
+  'open',
+  'pause',
+  'resume',
+  'extend',
+  'hammer',
+];
+
+/** The state the lot is in, in words the reason line can use for a wrong-state refusal. */
+function wrongState(name: ControlName, status: AuctionStatus): ReasonKey {
+  if (status === 'CLOSING' || status === 'SETTLING' || status === 'DONE') {
+    return 'controls.reason.ended';
+  }
+  if (name === 'open') return 'controls.reason.alreadyOpen';
+  if (status === 'SCHEDULED') return 'controls.reason.openFirst';
+  if (status === 'PAUSED')
+    return name === 'resume' ? WRONG_STATE_REASON[name] : 'controls.reason.paused';
+  return WRONG_STATE_REASON[name];
+}
+
 export interface ControlState {
   readonly status: AuctionStatus;
   readonly online: boolean;
@@ -54,8 +75,22 @@ export function disabledReason(name: ControlName, s: ControlState): ReasonKey | 
   if (!s.online) return 'controls.reason.offline';
   // A slow request never blocks the hammer: the lot clock keeps running meanwhile.
   if (s.busy && name !== 'hammer') return 'controls.reason.busy';
-  if (s.status !== REQUIRED_STATUS[name]) return WRONG_STATE_REASON[name];
+  if (s.status !== REQUIRED_STATUS[name]) return wrongState(name, s.status);
   return null;
+}
+
+/** The reason that holds for the whole lot, shown when no single control is being pointed at. */
+function firstReason(s: ControlState): ReasonKey | null {
+  for (const name of CONTROL_ORDER) {
+    // The hammer is exempt from busy, so the lot-wide line follows the others.
+    const r = disabledReason(name, s);
+    if (r === 'controls.reason.stopped' || r === 'controls.reason.offline') return r;
+    if (r === 'controls.reason.busy') return r;
+  }
+  if (s.status === 'SCHEDULED') return 'controls.reason.openFirst';
+  if (s.status === 'PAUSED') return 'controls.reason.paused';
+  if (s.status === 'OPEN') return 'controls.reason.alreadyOpen';
+  return 'controls.reason.ended';
 }
 
 /** The words for a refused hammer: a new price, a new leader, or a generic change. */
@@ -90,7 +125,11 @@ export function Controls({
   priceCents,
   seq = 0,
 }: ControlsProps) {
-  const [busy, setBusy] = useState(false);
+  // The slot that was clicked and is waiting on the server; null when nothing is in flight.
+  const [pending, setPending] = useState<ControlName | null>(null);
+  const busy = pending !== null;
+  // The control the pointer or focus is on, so the reason line can explain that one.
+  const [aimed, setAimed] = useState<ControlName | null>(null);
   // The leader and price the auctioneer was shown when the dialog opened. A bid that lands
   // meanwhile must not be hammered under the old question.
   const [shown, setShown] = useState<{
@@ -104,8 +143,12 @@ export function Controls({
   const state: ControlState = { status, online, stopped, busy };
   const hammerReason = disabledReason('hammer', state);
 
-  const run = async (label: string, call: () => Promise<void>): Promise<void> => {
-    setBusy(true);
+  const run = async (
+    name: ControlName,
+    label: string,
+    call: () => Promise<void>,
+  ): Promise<void> => {
+    setPending(name);
     try {
       await call();
       setResult(t('controls.sent', { action: label }));
@@ -121,7 +164,7 @@ export function Controls({
       setResult(failed);
       announce('polite', failed, 'bid_rejected');
     } finally {
-      setBusy(false);
+      setPending(null);
     }
   };
 
@@ -129,23 +172,23 @@ export function Controls({
     {
       name: 'open',
       label: t('console.open'),
-      act: () => void run(t('console.open'), () => port.open(lotId)),
+      act: () => void run('open', t('console.open'), () => port.open(lotId)),
     },
     {
       name: 'pause',
       label: t('console.pause'),
-      act: () => void run(t('console.pause'), () => port.pause()),
+      act: () => void run('pause', t('console.pause'), () => port.pause()),
     },
     {
       name: 'resume',
       label: t('console.resume'),
-      act: () => void run(t('console.resume'), () => port.resume()),
+      act: () => void run('resume', t('console.resume'), () => port.resume()),
     },
     {
       name: 'extend',
       label: t('console.extend', { s: Math.round(extendMs / 1000) }),
       act: () =>
-        void run(t('console.extend', { s: Math.round(extendMs / 1000) }), () =>
+        void run('extend', t('console.extend', { s: Math.round(extendMs / 1000) }), () =>
           port.extend(extendMs),
         ),
     },
@@ -177,7 +220,7 @@ export function Controls({
       announce('polite', changed, 'bid_rejected');
       return;
     }
-    void run(t('console.hammer'), () =>
+    void run('hammer', t('console.hammer'), () =>
       port.hammer(lotId, {
         priceCents: was.priceCents,
         leaderPaddle: was.leader?.paddle ?? 0,
@@ -186,25 +229,51 @@ export function Controls({
     );
   };
 
+  // One line under the bar, always the same height: the reason for the control the user is on,
+  // else the reason that holds for the lot as a whole. Never one line per button.
+  const aimedReason = aimed === null ? null : disabledReason(aimed, state);
+  const lotReason = firstReason(state);
+  const reasonLine = aimedReason ?? lotReason;
+
   return (
     <div className="gv-console-controls">
-      {items.map((item) => {
-        const reason = disabledReason(item.name, state);
-        const reasonId = `${baseId}-${item.name}`;
-        return (
-          <div key={item.name} className="gv-console-controls__item" data-control={item.name}>
-            <Button
-              tone={item.name === 'hammer' ? 'danger' : 'accent'}
-              disabled={reason !== null}
-              aria-describedby={reason === null ? undefined : reasonId}
-              onClick={item.act}
-            >
-              {item.label}
-            </Button>
-            {reason !== null && <span id={reasonId}>{t(reason)}</span>}
-          </div>
-        );
-      })}
+      <div className="gv-console-controls__bar" data-testid="control-bar">
+        {items.map((item) => {
+          const reason = disabledReason(item.name, state);
+          const reasonId = `${baseId}-${item.name}`;
+          return (
+            <div key={item.name} className="gv-console-controls__item" data-control={item.name}>
+              <Button
+                tone={item.name === 'hammer' ? 'danger' : 'accent'}
+                disabled={reason !== null}
+                aria-describedby={reason === null ? undefined : reasonId}
+                aria-busy={pending === item.name ? true : undefined}
+                onClick={item.act}
+                onPointerEnter={() => setAimed(item.name)}
+                onPointerLeave={() => setAimed(null)}
+                onFocus={() => setAimed(item.name)}
+                onBlur={() => setAimed(null)}
+              >
+                <span className="gv-console-controls__label">{item.label}</span>
+                {pending === item.name && (
+                  <span className="gv-console-controls__spinner" aria-hidden="true" />
+                )}
+              </Button>
+              {reason !== null && (
+                <span id={reasonId} className="gv-sr-only">
+                  {t(reason)}
+                </span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <p className="gv-console-controls__reason" data-slot="control-reason">
+        {reasonLine === null ? '' : t(reasonLine)}
+      </p>
+      <p className="gv-console-controls__result" role="status">
+        {result}
+      </p>
       {status !== 'CLOSING' && status !== 'SETTLING' && status !== 'DONE' && (
         <div className="gv-console-hammer">
           <DeskHold
@@ -221,7 +290,6 @@ export function Controls({
           <p className="gv-console-hammer__alt">{t('console.hammerDialogHint')}</p>
         </div>
       )}
-      <p role="status">{result}</p>
       <ShortcutHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
       <HammerDialog
         open={shown !== null}

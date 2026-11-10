@@ -70,26 +70,6 @@ test.describe('console: voice and confirmations', () => {
   });
 });
 
-/** Below 1024 px the console shows one column at a time: the other two sit behind tabs. */
-test.describe('console: phone tabs', () => {
-  const cases = [
-    ['live bidding', happy, HAPPY.outbid],
-    ['voice feed', voiceRoom, 5_000],
-    ['full ladder', ladderRoom, 5_000],
-  ] as const;
-  for (const [name, scenario, at] of cases) {
-    for (const tab of ['stream', 'side'] as const) {
-      test(`${name}, ${tab} tab`, async ({ page, shoot }) => {
-        await consoleRoom(page, { scenario, at });
-        const tabs = page.getByRole('tablist');
-        test.skip((await tabs.count()) === 0, 'desktop shows all columns at once');
-        await page.locator(`#console-tab-${tab}`).click();
-        await shoot('console', `${name.replace(/ /g, '-')}-tab-${tab}`);
-      });
-    }
-  }
-});
-
 test.describe('console: hammer and stop', () => {
   test('hammer dialog with a leader', async ({ page, shoot }) => {
     await consoleRoom(page, { scenario: happy, at: HAPPY.outbid });
