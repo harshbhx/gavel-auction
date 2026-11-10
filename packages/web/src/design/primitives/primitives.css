@@ -239,7 +239,8 @@
 }
 
 .gv-actions > .gv-btn,
-.gv-actions > .gv-btn--bid {
+.gv-actions > .gv-btn--bid,
+.gv-actions > .gv-flow__action {
   box-sizing: border-box;
   width: 100%;
   min-height: 48px;
@@ -254,8 +255,37 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .gv-actions > .gv-btn--text {
+  .gv-actions > .gv-btn--text,
+  .gv-actions > .gv-flow__action--text {
     grid-column: 1 / -1;
+    justify-self: start;
+    width: auto;
+  }
+}
+
+/* Links that act as buttons inside an ActionGroup (UIX-56): same height, edges and weight. */
+.gv-actions > .gv-flow__action {
+  align-self: stretch;
+}
+
+.gv-actions > .gv-flow__action--outline {
+  background: transparent;
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  box-shadow: none;
+}
+
+.gv-actions > .gv-flow__action--text {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--color-fg);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+@media (min-width: 720px) {
+  .gv-actions > .gv-flow__action--text {
     justify-self: start;
     width: auto;
   }

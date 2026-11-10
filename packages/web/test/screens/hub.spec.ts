@@ -71,7 +71,7 @@ test.describe('judge room hub', () => {
     { width: 1440, height: 900 },
     { width: 1280, height: 720 },
   ]) {
-    test(`fits one screen at ${size.width}x${size.height}`, async ({ page, shoot }, info) => {
+    test(`flows as one page at ${size.width}x${size.height}`, async ({ page, shoot }, info) => {
       test.skip(info.project.name !== 'desktop-light', 'laptop sizes are checked once');
       await page.setViewportSize(size);
       await mockApi(page, hubApi);
@@ -79,14 +79,35 @@ test.describe('judge room hub', () => {
       await expect(page.locator('.gv-hub__flap')).toHaveCount(CODE.length);
       await expect(page.locator('.gv-hub__qr svg')).toBeVisible();
       await expect(page.getByRole('link', { name: new RegExp(t('hub.step4Open')) })).toBeVisible();
-      const overflow = await page.evaluate(() => ({
-        page: document.documentElement.scrollHeight - window.innerHeight,
-        hub: (document.querySelector('.gv-hub') as HTMLElement).scrollHeight - window.innerHeight,
-        sideways: document.documentElement.scrollWidth - window.innerWidth,
-      }));
-      expect(overflow.page).toBeLessThanOrEqual(0);
-      expect(overflow.hub).toBeLessThanOrEqual(0);
-      expect(overflow.sideways).toBeLessThanOrEqual(0);
+      const layout = await page.evaluate(() => {
+        const inside = (inner: Element | null, outer: Element | null): boolean => {
+          if (inner === null || outer === null) return false;
+          const a = inner.getBoundingClientRect();
+          const b = outer.getBoundingClientRect();
+          return a.top >= b.top && a.bottom <= b.bottom && a.left >= b.left && a.right <= b.right;
+        };
+        const scrolls = (el: Element | null): boolean =>
+          el !== null &&
+          el.scrollHeight > el.clientHeight + 1 &&
+          getComputedStyle(el).overflowY !== 'visible';
+        return {
+          sideways: document.documentElement.scrollWidth - window.innerWidth,
+          innerScroll: ['.gv-hub', '.gv-hub__side', '.gv-hub__test', '.gv-hub__ticket'].some((q) =>
+            scrolls(document.querySelector(q)),
+          ),
+          buttonsInTicket: Array.from(document.querySelectorAll('.gv-hub__ticket .gv-btn')).every(
+            (b) => inside(b, document.querySelector('.gv-hub__ticket')),
+          ),
+          testInBox: inside(
+            document.querySelector('.gv-hub__test li:last-child'),
+            document.querySelector('.gv-hub__test'),
+          ),
+        };
+      });
+      expect(layout.sideways).toBeLessThanOrEqual(0);
+      expect(layout.innerScroll).toBe(false);
+      expect(layout.buttonsInTicket).toBe(true);
+      expect(layout.testInBox).toBe(true);
       await shoot('hub', `fit-${size.width}x${size.height}`);
     });
   }

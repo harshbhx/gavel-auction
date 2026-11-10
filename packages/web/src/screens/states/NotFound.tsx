@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { t } from '../../copy/t';
 import { Logo } from '../../design/Logo';
+import { ActionGroup } from '../../design/primitives/ActionGroup';
 import '../flows.css';
 
 /** Where the help links point. The docs site is the public home of the judges guide. */
@@ -43,20 +44,22 @@ export function NotFound({ kind = 'page' }: NotFoundProps) {
       </h1>
       <p className="gv-join__help">{t(HELP[kind])}</p>
       <nav className="gv-notfound__links" aria-label={t('nf.linksLabel')}>
-        {kind !== 'page' && (
-          <a className="gv-flow__action" href="/">
-            {t('join.tryAgain')}
+        <ActionGroup>
+          <a className="gv-flow__action" href="/try">
+            {t('nf.demo')}
           </a>
-        )}
-        <a className="gv-flow__action" href="/try">
-          {t('nf.demo')}
-        </a>
-        <a className="gv-flow__action" href={NOT_FOUND_JUDGES_URL}>
-          {t('nf.judges')}
-        </a>
-        <a className="gv-flow__action" href={NOT_FOUND_DOCS_URL}>
-          {t('nf.docs')}
-        </a>
+          {kind !== 'page' && (
+            <a className="gv-flow__action gv-flow__action--outline" href="/">
+              {t('join.tryAgain')}
+            </a>
+          )}
+          <a className="gv-flow__action gv-flow__action--text" href={NOT_FOUND_JUDGES_URL}>
+            {t('nf.judges')}
+          </a>
+          <a className="gv-flow__action gv-flow__action--text" href={NOT_FOUND_DOCS_URL}>
+            {t('nf.docs')}
+          </a>
+        </ActionGroup>
       </nav>
     </main>
   );

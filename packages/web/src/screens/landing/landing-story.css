@@ -1,7 +1,10 @@
 /* Story beats and real screenshots (UIX-29). Newsprint tokens only. */
-.gv-story {
+.gv-landing .gv-story {
+  /* screen.css has its own .gv-story flex strip; the landing beats need the grid (UIX-56) */
   display: grid;
-  grid-template-columns: 1fr;
+  flex: none;
+  flex-wrap: nowrap;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
   margin: 0;
   padding: 0;
@@ -90,8 +93,9 @@
 }
 
 @media (min-width: 720px) {
-  .gv-story {
-    grid-template-columns: repeat(3, 1fr);
+  .gv-landing .gv-story {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
   }
 }
 

@@ -12,6 +12,9 @@ brand colours from `brand/`.
 | `devpost` | `docs/assets/devpost/` | Devpost gallery, thumbnail, GIFs |
 | `social`  | `docs/assets/social/`  | Social cards, YouTube assets     |
 
+`motion-silent` (the silent product video) has no `render.mjs`: it is recorded and composed by
+[`silent-video.yml`](../.github/workflows/silent-video.yml) and committed to `brand/video/silent-cut/`.
+
 Update flow: edit a source, push, open the run's artifact, copy the files into the output folder and commit.
 Animated pages are sampled by seeking, so a render is deterministic. Only true statements appear in any graphic
 (see `docs/GATES.md`); anything simulated is labelled.

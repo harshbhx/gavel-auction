@@ -6,7 +6,9 @@ import { ScreenView } from '../screen/ScreenView';
 
 /** The projection screen is laid out for this many CSS pixels and scaled to fit the tile. */
 const DESIGN_WIDTH = 1920;
-const DESIGN_HEIGHT = 1080;
+/** A narrow tile (a phone, a half-width column) lays the screen out smaller so its text stays readable. */
+const SMALL_DESIGN_WIDTH = 960;
+const SMALL_TILE_BELOW = 700;
 
 export interface ScreenPreviewProps {
   readonly roomId: string;
@@ -37,7 +39,9 @@ export function ScreenPreview({
   const [ownStore] = useState(() => new RoomStore(roomId));
   const store = sharedStore ?? ownStore;
   const frame = useRef<HTMLDivElement>(null);
+  const [design, setDesign] = useState(DESIGN_WIDTH);
   const [scale, setScale] = useState(0.3);
+  const designHeight = (design * 9) / 16;
 
   useEffect(() => {
     const el = frame.current;
@@ -45,7 +49,10 @@ export function ScreenPreview({
     el.setAttribute('inert', '');
     const measure = (): void => {
       const width = el.getBoundingClientRect().width;
-      if (width > 0) setScale(width / DESIGN_WIDTH);
+      if (width <= 0) return;
+      const next = width < SMALL_TILE_BELOW ? SMALL_DESIGN_WIDTH : DESIGN_WIDTH;
+      setDesign(next);
+      setScale(width / next);
     };
     measure();
     if (typeof ResizeObserver === 'undefined') return undefined;
@@ -74,10 +81,17 @@ export function ScreenPreview({
       <div
         ref={frame}
         className="gv-hub__preview-frame"
-        style={{ height: `${DESIGN_HEIGHT * scale}px` }}
+        style={{ height: `${designHeight * scale}px` }}
         aria-hidden="true"
       >
-        <div className="gv-hub__preview-stage" style={{ transform: `scale(${scale})` }}>
+        <div
+          className="gv-hub__preview-stage"
+          style={{
+            width: `${design}px`,
+            height: `${designHeight}px`,
+            transform: `scale(${scale})`,
+          }}
+        >
           <ScreenView
             lotTitle={lotTitle}
             code={code}

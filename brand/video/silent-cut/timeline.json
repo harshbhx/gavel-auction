@@ -1,0 +1,310 @@
+[
+  {
+    "id": "title",
+    "start": 0,
+    "dur": 5,
+    "caps": [
+      {
+        "a": 1.2,
+        "b": 5,
+        "text": "GAVEL. Every bid is a hold. The hammer is the payment."
+      }
+    ]
+  },
+  {
+    "id": "problem",
+    "start": 5,
+    "dur": 8.4,
+    "caps": [
+      {
+        "a": 5.7,
+        "b": 8.3,
+        "text": "Charge a card up front, and bidders hold back."
+      },
+      {
+        "a": 8.3,
+        "b": 10.9,
+        "text": "Leave bids unsecured, and winners walk away."
+      },
+      {
+        "a": 10.9,
+        "b": 13.4,
+        "text": "Shout bids on paper sheets, and the record is hard to trust."
+      }
+    ]
+  },
+  {
+    "id": "try",
+    "start": 13.4,
+    "dur": 5.339,
+    "caps": [
+      {
+        "a": 13.8,
+        "b": 18.389000000000003,
+        "text": "A judge opens /try. One tap starts a sandbox room."
+      }
+    ]
+  },
+  {
+    "id": "hub",
+    "start": 18.739,
+    "dur": 5.5,
+    "caps": [
+      {
+        "a": 19.039,
+        "b": 23.889000000000003,
+        "text": "A join code and a ticket QR."
+      }
+    ]
+  },
+  {
+    "id": "joinA",
+    "start": 24.239,
+    "dur": 8,
+    "caps": [
+      {
+        "a": 24.539,
+        "b": 31.889000000000003,
+        "text": "A bidder types the code. Or scans the ticket QR."
+      }
+    ]
+  },
+  {
+    "id": "holdA",
+    "start": 32.239000000000004,
+    "dur": 13,
+    "caps": [
+      {
+        "a": 32.539,
+        "b": 38.199463844695934,
+        "text": "Pick a ceiling. The most this bidder may bid."
+      },
+      {
+        "a": 38.199463844695934,
+        "b": 42.00279288484357,
+        "text": "Hold the button 3 seconds."
+      },
+      {
+        "a": 42.00279288484357,
+        "b": 44.889,
+        "text": "Held, not charged."
+      }
+    ]
+  },
+  {
+    "id": "joinB",
+    "start": 45.239000000000004,
+    "dur": 7,
+    "caps": [
+      {
+        "a": 45.539,
+        "b": 51.889,
+        "text": "A second phone joins from the QR link."
+      }
+    ]
+  },
+  {
+    "id": "open",
+    "start": 52.239000000000004,
+    "dur": 4.5,
+    "caps": [
+      {
+        "a": 52.539,
+        "b": 56.389,
+        "text": "The auctioneer opens the lot."
+      }
+    ]
+  },
+  {
+    "id": "bids",
+    "start": 56.739000000000004,
+    "dur": 10,
+    "caps": [
+      {
+        "a": 56.739000000000004,
+        "b": 59.97896262491646,
+        "text": "Bids arrive from the phones."
+      },
+      {
+        "a": 59.97896262491646,
+        "b": 63.09493173471654,
+        "text": "Prices only go up."
+      },
+      {
+        "a": 63.09493173471654,
+        "b": 66.38900000000001,
+        "text": "Every screen agrees."
+      }
+    ]
+  },
+  {
+    "id": "hammer",
+    "start": 66.739,
+    "dur": 9.5,
+    "caps": [
+      {
+        "a": 67.039,
+        "b": 73.39875140443857,
+        "text": "Hold the hammer 3 seconds. No accidental sales."
+      },
+      {
+        "a": 73.39875140443857,
+        "b": 75.88900000000001,
+        "text": "Sold."
+      }
+    ]
+  },
+  {
+    "id": "sold",
+    "start": 76.239,
+    "dur": 3.2,
+    "caps": [
+      {
+        "a": 76.43900000000001,
+        "b": 79.089,
+        "text": "The big screen names the winner."
+      }
+    ]
+  },
+  {
+    "id": "receipt",
+    "start": 79.43900000000001,
+    "dur": 7.381,
+    "caps": [
+      {
+        "a": 79.739,
+        "b": 83.63900000000001,
+        "text": "A receipt for every bidder."
+      },
+      {
+        "a": 83.83900000000001,
+        "b": 86.47000000000001,
+        "text": "With a share link and a QR."
+      }
+    ]
+  },
+  {
+    "id": "verify",
+    "start": 86.82000000000001,
+    "dur": 10,
+    "caps": [
+      {
+        "a": 87.12,
+        "b": 90.82104021677605,
+        "text": "Paste a ledger export."
+      },
+      {
+        "a": 90.82104021677605,
+        "b": 93.75117204261103,
+        "text": "Chain verified."
+      },
+      {
+        "a": 93.75117204261103,
+        "b": 96.47000000000001,
+        "text": "Edit one entry. The chain marks it broken."
+      }
+    ]
+  },
+  {
+    "id": "evidence",
+    "start": 96.82000000000001,
+    "dur": 12.5,
+    "caps": [
+      {
+        "a": 97.42,
+        "b": 100.42,
+        "text": "Kill survived. A real server kill during settlement, on the PayPal sandbox: one capture, two holds voided, a ledger of 19 entries that verifies."
+      },
+      {
+        "a": 100.42,
+        "b": 103.42,
+        "text": "Live voice 24 of 24. Both speech providers answered 24 of 24 synthetic clips through the live socket. No bid accepted without a confirm."
+      },
+      {
+        "a": 103.42,
+        "b": 106.42,
+        "text": "Ledger verified. Every bid joins a hash chain. Anyone can check it again, and an edited entry is marked."
+      },
+      {
+        "a": 106.42,
+        "b": 109.32000000000001,
+        "text": "Latency, honestly. Hammer to captured p95 3.8 s against a 2.5 s target. Hammer to settled p95 6.9 s against 6 s. Both missed."
+      }
+    ]
+  },
+  {
+    "id": "lab",
+    "start": 109.32000000000001,
+    "dur": 7.5,
+    "caps": [
+      {
+        "a": 109.62,
+        "b": 113.83572723344349,
+        "text": "The ledger lab. A 30 day simulated ledger in an AG Grid table."
+      },
+      {
+        "a": 113.83572723344349,
+        "b": 116.47000000000001,
+        "text": "Edit one entry and the chain marks it."
+      }
+    ]
+  },
+  {
+    "id": "api",
+    "start": 116.82000000000001,
+    "dur": 8.5,
+    "caps": [
+      {
+        "a": 117.32000000000001,
+        "b": 125.32000000000001,
+        "text": "A key. HTTP. JSON. Create a room, bid and read the ledger from the Judge API."
+      }
+    ]
+  },
+  {
+    "id": "docs",
+    "start": 125.32000000000001,
+    "dur": 4.5,
+    "caps": [
+      {
+        "a": 125.62,
+        "b": 129.47,
+        "text": "The docs list every call."
+      }
+    ]
+  },
+  {
+    "id": "status",
+    "start": 129.82,
+    "dur": 8.2,
+    "caps": [
+      {
+        "a": 130.42,
+        "b": 132.92,
+        "text": "G3 in progress. The honor-period probe is still timing. The final reading is about 12 Nov."
+      },
+      {
+        "a": 132.92,
+        "b": 135.42,
+        "text": "G5 partial. Speech is measured on synthetic, noise-free audio only."
+      },
+      {
+        "a": 135.42,
+        "b": 138.01999999999998,
+        "text": "Sandbox only. No real money moves."
+      }
+    ]
+  },
+  {
+    "id": "credits",
+    "start": 138.01999999999998,
+    "dur": 6,
+    "caps": [
+      {
+        "a": 139.51999999999998,
+        "b": 144.01999999999998,
+        "text": "Built by Harsh Bhanushali and Dhairya Patel. gavel.dualmindlab.tech. docs.gavel.dualmindlab.tech. github.com/harshbhx/gavel-auction. PayPal sandbox only."
+      }
+    ]
+  }
+]
