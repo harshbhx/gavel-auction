@@ -143,14 +143,21 @@ export function ConsoleScreen({
 
   const floorPanel =
     floor === undefined ? null : (
-      <section className="gv-console-panel gv-console-panel--floor" aria-label={t('console.manual')}>
+      <section
+        className="gv-console-panel gv-console-panel--floor"
+        aria-label={t('console.manual')}
+      >
         {floor}
       </section>
     );
   const biddersPanel =
-    bidders === undefined ? null : <div className="gv-console-panel gv-console-panel--bidders">{bidders}</div>;
+    bidders === undefined ? null : (
+      <div className="gv-console-panel gv-console-panel--bidders">{bidders}</div>
+    );
   const dangerZone =
-    danger === undefined ? null : <div className="gv-console-panel gv-console-panel--danger gv-console-danger">{danger}</div>;
+    danger === undefined ? null : (
+      <div className="gv-console-panel gv-console-panel--danger gv-console-danger">{danger}</div>
+    );
 
   const centre = (
     <section className="gv-console-panel gv-console-panel--stream" aria-label={t('console.stream')}>
