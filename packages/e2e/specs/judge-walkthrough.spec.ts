@@ -14,11 +14,11 @@ async function walk(page: import('@playwright/test').Page, url: string): Promise
   const started = Date.now();
   await page.goto(url);
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-  await page.getByRole('button', { name: /start a demo auction/i }).click();
+  await page.getByRole('button', { name: /start a live demo room/i }).click();
   // The role links are not wired into the /demo screen yet; extend this once they are.
   await expect(page).toHaveURL(/\/demo$/, { timeout: 30_000 });
   await expect(
-    page.getByRole('heading', { level: 1, name: /start a demo auction/i }),
+    page.getByRole('heading', { level: 1, name: /start a live demo room/i }),
   ).toBeVisible();
   expect(Date.now() - started).toBeLessThan(BUDGET_MS);
 }
