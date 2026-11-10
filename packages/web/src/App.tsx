@@ -1068,9 +1068,7 @@ function OpsRoute({ api }: { api: Api | undefined }) {
         }}
       >
         <OperatorKeyField value={key} onChange={setKey} />
-        <Button type="submit">
-          {t('ops.load')}
-        </Button>
+        <Button type="submit">{t('ops.load')}</Button>
       </form>
       <p className="gv-ops__help">{t('ops.keyHelp')}</p>
       {(summary !== undefined || error !== undefined) && (
