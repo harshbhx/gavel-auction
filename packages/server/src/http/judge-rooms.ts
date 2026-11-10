@@ -118,6 +118,11 @@ export interface JudgeRoomsOptions {
    * answers `voice: true` only then, so the web console enables its microphone only then.
    */
   voiceLive?: (() => boolean) | undefined;
+  /**
+   * True when the cached speech provider plays a recorded demo. The probe answers `voiceReplay: true`
+   * then, so the console offers its replay control (no microphone involved).
+   */
+  voiceReplay?: (() => boolean) | undefined;
 }
 
 /** What the simulated-hold route needs from the host. */
@@ -1134,6 +1139,7 @@ export function createJudgeRooms(opts: JudgeRoomsOptions): JudgeRooms {
         ...(opts.enabled && registry.any ? { keyed: true } : {}),
         // Present only when a live speech provider is set; never says which one or its key.
         ...(opts.voiceLive?.() === true ? { voice: true } : {}),
+        ...(opts.voiceReplay?.() === true ? { voiceReplay: true } : {}),
       });
     });
     app.post(JUDGE_ROOMS_PATH, judgeRoute(create));

@@ -49,7 +49,12 @@ describe('judge rooms: boot validation', () => {
     const { url } = await boot({});
     expect((await fetch(`${url}/api/judge/rooms`, { method: 'POST' })).status).toBe(404);
     const probe = await fetch(`${url}/api/judge/capabilities`);
-    expect(await probe.json()).toEqual({ judgeRooms: false, accepting: false, simHolds: false });
+    expect(await probe.json()).toEqual({
+      judgeRooms: false,
+      accepting: false,
+      simHolds: false,
+      voiceReplay: true,
+    });
   });
 
   it('reports voice only when a live speech provider has its key', async () => {
@@ -57,10 +62,18 @@ describe('judge rooms: boot validation', () => {
     expect(await (await fetch(`${off.url}/api/judge/capabilities`)).json()).not.toHaveProperty(
       'voice',
     );
+    // Cached mode (VOICE_STT unset) plays the recorded demo and says so.
+    expect(await (await fetch(`${off.url}/api/judge/capabilities`)).json()).toMatchObject({
+      voiceReplay: true,
+    });
     // Named but no key: the cached provider takes over, which is not live speech.
     const nokey = await boot({ JUDGE_ROOMS: 'true', VOICE_STT: 'groq' });
     expect(await (await fetch(`${nokey.url}/api/judge/capabilities`)).json()).not.toHaveProperty(
       'voice',
+    );
+    // The recorded demo is only for a host that asked for cached mode, not a failed live setup.
+    expect(await (await fetch(`${nokey.url}/api/judge/capabilities`)).json()).not.toHaveProperty(
+      'voiceReplay',
     );
     const live = await boot({
       JUDGE_ROOMS: 'true',
@@ -72,6 +85,8 @@ describe('judge rooms: boot validation', () => {
       unknown
     >;
     expect(body['voice']).toBe(true);
+    // A live provider is not a recorded demo: no replay control.
+    expect(body).not.toHaveProperty('voiceReplay');
     expect(JSON.stringify(body)).not.toContain('gq-test');
   });
 
