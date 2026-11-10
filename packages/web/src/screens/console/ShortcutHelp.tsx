@@ -1,10 +1,6 @@
 import { useEffect } from 'react';
 type ShortcutLabel =
-  | 'shortcuts.help'
-  | 'console.open'
-  | 'console.pause'
-  | 'console.resume'
-  | 'shortcuts.extend';
+  'shortcuts.help' | 'console.open' | 'console.pause' | 'console.resume' | 'shortcuts.extend';
 
 import { t } from '../../copy/t';
 import { Button } from '../../design/primitives/Button';
@@ -81,6 +77,7 @@ export function ShortcutHelp({ open, onClose }: ShortcutHelpProps) {
           </div>
         ))}
       </dl>
+      <p>{t('shortcuts.confirmTwice')}</p>
       <p>{t('shortcuts.noSingleKey')}</p>
       <Button onClick={onClose}>{t('shortcuts.close')}</Button>
     </Dialog>
