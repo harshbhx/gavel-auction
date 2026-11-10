@@ -188,6 +188,10 @@ function ReplayPlayer({
     [bundle.durationMs, restart],
   );
 
+  // The first render has no transport yet (it is built by the effect above). Drawing the controls
+  // then would let a fast click hit a seek that silently does nothing, so wait for the store.
+  if (store === null) return null;
+
   return (
     <section>
       <h2>{bundle.title}</h2>
@@ -206,7 +210,7 @@ function ReplayPlayer({
         onSpeedChange={setSpeed}
         onViewChange={setView}
       />
-      {store !== null && <ReplayBody store={store} view={view} title={bundle.title} />}
+      <ReplayBody store={store} view={view} title={bundle.title} />
     </section>
   );
 }

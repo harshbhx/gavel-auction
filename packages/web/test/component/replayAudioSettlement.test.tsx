@@ -1,5 +1,5 @@
 import { EpochMs } from '@gavel/shared';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { t } from '../../src/copy/t';
 import type { MediaLike } from '../../src/screens/replay/AudioSync';
@@ -54,10 +54,11 @@ function bundle(withSettlement: boolean, audioUrl: string | null): unknown {
 }
 
 /** Hands the screen the recording and a fake audio element directly: no global fetch or Audio. */
-function renderReplay(body: unknown): void {
+function renderReplay(body: unknown, autoplay = true): void {
   render(
     <ReplayScreen
       recordingId="rec1"
+      autoplay={autoplay}
       loadBundle={() => Promise.resolve(body)}
       createMedia={(url) => new FakeMedia(url)}
     />,
@@ -78,22 +79,23 @@ const LOAD = { timeout: 10_000 };
 
 describe('replay screen with audio and settlement', { timeout: 20_000 }, () => {
   it('creates the audio sync, corrects drift above 150 ms and shows the settlement panel', async () => {
-    // Only the replay clock is faked, so the waits below keep using real timers.
-    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
-    renderReplay(bundle(true, '/recordings/rec1/audio.webm'));
-    expect(await screen.findByText('Walnut sideboard', {}, LOAD)).toBeTruthy();
-    // The audio element is created and started by an effect after the bundle loads: wait for it
-    // rather than reading the shared handle at once.
-    await waitFor(() => expect(FakeMedia.last?.url).toBe('/recordings/rec1/audio.webm'), LOAD);
-    await waitFor(() => expect(FakeMedia.last?.plays).toBe(1), LOAD);
+    // Load with the clock stopped and real timers: testing-library polls with setInterval, which
+    // a fake clock would freeze, so every wait happens before the clock is faked.
+    renderReplay(bundle(true, '/recordings/rec1/audio.webm'), false);
+    const resume = await screen.findByRole('button', { name: t('console.resume') }, LOAD);
+    expect(FakeMedia.last?.url).toBe('/recordings/rec1/audio.webm');
     expect(screen.queryByTestId('settlement-panel')).toBeNull();
+    // Only the replay clock is faked, and only now, so the interval started by play is the fake one.
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    fireEvent.click(resume);
+    expect(FakeMedia.last?.plays).toBe(1);
     // The replay clock advances 100 ms per tick; step it past the 400 ms settlement event.
     act(() => {
       vi.advanceTimersByTime(500);
     });
-    expect(await screen.findByTestId('settlement-panel', {}, LOAD)).toBeTruthy();
+    expect(screen.getByTestId('settlement-panel')).toBeTruthy();
     // The audio sat at 0 ms while the clock reached 400 ms: the gap is over the limit.
-    await waitFor(() => expect(FakeMedia.last?.currentTime).toBeCloseTo(0.4, 3), LOAD);
+    expect(FakeMedia.last?.currentTime).toBeCloseTo(0.4, 3);
     expect(screen.queryByText(t('replay.captionsOnly'))).toBeNull();
   });
 
