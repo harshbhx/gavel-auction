@@ -312,7 +312,11 @@ async function main() {
     const flaps = await host.page.locator('.gv-hub__flap').allInnerTexts();
     code = flaps.join('').replace(/\s/g, '') || null;
     await rect('hub.flaps', host, host.page.locator('.gv-hub__flaps'));
-    await rect('hub.qr', host, host.page.locator('canvas, svg[aria-label*="QR" i], img[alt*="QR" i]'));
+    await rect(
+      'hub.qr',
+      host,
+      host.page.locator('canvas, svg[aria-label*="QR" i], img[alt*="QR" i]'),
+    );
     log('code', code ? code.length + ' chars' : 'MISSING');
     const anchors = await host.page.locator('a[href]').evaluateAll((as) =>
       as.map((a) => ({
@@ -506,7 +510,11 @@ async function main() {
       await click(phoneA, make, { ms: 700 });
       await sleep(2200);
     }
-    await rect('receipt.qr', phoneA, phoneA.page.locator('canvas, img[alt*="QR" i], svg[aria-label*="QR" i]'));
+    await rect(
+      'receipt.qr',
+      phoneA,
+      phoneA.page.locator('canvas, img[alt*="QR" i], svg[aria-label*="QR" i]'),
+    );
     await sleep(800);
   });
 

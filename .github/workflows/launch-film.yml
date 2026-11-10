@@ -97,14 +97,26 @@ jobs:
           gh run download "${{ inputs.raw_run }}" -R "$GITHUB_REPOSITORY" -n silent-raw -D "$RUNNER_TEMP/rawdl"
           cp -r "$RUNNER_TEMP/rawdl/out/raw/." "$RAW/" 2>/dev/null || cp -r "$RUNNER_TEMP/rawdl/." "$RAW/"
           ls "$RAW" | head
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+        if: ${{ !inputs.record_only }}
+        with:
+          node-version-file: .nvmrc
+      - name: Install the Remotion project
+        if: ${{ !inputs.record_only }}
+        working-directory: graphics/motion-film
+        run: |
+          npm ci --no-audit --no-fund
+          npx remotion versions
+          npx tsc --noEmit || echo "::warning::type errors in graphics/motion-film (render continues)"
       - name: Compose the film
         if: ${{ !inputs.record_only }}
+        working-directory: graphics/motion-film
         env:
           FPS: ${{ inputs.fps }}
           WEBM: ${{ inputs.webm && '1' || '' }}
         run: |
           mkdir -p "$FINAL"
-          PW_DIR="$RUNNER_TEMP/pw" node graphics/motion-film/compose.mjs "$RAW" "$FINAL"
+          node compose.mjs "$RAW" "$FINAL"
       - name: Job summary
         if: ${{ !cancelled() }}
         run: |
