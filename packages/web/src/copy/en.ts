@@ -799,6 +799,9 @@ export const en = {
     'Voice is off on this server: no speech service is set up. Use manual entry.',
   'console.mic.reason.replay':
     'Live speech is off on this server. Play the recorded demo instead, or use manual entry.',
+  'replay.frames.agree': 'The hammer price in this replay matches the ledger.',
+  'replay.frames.disagree':
+    'The hammer price in this replay does not match the ledger (hammer {n}). The ledger is the record; do not rely on the frames.',
   'console.replay.start': 'Play recorded voice demo',
   'console.replay.stop': 'Stop recorded demo',
   'console.replay.hint':
