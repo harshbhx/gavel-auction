@@ -15,7 +15,6 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node 22](https://img.shields.io/badge/node-22-339933.svg?logo=node.js&logoColor=white)](package.json)
 [![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178c6.svg?logo=typescript&logoColor=white)](tsconfig.base.json)
-[![PageSpeed landing 100/100/100/100](https://img.shields.io/badge/PageSpeed%20landing-100%20%7C%20100%20%7C%20100%20%7C%20100-0cce6b.svg?logo=lighthouse&logoColor=white)](docs/evidence/perf/PAGESPEED.md)
 [![PayPal sandbox only](https://img.shields.io/badge/PayPal-sandbox%20only-003087.svg?logo=paypal&logoColor=white)](#security-and-data-notes)
 [![Open data on Hugging Face](https://img.shields.io/badge/Hugging%20Face-5%20datasets-ffd21e.svg?logo=huggingface&logoColor=black)](https://huggingface.co/collections/harshbhx/gavel-evidence-auction-holds-hammer-and-receipts-6af0afebebb37eb4c9184504)
 
@@ -29,22 +28,17 @@ PayPal sandbox only: no real money moves.
 
 > **GAVEL is a live auction where every bid is a PayPal authorization hold, and at the hammer only the winning price is captured.** Bidders approve a ceiling up front, a deterministic engine checks every bid against it, the winner pays the hammer price, every other hold is voided, and a hash-chained ledger lets anyone verify the result. Bids can be spoken, and a spoken bid never counts until the bidder confirms it.
 
-Built for the PayPal Hackathon 2026 by Harsh Bhanushali and Dhairya Patel.
+Built for the PayPal Hackathon 2026.
 
-## Why GAVEL
+**PageSpeed Insights, landing page `/`: 100 Performance, 100 Accessibility, 100 Best Practices and 100 SEO on both mobile and desktop** (Lighthouse 13.6.0, lab data, measured by hand on 10 Nov 2026; this URL only, not the whole app). Details and screenshots: [docs/evidence/perf](docs/evidence/perf/PAGESPEED.md).
 
-Online auctions usually make a bidder pay first or trust the bidder to pay later. GAVEL uses a third way: a PayPal authorization hold. The bidder approves a ceiling, PayPal holds that amount without charging it, and when the hammer falls GAVEL captures only the winning price and releases every other hold. Nobody is charged for a lot they lost, and nobody can bid more than they have put on hold.
-
-## At a glance
-
-| | |
-| --- | --- |
-| **Hold, not charge** | Every bid is backed by a PayPal authorization hold. Only the winner pays, and only the hammer price. |
-| **Crash-safe settlement** | A real server process killed mid-capture: one capture, two losers voided, 0 differences between the journal and PayPal ([evidence](docs/evidence/server-kill)). |
-| **Verifiable result** | A hash-chained ledger and a public export: anyone can re-hash the chain and spot an edited entry. |
-| **Voice bidding, with a confirm** | Deepgram and Groq speech-to-text with failover; a spoken bid never counts until the bidder confirms it. 24 of 24 synthetic clips answered on the live socket. |
-| **Fast landing page** | PageSpeed Insights on `/`: **100 Performance, 100 Accessibility, 100 Best Practices, 100 SEO** on mobile and desktop (Lighthouse 13.6.0, lab data, measured by hand on 10 Nov 2026; the landing page only, not the whole app). [Details and screenshots](docs/evidence/perf/PAGESPEED.md). |
-| **Open and documented** | A docs site with a guided tour, an OpenAPI spec, five open datasets on Hugging Face and an honest [limits page](docs/LIMITATIONS.md). |
+<p align="center">
+  <picture>
+    <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/readme/reel-poster.png">
+    <img src="docs/assets/readme/reel-poster.png" alt="GAVEL in 10 seconds, five quick scenes. One: the logo draws, the mallet strikes and the tagline appears. Two: a bid is a hold, a simulated bid ladder ticks from 10 to 15 to 20 dollars, held on PayPal, not charged. Three: the hammer falls, a simulated lot sold to paddle 2 for 20 dollars, winner captured and other holds released. Four: check it yourself, hash-chain links snap together and a receipt shows 19 ledger entries with 0 differences, measured in the server-kill run. Five: links to the web app, the docs and the source. PayPal sandbox only." width="100%">
+  </picture>
+  <br><sub><b>In 10 seconds.</b> The lot in scenes two and three is a simulated example. The live app is below under <a href="#see-it-run">See it run</a>.</sub>
+</p>
 
 <p align="center">
   <picture>
@@ -64,7 +58,7 @@ Online auctions usually make a bidder pay first or trust the bidder to pay later
 
 ## Contents
 
-[Why GAVEL](#why-gavel) | [Live links](#live-links) | [Judge path](#judge-path-in-60-seconds) | [What is proven](#what-is-proven) | [How it works](#how-it-works) | [See it run](#see-it-run) | [Tech stack and sponsors](#tech-stack-and-sponsors) | [Evidence and gates](#evidence-and-gates) | [Run it locally](#run-it-locally) | [Call the API](#call-the-api) | [Security](#security-and-data-notes) | [Documentation](#documentation) | [Team](#team) | [License](#license)
+[Live links](#live-links) | [Judge path](#judge-path-in-60-seconds) | [What is proven](#what-is-proven) | [How it works](#how-it-works) | [See it run](#see-it-run) | [Tech stack and sponsors](#tech-stack-and-sponsors) | [Evidence and gates](#evidence-and-gates) | [Run it locally](#run-it-locally) | [Call the API](#call-the-api) | [Documentation](#documentation) | [License](#license)
 
 ## Live links
 
@@ -241,7 +235,7 @@ Still screenshots of the live app at [gavel.dualmindlab.tech](https://gavel.dual
 | Cloudflare   | The web app runs as a Worker (`gavel-web`) and the docs site is deployed to Cloudflare; both serve the custom domains with security headers ([checked on 9 Nov](docs/evidence/security/live-checks-20261109.md))                                                                                                                                                                                                                                                      |
 | Render       | One Node web service on the `starter` plan, always on, with a 1 GB persistent disk at `/var/data` for the ledger, room log, settlement journals and hold records; [`render.yaml`](render.yaml) is the blueprint ([hosting write-up](https://docs.gavel.dualmindlab.tech/docs/run/hosting-on-render))                                                                                                                                                                  |
 | AG Grid      | Community edition (MIT): the audit ledger, console bid history and the holds tables, with sorting, filters kept in the page link, CSV export of what you see, and a Verify chain button that re-hashes the sealed ledger in the browser (a check of the public export; audit-page rows are not sealed, so they have no chain status); lazy-loaded, so the landing and bidder pages do not carry it ([docs/AG-GRID.md](docs/AG-GRID.md)). Try it on the `/ledger` page |
-| APIMatic     | The OpenAPI 3.1 spec of the host API ([`openapi/gavel.yaml`](openapi/gavel.yaml)) is linted with Spectral in CI and checked against the server router; SDK and portal generation from it is in progress ([docs/API.md](docs/API.md))                                                                                                                                                                                                                                  |
+| APIMatic     | The OpenAPI 3.1 spec of the host API ([`openapi/gavel.yaml`](openapi/gavel.yaml)) is linted with Spectral in CI and checked against the server router; TypeScript and Python SDKs (`gavel-sdk` 0.0.5, beta) generated from it are in [`sdks/`](sdks/README.md) and released on GitHub ([docs/API.md](docs/API.md))                                                                                                                                                    |
 | Hugging Face | Five small datasets and a read-only Evidence Explorer Space, each labelled real sandbox, simulated or synthetic ([collection](https://huggingface.co/collections/harshbhx/gavel-evidence-auction-holds-hammer-and-receipts-6af0afebebb37eb4c9184504))                                                                                                                                                                                                                 |
 
 | Package             | Purpose                                                                            |
@@ -378,18 +372,15 @@ Package guides: [server](packages/server/README.md), [voice](packages/voice/READ
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [code of conduct](CODE_OF_CONDUCT.md). Work goes through branches and pull requests, and the pull request template lists the checks.
 
-## Team
-
-Built by [Harsh Bhanushali](https://github.com/harshbhx) and Dhairya Patel for the PayPal Hackathon 2026. Product, engine, payments, voice, web app, docs and evidence are all in this repository.
-
 ## License
 
 [MIT](LICENSE)
 
 <p align="center">
-  <b><a href="https://gavel.dualmindlab.tech">Web app</a></b> &nbsp;|&nbsp;
-  <b><a href="https://docs.gavel.dualmindlab.tech">Docs</a></b> &nbsp;|&nbsp;
-  <b><a href="https://github.com/harshbhx/gavel-auction">Source</a></b> &nbsp;|&nbsp;
-  <b><a href="https://huggingface.co/collections/harshbhx/gavel-evidence-auction-holds-hammer-and-receipts-6af0afebebb37eb4c9184504">Open data</a></b>
-  <br><sub>PayPal sandbox only. Bids are held, not charged.</sub>
+  <picture>
+    <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="docs/assets/readme/readme-footer-dark-poster.png">
+    <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/readme/readme-footer-poster.png">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/readme-footer-dark.gif">
+    <img src="docs/assets/readme/readme-footer.gif" alt="GAVEL closing card with the animated logo and links: web app gavel.dualmindlab.tech, docs docs.gavel.dualmindlab.tech, source github.com/harshbhx/gavel-auction. PayPal sandbox only, bids are held, not charged." width="100%">
+  </picture>
 </p>
