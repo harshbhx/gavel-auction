@@ -165,6 +165,23 @@
   color: var(--color-on-win);
 }
 
+.gv-screen__sold[data-kind='passed'] {
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.gv-screen__sold[data-kind='passed'] .gv-screen__stamp {
+  align-self: center;
+}
+
+.gv-screen__passed-note {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(28px, 4vh, 48px);
+}
+
 .gv-screen__sold[data-kind='passed'] .gv-screen__stamp {
   background: var(--color-out);
   color: var(--color-on-out);
