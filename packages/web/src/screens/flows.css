@@ -83,6 +83,7 @@ main[data-route='return'] {
 
 /* Refusal pages: ink on paper in every theme (the tokens below meet 4.5:1 together). */
 main[data-route='token-gate'] .gv-flow__action,
+.gv-approve[data-state='closed'] .gv-flow__action,
 .gv-flow__error ~ .gv-flow__action {
   background: var(--color-fg);
   border-color: var(--color-fg);
@@ -626,6 +627,27 @@ main[data-route='token-gate'] .gv-flow__action,
 /* Not found: one primary link, the rest are text links, all inside an ActionGroup (UIX-56). */
 .gv-notfound__links {
   display: block;
+}
+
+/* The reason a primary button is off, shown next to it. */
+.gv-flow__reason {
+  margin: 0;
+  font-size: var(--font-size-2);
+  font-weight: 600;
+}
+
+/* The held card: the next step sits where the thumb is. */
+.gv-approve[data-state='held'] {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-height: 60dvh;
+}
+
+.gv-approve[data-state='held'] > .gv-btn {
+  margin-block-start: auto;
+  position: sticky;
+  bottom: var(--space-4);
 }
 
 /* Join: the QR folds on phones (the visitor just scanned it) and the page keeps a clear band at the

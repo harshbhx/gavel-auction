@@ -19,6 +19,8 @@ interface Live {
   readonly currentCents: number | null;
   readonly leaderPaddle: number | null;
   readonly bidders: number | null;
+  /** The room no longer takes new bidders (hammer fallen or registration closed). */
+  readonly closed: boolean;
 }
 
 const POLL_MS = 4000;
@@ -33,6 +35,7 @@ function liveOf(body: unknown): Live {
     currentCents: num(v['currentCents']),
     leaderPaddle: num(v['leaderPaddle']),
     bidders: num(v['bidderCount']),
+    closed: v['registrationClosed'] === true || v['status'] === 'DONE',
   };
 }
 
@@ -101,12 +104,18 @@ export function WatcherGate({ roomId, onNavigate, apiBase }: WatcherGateProps) {
           {t('watch.unavailable')}
         </p>
       )}
-      <p className="gv-join__help">{t('watch.lead')}</p>
+      {summary?.closed !== true && <p className="gv-join__help">{t('watch.lead')}</p>}
       <p className="gv-join__note">{t('join.sandboxNote')}</p>
       <div className="gv-join__actions">
-        <Button size="bid" onClick={() => onNavigate(`/r/${id}/register`)}>
-          {t('join.asBidder')}
-        </Button>
+        {summary?.closed === true ? (
+          <p role="status" className="gv-join__note" data-testid="watch-closed">
+            {t('watch.closed')}
+          </p>
+        ) : (
+          <Button size="bid" onClick={() => onNavigate(`/r/${id}/register`)}>
+            {t('join.asBidder')}
+          </Button>
+        )}
         <Button variant="outline" onClick={() => onNavigate(`/join/${id}`)}>
           {t('watch.openJoin')}
         </Button>

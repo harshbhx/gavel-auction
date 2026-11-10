@@ -828,7 +828,7 @@ function RegisterRoute({
         return (
           <main data-route="register" aria-busy="true">
             <h1 tabIndex={-1}>{t('reg.checkingTitle')}</h1>
-            <p role="status">{t('reg.confirming')}</p>
+            <p role="status">{t('reg.checking')}</p>
           </main>
         );
       }
@@ -862,7 +862,7 @@ function RegisterRoute({
             <TokenHelp roomId={roomId} kind="register" />
           </>
         ) : (
-          <p>{t('reg.confirming')}</p>
+          <p>{t('reg.checking')}</p>
         )}
       </main>
     );
@@ -874,7 +874,7 @@ function RegisterRoute({
       <main data-route="register">
         <h1 tabIndex={-1}>{t('reg.step1')}</h1>
         {roomError === null ? (
-          <p role="status">{t('reg.confirming')}</p>
+          <p role="status">{t('reg.checking')}</p>
         ) : (
           <RoomError
             error={roomError}
@@ -894,7 +894,7 @@ function RegisterRoute({
           result={null}
           ceilingCents={0}
           closed
-          watchHref={`/r/${encodeURIComponent(roomId)}/screen`}
+          watchHref={`/r/${encodeURIComponent(roomId)}/bid`}
           onBackToCeiling={() => undefined}
           onRetry={() => undefined}
           onContinue={() => undefined}
@@ -978,7 +978,7 @@ function ApproveRoute(props: {
   }, [start, ceilingCents, name]);
   return (
     <main data-route="register">
-      <h1 tabIndex={-1}>{t('reg.step1')}</h1>
+      <h1 tabIndex={-1}>{approval.state === 'held' ? t('reg.heldTitle') : t('reg.step3')}</h1>
       <Approve
         state={approval.state}
         result={approval.result}
@@ -1024,7 +1024,7 @@ function ReturnRoute({ roomId, api }: { roomId: string; api: Api }) {
   if (ceilingCents === undefined) {
     return (
       <main data-route="return">
-        <p role="status">{t('reg.confirming')}</p>
+        <p role="status">{t('reg.checking')}</p>
       </main>
     );
   }
