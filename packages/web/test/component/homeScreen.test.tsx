@@ -343,3 +343,16 @@ describe('Home screen: wording', () => {
     expect(container.textContent).not.toMatch(/\bpay|charged|captur|\bfirst\b|\bfee/i);
   });
 });
+
+describe('Home screen: opened from the winner pop-up (UIX-60)', () => {
+  it('opens the join field with the code input focused on /?join=1', () => {
+    window.history.pushState(null, '', '/?join=1');
+    try {
+      setup([room()]);
+      expect(screen.getByLabelText(t('home.join.codeLabel'))).toBeTruthy();
+      expect(document.activeElement?.classList.contains('ui-otp__slot')).toBe(true);
+    } finally {
+      window.history.pushState(null, '', '/');
+    }
+  });
+});

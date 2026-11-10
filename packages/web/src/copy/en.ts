@@ -720,6 +720,16 @@ export const en = {
   'bid.announce.leading': 'You are leading at {amount}.',
   'bid.announce.rival': 'Current bid {amount}.',
   'bid.announce.won': 'You won at {amount}.',
+  'win.title': 'You won the lot',
+  'win.lot': '{lot}, at {amount}',
+  'win.price': 'Winning price {amount}',
+  'win.money':
+    'Your hold settles at the hammer price of {amount}. This is a sandbox, so no real money moves.',
+  'win.home': 'Go to home',
+  'win.joinCode': 'Enter a join code',
+  'win.receipt': 'View receipt',
+  'win.announce':
+    'You won the lot at {amount}. Choose go to home, enter a join code, or view the receipt.',
   'bid.announce.lost': 'Lot closed at {amount}. You did not win.',
   'bid.announce.closed': 'Lot closed at {amount}.',
   'bid.announce.passed': 'Lot closed with no winner.',

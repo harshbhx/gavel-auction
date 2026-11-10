@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { t } from '../../src/copy/t';
 import { confirmHold } from '../support/approveHold';
 import { sliderStops } from '../../src/ui/format';
+import { scaledPicks, sliderStep } from '../../src/screens/register/LimitEntry';
 import { RegisterScreen, sliderMax } from '../../src/screens/register/RegisterScreen';
 
 function toLimitStep(props: Partial<Parameters<typeof RegisterScreen>[0]> = {}) {
@@ -125,5 +126,65 @@ describe('slider ladder and live bounds (#2393, #2395)', () => {
     );
     expect(slider.getAttribute('aria-valuemin')).toBe('150000');
     expect(slider.getAttribute('aria-valuemax')).toBe('300000');
+  });
+});
+
+describe('open limit above $1,000 (UIX-59)', () => {
+  const BIG = {
+    minCents: 100,
+    maxCents: 10_000_000,
+    presetsCents: [10_000, 25_000, 50_000, 100_000],
+  };
+
+  it('accepts a typed limit above $1,000 up to the room cap and sends it', () => {
+    const { onApprove, box, slider } = toLimitStep(BIG);
+    fireEvent.change(box, { target: { value: '50000' } });
+    expect(box.value).toBe('50,000');
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(slider.getAttribute('aria-valuenow')).toBe('5000000');
+    confirmHold();
+    expect(onApprove).toHaveBeenCalledWith({ name: 'Priya', ceilingCents: 5_000_000 });
+  });
+
+  it('accepts exactly the cap and refuses one dollar over it', () => {
+    const { onApprove, box } = toLimitStep(BIG);
+    fireEvent.change(box, { target: { value: '100001' } });
+    expect(screen.getByRole('alert').textContent).toContain(t('reg.overCap', { max: '$100,000' }));
+    expect(onApprove).not.toHaveBeenCalled();
+    fireEvent.change(box, { target: { value: '100000' } });
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('rescales the slider range and step to the typed limit', () => {
+    const { box, slider } = toLimitStep(BIG);
+    fireEvent.change(box, { target: { value: '20000' } });
+    expect(slider.getAttribute('aria-valuemax')).toBe('2000000');
+    fireEvent.keyDown(slider, { key: 'End' });
+    fireEvent.keyDown(slider, { key: 'ArrowLeft' });
+    // The last rest before the top is one round step for the new span below it, not $2.
+    expect(Number(slider.getAttribute('aria-valuenow'))).toBe(
+      2_000_000 - sliderStep(100, 2_000_000),
+    );
+    expect(sliderStep(100, 2_000_000)).toBeGreaterThan(sliderStep(100, 100_000));
+  });
+
+  it('offers quick picks that are fractions of the typed limit', () => {
+    const { box } = toLimitStep(BIG);
+    expect(screen.queryByLabelText('$7,500')).toBeNull();
+    fireEvent.change(box, { target: { value: '30000' } });
+    fireEvent.click(screen.getByLabelText('$15,000'));
+    expect(box.value).toBe('15,000');
+    // Picking one keeps the others in place.
+    expect(screen.getByLabelText('$22,500')).toBeTruthy();
+    expect(screen.getByLabelText('$7,500')).toBeTruthy();
+  });
+
+  it('computes scaled picks only for a limit above every preset and inside the cap', () => {
+    const presets = [10_000, 100_000];
+    expect(scaledPicks(100, 10_000_000, presets, null)).toEqual([]);
+    expect(scaledPicks(100, 10_000_000, presets, 100_000)).toEqual([]);
+    expect(scaledPicks(100, 10_000_000, presets, 400_000)).toEqual([200_000, 300_000]);
+    expect(scaledPicks(100, 500_000, presets, 600_000)).toEqual([]);
+    expect(scaledPicks(150_000, 10_000_000, presets, 200_000)).toEqual([150_000]);
   });
 });

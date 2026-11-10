@@ -1,8 +1,9 @@
 /*
  * Theme overrides for tokens.css. Light values (Newsprint and Signal) live in tokens.css and are the only user-facing look.
  * Dark applies only when data-theme="dark" is set explicitly (nothing in the UI sets it). The operating system colour
- * scheme and any stored choice are ignored. Projector is a black ground, brighter ink and a type scale of 2.0; it is
- * forced on the public screen.
+ * scheme and any stored choice are ignored. Projector is the same cream paper and brand ink as the rest of the app
+ * (high contrast, about 14:1 for text), a type scale of 2.0 and heavier offset shadows; it is forced on the public
+ * screen.
  */
 
 :root[data-theme='dark'] {
@@ -39,35 +40,35 @@
 
 :root[data-theme='projector'] {
   --type-scale: 2;
-  --color-bg: #000000;
-  --color-surface: #0c1624;
-  --color-raised: #132238;
-  --color-fg: #ffffff;
-  --color-fg-muted: #d5deea;
-  --color-border: #8fa6c4;
-  --color-rule: #2a3f5e;
-  --color-accent: #8fd3b0;
-  --color-on-accent: #0c1624;
-  --color-action: #8fd3b0;
-  --color-on-action: #0c1624;
-  --color-held: #e3b766;
-  --color-charged: #8fd3b0;
-  --color-on-charged: #0c1624;
-  --color-released: #a9b6c8;
-  --color-success: #8fd3b0;
-  --color-warning: #e3b766;
-  --color-danger: #ff9c88;
-  --color-on-danger: #0c1624;
-  --color-focus: #ffffff;
-  --color-ring: #0c1624;
-  --color-sheet: #1b2f4b;
-  --color-on-sheet: #f0ebdd;
-  --color-win: #8fd3b0;
-  --color-on-win: #0c1624;
-  --color-out: #ff9c88;
-  --color-on-out: #0c1624;
-  --color-shadow: #000000;
-  --color-slider-fill: #2c5b55;
-  --shadow-1: none;
-  --shadow-2: none;
+  --color-bg: #efe6d3;
+  --color-surface: #f8f2e4;
+  --color-raised: #e6dac1;
+  --color-fg: #1d1712;
+  --color-fg-muted: #4a3e32;
+  --color-border: #1d1712;
+  --color-rule: #b9a98a;
+  --color-accent: #a33a06;
+  --color-on-accent: #f8f2e4;
+  --color-action: #ff6a1f;
+  --color-on-action: #1a0a00;
+  --color-held: #a33a06;
+  --color-charged: #1d1712;
+  --color-on-charged: #f8f2e4;
+  --color-released: #4a3e32;
+  --color-success: #256b3a;
+  --color-warning: #a33a06;
+  --color-danger: #b3261e;
+  --color-on-danger: #ffffff;
+  --color-focus: #1d1712;
+  --color-ring: #1a0a00;
+  --color-sheet: #1d1712;
+  --color-on-sheet: #f8f2e4;
+  --color-win: #1f6b3a;
+  --color-on-win: #ffffff;
+  --color-out: #b3261e;
+  --color-on-out: #ffffff;
+  --color-shadow: #1d1712;
+  --color-slider-fill: #f5b488;
+  --shadow-1: 3px 3px 0 var(--color-shadow);
+  --shadow-2: 6px 6px 0 var(--color-shadow);
 }

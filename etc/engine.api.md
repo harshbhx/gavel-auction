@@ -271,7 +271,7 @@ export interface DecisionMetric {
 export const DEFAULT_AUCTION_CONFIG: AuctionConfig;
 
 // @public
-export const DEFAULT_MAX_CEILING_CENTS = 100000;
+export const DEFAULT_MAX_CEILING_CENTS = 10000000;
 
 // @public
 export const ENGINE_ERROR_CODES: readonly ["auction_closed", "auction_open_lots", "bad_amount", "bad_ceiling", "bad_command", "bad_id", "bad_time", "capture_mismatch", "cannot_hammer", "cannot_lower_ceiling", "cannot_promote", "command_conflict", "limit_exceeded", "lot_done", "lot_frozen", "lot_in_progress", "lot_not_open", "non_canonical", "not_current_winner", "out_of_order", "soft_close_not_allowed_sealed", "state_continuity", "store_conflict", "time_regression", "unknown_entry_type", "unsupported_currency", "unsupported_version"];

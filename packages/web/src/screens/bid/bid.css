@@ -476,3 +476,23 @@
     margin-bottom: var(--space-4);
   }
 }
+
+/* Winner pop-up (UIX-60). No animation, so reduced motion needs no override. */
+.bid-win {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.bid-win__title {
+  margin: 0;
+  font-size: var(--font-size-5, 1.5rem);
+}
+
+.bid-win__lot,
+.bid-win__money {
+  margin: 0;
+}
+
+.bid-win__money {
+  color: var(--color-muted, inherit);
+}

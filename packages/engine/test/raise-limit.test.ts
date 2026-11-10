@@ -33,7 +33,21 @@ describe('raising a limit during an open lot', () => {
   it('T-ENG-032 R-ENG-040 refuses a limit above the server cap', () => {
     const s = open(scene(), L1);
     expect(
-      errCode(() => run(s, mk(300, { type: 'RegisterBidder', bidderId: A, ceilingCents: 100001 }))),
+      errCode(() =>
+        run(s, mk(300, { type: 'RegisterBidder', bidderId: A, ceilingCents: 10_000_001 })),
+      ),
     ).toBe('bad_ceiling');
+  });
+
+  it('T-ENG-032 R-ENG-040 UIX-59 a limit above $1000 registers and raises on the default cap', () => {
+    const s = open(scene(), L1);
+    const big = run(s, mk(300, { type: 'RegisterBidder', bidderId: A, ceilingCents: 250_000 }));
+    expect(big.state.bidders[A]?.ceilingCents).toBe(250_000);
+    const higher = run(
+      big.state,
+      mk(310, { type: 'RegisterBidder', bidderId: A, ceilingCents: 10_000_000 }),
+    );
+    expect(higher.entries.map((e) => e.type)).toEqual(['CEILING_RAISED']);
+    expect(higher.state.bidders[A]?.ceilingCents).toBe(10_000_000);
   });
 });

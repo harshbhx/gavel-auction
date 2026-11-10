@@ -48,12 +48,29 @@ describe('PriceHeader', () => {
 });
 
 describe('ConsoleScreen', () => {
-  it('shows two balanced columns and the ladder strip on a wide viewport', () => {
-    render(<ConsoleScreen store={makeStore()} settlementView={null} wide />);
+  it('is one balanced grid with no side column and the ladder strip on a wide viewport', () => {
+    render(
+      <ConsoleScreen
+        store={makeStore()}
+        settlementView={null}
+        wide
+        floor={<div />}
+        bidders={<div />}
+        danger={<div />}
+      />,
+    );
     expect(document.querySelector('[data-layout="wide"]')).not.toBeNull();
-    expect(
-      document.querySelectorAll('[data-testid="console-columns"] > .gv-console-col'),
-    ).toHaveLength(2);
+    const grid = document.querySelector('[data-testid="console-columns"]') as HTMLElement;
+    expect(grid.className).toBe('gv-console-grid');
+    // Lot, floor stack, voice, bidders and the stop card: every cell is a direct child of the grid.
+    expect(Array.from(grid.children).map((n) => n.className.split(' ').pop())).toEqual([
+      'gv-console-panel--lot',
+      'gv-console-stack',
+      'gv-console-panel--voice',
+      'gv-console-panel--bidders',
+      'gv-console-danger',
+    ]);
+    expect(grid.querySelector('.gv-console-col')).toBeNull();
     expect(screen.getByText(t('console.noBids'))).toBeTruthy();
     expect(screen.getByText(t('console.noConfirm'))).toBeTruthy();
     expect(screen.queryByRole('tablist')).toBeNull();

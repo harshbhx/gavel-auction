@@ -414,7 +414,7 @@ export const DEFAULT_LEASE_TTL_MS: number;
 export const DEFAULT_MAX_ATTEMPTS = 4;
 
 // @public (undocumented)
-export const DEFAULT_MAX_CEILING_CENTS = 100000;
+export const DEFAULT_MAX_CEILING_CENTS = 10000000;
 
 // @public (undocumented)
 export const DEFAULT_MAX_VOID_RESUMES = 5;

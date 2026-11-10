@@ -40,6 +40,14 @@ const CODE_LENGTH = 6;
 const ROOM_MS = ROOM_MINUTES * 60_000;
 const JOIN_PATH = /\/join\/([A-Za-z0-9_-]+)/;
 
+function wantsJoin(): boolean {
+  try {
+    return new URLSearchParams(window.location.search).get('join') === '1';
+  } catch {
+    return false;
+  }
+}
+
 /** A room is certainly gone once its known end time passed; without one, the host is asked. */
 export function expiredByTime(room: HistoryRoom, now: number): boolean {
   return (room.expiresAt ?? room.createdAt + ROOM_MS) <= now;
@@ -190,7 +198,8 @@ export function HomeScreen({
     };
   }, [lastId, lastExpired, checkRoom]);
 
-  const [joinOpen, setJoinOpen] = useState(false);
+  // "/?join=1" (the winner pop-up's "Enter a join code") opens the code field with focus.
+  const [joinOpen, setJoinOpen] = useState(() => wantsJoin());
   const [code, setCode] = useState('');
   const [invalid, setInvalid] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
