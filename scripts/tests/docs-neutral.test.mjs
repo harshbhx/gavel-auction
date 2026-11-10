@@ -44,6 +44,30 @@ const OVERVIEW_PATTERNS = [
   /\brole assignment\b/i,
 ];
 
+// The two authors may be named in the root README, and only there: in the Team section and in the
+// credit line under the pitch. Everywhere else personal names stay banned.
+export const ALLOWED_CREDIT = /Harsh Bhanushali|Dhairya Patel/g;
+export function stripCredits(file, text) {
+  if (file !== 'README.md') return text;
+  const withoutTeam = text.replace(/^## Team\n[\s\S]*?(?=^## |(?![\s\S]))/m, '');
+  return withoutTeam.replace(/^Built for the PayPal Hackathon 2026 by [^\n]*$/m, (line) =>
+    line.replace(ALLOWED_CREDIT, ''),
+  );
+}
+
+describe('credit names', () => {
+  it('are allowed in the README Team section and credit line only', () => {
+    const team = '## Team\n\nBuilt by Harsh Bhanushali and Dhairya Patel.\n\n## License\n';
+    const credit = 'Built for the PayPal Hackathon 2026 by Harsh Bhanushali and Dhairya Patel.\n';
+    for (const text of [team, credit]) {
+      assert.ok(!/\bHarsh\b|\bDhairya\b/.test(stripCredits('README.md', text)));
+    }
+    assert.match(stripCredits('README.md', '## Intro\n\nHarsh wrote this.\n'), /\bHarsh\b/);
+    assert.match(stripCredits('README.md', 'Dhairya Patel wrote this.\n'), /\bDhairya\b/);
+    assert.match(stripCredits('docs/GATES.md', team), /\bHarsh\b/);
+  });
+});
+
 describe('public docs', () => {
   it('contain no schedules, role assignments or internal prerequisites', () => {
     const hits = [];
@@ -61,7 +85,7 @@ describe('public docs', () => {
   it('contain no personal names or hand-off notes', () => {
     const hits = [];
     for (const f of files) {
-      const text = readFileSync(join(root, f), 'utf8');
+      const text = stripCredits(f, readFileSync(join(root, f), 'utf8'));
       for (const re of PATTERNS) if (re.test(text)) hits.push(`${f}: ${re}`);
     }
     assert.deepEqual(hits, []);
