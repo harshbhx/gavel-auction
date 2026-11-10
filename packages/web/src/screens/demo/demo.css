@@ -201,3 +201,19 @@
     border-color: Highlight;
   }
 }
+
+/* /demo on wide screens: the page starts under the header row instead of 12vh down, and the
+ * lettered ways are plain ruled rows (no boxed badge) so only the start card carries weight. */
+@media screen and (min-width: 1100px) and (min-height: 640px) {
+  main.gv-flow[data-route='demo']:has(> .gv-aside) {
+    padding-top: var(--space-6);
+  }
+}
+
+.gv-demo__way {
+  min-height: 60px;
+}
+
+.gv-demo__way-mark {
+  border-color: transparent;
+}

@@ -536,6 +536,7 @@ export const en = {
   'scriptedDemo.speedOption': 'Speed {speed}',
   'scriptedDemo.duration': 'The whole recording takes about {seconds} seconds at {speed}.',
   'scriptedDemo.steps': 'Steps',
+  'scriptedDemo.allSteps': 'All steps',
   'scriptedDemo.reduced':
     'Reduced motion is on, so the demo waits for you. Use Next step to move on.',
   'scriptedDemo.done': 'End of the demo. Press Play again to watch it once more.',
