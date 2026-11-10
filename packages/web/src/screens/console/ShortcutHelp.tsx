@@ -81,6 +81,7 @@ export function ShortcutHelp({ open, onClose }: ShortcutHelpProps) {
           </div>
         ))}
       </dl>
+      <p>{t('shortcuts.confirmTwice')}</p>
       <p>{t('shortcuts.noSingleKey')}</p>
       <Button onClick={onClose}>{t('shortcuts.close')}</Button>
     </Dialog>
