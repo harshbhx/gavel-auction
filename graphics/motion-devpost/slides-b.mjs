@@ -173,3 +173,60 @@ function update(t,h){
 }
 `,
 };
+
+/* ---------- 09 outro with credits ---------- */
+export const outro = {
+  name: '09-outro-credits',
+  T: 7,
+  poster: 5.6,
+  html: `
+<div class="a" style="left:174px;top:222px;width:0;height:0">
+  <div class="wave" style="position:absolute;left:0;top:0;width:240px;height:240px;border-radius:50%;border:1.5px solid #ff6a1f;opacity:0"></div>
+  <div class="wave" style="position:absolute;left:0;top:0;width:240px;height:240px;border-radius:50%;border:1px solid #ff6a1f;opacity:0"></div>
+</div>
+${frame({ lot: '09', foot: 'PayPal sandbox only. Bids are held, not charged.', mast: false })}
+<div class="a" id="lk" data-a="0" data-d=".2" style="left:64px;top:112px;width:688px;height:220px"></div>
+<div id="lnk"></div>
+`,
+  js: `
+var LETTERS = ${JSON.stringify(L)};
+var mk, waves, lets = [];
+var LINKS = [['Web app','gavel.dualmindlab.tech'],['Docs','docs.gavel.dualmindlab.tech'],['Source','github.com/harshbhx/gavel-auction']];
+var CREDITS = [['Harsh Bhanushali','Auction engine, PayPal payments, voice, evidence'],['Dhairya Patel','Web UI, accessibility, end-to-end runner, deploys']];
+function setup(h){
+  var host = h.$('#lk');
+  host.innerHTML = '<div id="lkm" style="position:absolute;left:0;top:0;width:220px;height:220px"></div><svg viewBox="-22 -22 450.24 144" style="position:absolute;left:0;top:0;width:688px;height:220px;overflow:visible"><g transform="translate(31 13) scale(0.74)">' + LETTERS.slice(1).map(function(l){ return '<g class="lt">' + l + '</g>'; }).join('') + '</g></svg>';
+  mk = h.Mark(h.$('#lkm'), {size:220, swingStart:.25, swingDur:.85});
+  lets = h.$$('.lt');
+  waves = h.Waves(h.$$('.wave'), [mk.strike], {min:.45, max:5.2, dur:1.5, alpha:.8});
+  var html = '';
+  LINKS.forEach(function(l,i){
+    var y = 350 + i*72;
+    html += '<div class="rl rr" style="left:64px;top:' + y + 'px;width:1072px"></div>';
+    html += '<div class="ln" style="left:64px;top:' + (y+26) + 'px;width:200px;height:24px"><span class="m lb" style="font-size:15px;line-height:24px;color:#6f6250">' + l[0] + '</span></div>';
+    html += '<div class="ln" style="left:300px;top:' + (y+12) + 'px;width:830px;height:48px"><span class="d ur" style="font-size:42px;line-height:48px;text-transform:lowercase">' + l[1] + '</span></div>';
+  });
+  html += '<div class="rl rr" style="left:64px;top:566px;width:1072px"></div>';
+  html += '<div class="ln" style="left:64px;top:590px;width:300px;height:24px"><span class="m cr" style="font-size:15px;line-height:24px;color:#6f6250">Built by</span></div>';
+  CREDITS.forEach(function(c,i){
+    var x = 300 + i*420;
+    html += '<div class="ln" style="left:' + x + 'px;top:582px;width:410px;height:44px"><span class="d cr" style="font-size:34px;line-height:44px">' + c[0] + '</span></div>';
+    html += '<div class="ln" style="left:' + x + 'px;top:630px;width:400px;height:20px"><span class="m cr" style="font-size:13px;line-height:20px;color:#6f6250;text-transform:none;letter-spacing:0">' + c[1] + '</span></div>';
+  });
+  html += '<div class="rl rr" style="left:64px;top:704px;width:1072px"></div>';
+  h.$('#lnk').innerHTML = html;
+}
+function update(t,h){
+  mk.update(t); waves(t);
+  lets.forEach(function(g,i){
+    var p = h.pr(t, 0.95 + i*0.07, 0.6, h.E.o5);
+    g.setAttribute('transform', 'translate(' + h.lerp(-60, 0, p).toFixed(2) + ' 0)');
+    g.setAttribute('opacity', Math.min(1, p*2.5) * (1 - h.exitp(t)));
+  });
+  h.$$('.rr').forEach(function(r,i){ h.draw(r, t, 1.4 + i*0.14, 0.7, 'x'); });
+  h.$$('.lb').forEach(function(e,i){ h.mask(e, t, 1.6 + i*0.14, 0.6); });
+  h.$$('.ur').forEach(function(e,i){ h.mask(e, t, 1.55 + i*0.14, 0.8); });
+  h.$$('.cr').forEach(function(e,i){ h.mask(e, t, 3.3 + i*0.25, 0.7); });
+}
+`,
+};

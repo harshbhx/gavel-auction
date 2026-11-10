@@ -159,9 +159,9 @@ Two builders.
 
 ## Try it
 
-![Animated slide: the logo assembles and the links click in.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/16-ending.gif)
+![Animated closing slide: the logo assembles, the links click in, then the credits: Harsh Bhanushali and Dhairya Patel.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/outro/09-outro-credits.gif)
 
-_Closing slide: web app, docs and source._
+_Closing slide: web app, docs, source and the two builders._
 
 - [Judge panel](https://gavel.dualmindlab.tech/try): a live sandbox room, no login
 - [Scripted demo](https://gavel.dualmindlab.tech/demo/scripted): about one minute, recorded
