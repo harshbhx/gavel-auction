@@ -161,7 +161,11 @@ export function JoinScreen({
           <h2 id="gv-join-ways">{t('join.waysTitle')}</h2>
           <p className="gv-join__help">{t('join.waysWhy')}</p>
           <ActionGroup>
-            <Button size="bid" onClick={() => onNavigate(`${registerPath}?mode=demo`)}>
+            <Button
+              size="bid"
+              className="gv-cta"
+              onClick={() => onNavigate(`${registerPath}?mode=demo`)}
+            >
               {t('join.wayDemo')}
             </Button>
             <Button size="bid" variant="outline" onClick={() => onNavigate(registerPath)}>
@@ -176,7 +180,7 @@ export function JoinScreen({
         <>
           <p className="gv-join__note">{t('join.sandboxNote')}</p>
           <ActionGroup>
-            <Button size="bid" onClick={() => onNavigate(registerPath)}>
+            <Button size="bid" className="gv-cta" onClick={() => onNavigate(registerPath)}>
               {t('join.asBidder')}
             </Button>
             <Button size="bid" variant="text" onClick={() => onNavigate(bidPath)}>

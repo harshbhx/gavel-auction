@@ -290,3 +290,11 @@
     width: auto;
   }
 }
+
+/* The one main action of a page: the brand orange, ink edge, same on landing, /demo, /try and join. */
+.gv-btn.gv-cta {
+  background: var(--color-action);
+  border-color: var(--color-fg);
+  color: var(--color-on-action);
+  box-shadow: var(--shadow-2);
+}
