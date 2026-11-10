@@ -76,7 +76,7 @@ jobs:
           node -e "
           const fs = require('fs');
           const dir = 'reports/mutation/' + process.env.TARGET;
-          if (!fs.existsSync(dir + '/mutation.json')) { console.error('no mutation report'); process.exit(0); }
+          if (!fs.existsSync(dir + '/mutation.json')) { console.error('no mutation report: the Stryker run failed before it wrote one'); process.exit(1); }
           const r = JSON.parse(fs.readFileSync(dir + '/mutation.json', 'utf8'));
           let killed = 0, survived = 0, noCoverage = 0, other = 0;
           const survivors = [];
