@@ -36,7 +36,9 @@ jobs:
       - name: Smoke import
         run: npm run smoke
       - name: Pack
-        run: npm pack --pack-destination ../../dist-sdk
+        run: |
+          mkdir -p ../../dist-sdk
+          npm pack --pack-destination ../../dist-sdk
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: sdk-typescript
