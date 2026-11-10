@@ -183,9 +183,45 @@
 }
 
 .bid__vibrate input {
-  inline-size: 20px;
-  block-size: 20px;
+  inline-size: 28px;
+  block-size: 28px;
+  margin: 8px;
   accent-color: var(--bid-ink);
+}
+
+.bid__prefs .gv-mute__state {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.bid__lothow summary {
+  min-block-size: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: var(--font-size-2);
+}
+
+/* The price repeated inside the bar, so it is readable whatever the bar covers. */
+.bid__bar .bid__barprice {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-family: var(--font-mono);
+  font-weight: 800;
+}
+
+/* Amount errors and hints sit on their own full-width line under the stepper row. */
+.bid__fieldmsg {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.bid__fieldmsg p {
+  grid-column: auto;
 }
 
 /* Bid bar: stays reachable at the bottom of the phone. */
@@ -202,7 +238,7 @@
   z-index: 1;
 }
 
-.bid__bar > div:first-child {
+.bid__bar > div:first-of-type {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-2);
