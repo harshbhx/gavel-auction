@@ -4,6 +4,7 @@ import { startLiveRoom } from '../../net/liveRoom';
 import type { AuctionStatus } from '../../wire';
 import { RoomStore, useRoom } from '../../store/roomStore';
 import { selectors } from '../../store/selectors';
+import { ActionGroup } from '../../design/primitives/ActionGroup';
 import { Button } from '../../design/primitives/Button';
 import { Instructor, hubStep } from '../../help';
 import { Dialog } from '../../design/primitives/Dialog';
@@ -338,21 +339,19 @@ export function JudgeHub({
             joinUrl={joinLink}
             store={screenToken === null ? undefined : store}
           />
-          <div className="gv-hub__row">
-            {screenLink === null ? (
-              <p className="gv-hub__missing">{t('hub.noToken')}</p>
-            ) : (
-              <>
-                <a className="gv-flow__action" href={screenLink} target="_blank" rel="noopener">
-                  {t('hub.step1Open')}
-                  <span className="gv-visually-hidden">{newTab}</span>
-                </a>
-                <Button variant="outline" onClick={() => copy('screen', screenLink)}>
-                  {copied === 'screen' ? t('generic.copied') : t('generic.copy')}
-                </Button>
-              </>
-            )}
-          </div>
+          {screenLink === null ? (
+            <p className="gv-hub__missing">{t('hub.noToken')}</p>
+          ) : (
+            <ActionGroup>
+              <a className="gv-flow__action" href={screenLink} target="_blank" rel="noopener">
+                {t('hub.step1Open')}
+                <span className="gv-visually-hidden">{newTab}</span>
+              </a>
+              <Button variant="outline" onClick={() => copy('screen', screenLink)}>
+                {copied === 'screen' ? t('generic.copied') : t('generic.copy')}
+              </Button>
+            </ActionGroup>
+          )}
           <section className="gv-hub__test" aria-labelledby="gv-hub-test" tabIndex={0}>
             <h3 id="gv-hub-test">{t('hub.testTitle')}</h3>
             <ol>
@@ -384,7 +383,7 @@ export function JudgeHub({
               )}
             </div>
             {!ended && <p className="gv-hub__scan">{t('hub.scanToBid')}</p>}
-            <div className="gv-hub__row gv-hub__row--center">
+            <ActionGroup className="gv-hub__ticket-actions">
               {code !== null && (
                 <Button variant="outline" disabled={ended} onClick={() => copy('code', code)}>
                   {copied === 'code' ? t('generic.copied') : t('hub.copyCode')}
@@ -397,7 +396,7 @@ export function JudgeHub({
               >
                 {copied === 'invite' ? t('generic.copied') : t('hub.copyInvite')}
               </Button>
-            </div>
+            </ActionGroup>
             <p className="gv-hub__joinlink" data-testid="hub-join-link">
               <span className="gv-hub__joinlabel">{t('hub.joinLinkLabel')}</span> {joinLink}
             </p>
@@ -409,7 +408,7 @@ export function JudgeHub({
             {consoleLink === null ? (
               <p className="gv-hub__missing">{t('hub.noToken')}</p>
             ) : (
-              <>
+              <ActionGroup>
                 <a className="gv-flow__action" href={consoleLink} target="_blank" rel="noopener">
                   {t('hub.step3Open')}
                   <span className="gv-visually-hidden">{newTab}</span>
@@ -417,7 +416,7 @@ export function JudgeHub({
                 <Button variant="outline" onClick={() => copy('console', consoleLink)}>
                   {copied === 'console' ? t('generic.copied') : t('generic.copy')}
                 </Button>
-              </>
+              </ActionGroup>
             )}
           </Shortcut>
 
@@ -426,81 +425,90 @@ export function JudgeHub({
               <p className="gv-hub__missing" data-testid="hub-join-open">
                 {t('hub.joinClosed')}
               </p>
-            ) : (
-              <a
-                className="gv-flow__action"
-                href={joinLink}
-                target="_blank"
-                rel="noopener"
-                data-testid="hub-join-open"
-              >
-                {t('hub.joinHere')}
-                <span className="gv-visually-hidden">{newTab}</span>
-              </a>
-            )}
+            ) : null}
             {keys.auctioneer === null ? (
               <p className="gv-hub__note">{t('hub.watcherNote')}</p>
-            ) : (
-              <>
-                {ended ? null : bidderLink !== null ? (
-                  <a className="gv-flow__action" href={bidderLink} target="_blank" rel="noopener">
-                    {t('hub.step4Open')}
-                    <span className="gv-visually-hidden">{newTab}</span>
-                  </a>
-                ) : invite.kind === 'failed' ? (
-                  <p className="gv-hub__missing" role="alert">
-                    {t('hub.inviteFailed')}
-                  </p>
-                ) : (
-                  <p className="gv-hub__pending" role="status">
-                    {t('hub.inviteBusy')}
-                  </p>
-                )}
-                <Button
-                  variant="outline"
-                  disabled={invite.kind === 'busy' || ended}
-                  onClick={makeInvite}
+            ) : ended ? null : bidderLink === null ? (
+              invite.kind === 'failed' ? (
+                <p className="gv-hub__missing" role="alert">
+                  {t('hub.inviteFailed')}
+                </p>
+              ) : (
+                <p className="gv-hub__pending" role="status">
+                  {t('hub.inviteBusy')}
+                </p>
+              )
+            ) : null}
+            <ActionGroup className="gv-hub__actions--stack">
+              {ended ? null : (
+                <a
+                  className="gv-flow__action"
+                  href={joinLink}
+                  target="_blank"
+                  rel="noopener"
+                  data-testid="hub-join-open"
                 >
-                  {t('hub.newInvite')}
-                </Button>
-              </>
-            )}
+                  {t('hub.joinHere')}
+                  <span className="gv-visually-hidden">{newTab}</span>
+                </a>
+              )}
+              {keys.auctioneer === null || ended ? null : (
+                <>
+                  {bidderLink !== null && (
+                    <a
+                      className="gv-flow__action gv-flow__action--outline"
+                      href={bidderLink}
+                      target="_blank"
+                      rel="noopener"
+                    >
+                      {t('hub.step4Open')}
+                      <span className="gv-visually-hidden">{newTab}</span>
+                    </a>
+                  )}
+                  <Button variant="outline" disabled={invite.kind === 'busy'} onClick={makeInvite}>
+                    {t('hub.newInvite')}
+                  </Button>
+                </>
+              )}
+            </ActionGroup>
           </Shortcut>
 
           <div className="gv-hub__more">
-            <Button onClick={() => copy('all', shareText)}>
-              {copied === 'all' ? t('hub.shareCopied') : t('hub.shareAll')}
-            </Button>
-            {auditLink !== null && (
-              <a
-                className="gv-flow__action gv-flow__action--plain"
-                href={auditLink}
-                target="_blank"
-                rel="noopener"
-                data-testid="hub-audit-link"
-              >
-                {t('hub.auditLink')}
-                <span className="gv-visually-hidden">{newTab}</span>
+            <ActionGroup className="gv-hub__actions--fit">
+              <Button onClick={() => copy('all', shareText)}>
+                {copied === 'all' ? t('hub.shareCopied') : t('hub.shareAll')}
+              </Button>
+              {auditLink !== null && (
+                <a
+                  className="gv-flow__action gv-flow__action--outline"
+                  href={auditLink}
+                  target="_blank"
+                  rel="noopener"
+                  data-testid="hub-audit-link"
+                >
+                  {t('hub.auditLink')}
+                  <span className="gv-visually-hidden">{newTab}</span>
+                </a>
+              )}
+              <a className="gv-flow__action gv-flow__action--outline" href="/verify">
+                {t('hub.verifyLink')}
               </a>
-            )}
-            <a className="gv-flow__action gv-flow__action--plain" href="/verify">
-              {t('hub.verifyLink')}
-            </a>
-            <a className="gv-flow__action gv-flow__action--plain" href="/demo">
-              {t('hub.newDemo')}
-            </a>
+              <a className="gv-flow__action gv-flow__action--text" href="/demo">
+                {t('hub.newDemo')}
+              </a>
+            </ActionGroup>
             {canClose && (
-              <div className="gv-hub__close">
+              <ActionGroup>
                 <Button tone="danger" variant="outline" onClick={() => askClose(false)}>
                   {t('hub.close.button')}
                 </Button>
                 <Button tone="danger" variant="outline" onClick={() => askClose(true)}>
                   {t('hub.close.home')}
                 </Button>
-              </div>
+              </ActionGroup>
             )}
             {ended && (
-              <a className="gv-flow__action gv-flow__action--plain" href="/" data-testid="hub-home">
+              <a className="gv-flow__action gv-flow__action--text" href="/" data-testid="hub-home">
                 {t('hub.close.homeLink')}
               </a>
             )}
