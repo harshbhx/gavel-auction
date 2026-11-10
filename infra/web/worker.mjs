@@ -84,6 +84,12 @@ export default {
         },
       });
     }
+    // /quality: the static quality report (infra/pages/quality) is built into dist/quality by the
+    // deploy-web workflow. It is a real page, not an app route, so it must not get the 404 that an
+    // unknown HTML path gets below.
+    if (pathname === '/quality' || pathname === '/quality/' || pathname === '/quality/index.html') {
+      return env.ASSETS.fetch(request);
+    }
     if (!pathname.startsWith('/join/')) {
       const res = await env.ASSETS.fetch(request);
       if (!isSpaFallback(res) || isKnownPath(pathname)) return res;

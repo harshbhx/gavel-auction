@@ -19,10 +19,14 @@ on:
       - 'packages/web/**'
       - 'packages/shared/**'
       - 'infra/web/**'
+      - 'infra/pages/quality/**'
+      - 'packages/e2e/src/report/**'
       - '.github/workflows/deploy-web.yml'
   pull_request:
     paths:
       - 'infra/web/**'
+      - 'infra/pages/quality/**'
+      - 'packages/e2e/src/report/**'
       - '.github/workflows/deploy-web.yml'
 
 permissions:
@@ -89,8 +93,22 @@ jobs:
         env:
           VITE_PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
         run: npm run build -w @gavel/web
+      # The quality report (R-QA-032, issue 310) ships with the web build, so
+      # https://gavel.dualmindlab.tech/quality is deployed together with the app and carries the same
+      # commit sha as the build. sha.txt and summary.json sit beside index.html.
+      - name: Build the quality report
+        env:
+          GAVEL_SHA: ${{ github.sha }}
+        run: |
+          inputs=""
+          if [ -f infra/pages/quality/inputs.json ]; then inputs="infra/pages/quality/inputs.json"; fi
+          npx vite-node infra/pages/quality/build.mjs -- packages/web/dist/quality $inputs
+          printf '%s\n' "$GAVEL_SHA" > packages/web/dist/quality/sha.txt
+          grep -q "$GAVEL_SHA" packages/web/dist/quality/index.html
       - name: Check the build
         run: |
+          test -f packages/web/dist/quality/index.html
+          test -f packages/web/dist/quality/summary.json
           test -f packages/web/dist/index.html
           test -f packages/web/dist/_headers
           test -f packages/web/dist/robots.txt

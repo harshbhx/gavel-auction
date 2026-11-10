@@ -5,7 +5,7 @@
 const TARGETS = {
   engine: {
     mutate: ['packages/engine/src/**/*.ts', '!packages/engine/src/**/index.ts'],
-    configFile: 'packages/engine/vitest.config.ts',
+    configFile: 'packages/engine/vitest.mutation.config.ts',
     dir: 'packages/engine',
   },
   saga: {
@@ -42,5 +42,8 @@ export default {
   tempDirName: '.stryker-tmp',
   cleanTempDir: true,
   timeoutMS: 30000,
+  // The engine suite includes property runs; the first run under instrumentation took longer than
+  // the five minute default on a CI runner (run 42764815655).
+  dryRunTimeoutMinutes: 45,
   concurrency: 2,
 };

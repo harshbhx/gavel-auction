@@ -124,6 +124,18 @@ describe('unknown pages', () => {
     expect((await run(path)).status).toBe(200);
   });
 
+  // Issue 310: the quality report is a real page built into dist/quality, not an app route.
+  it.each(['/quality', '/quality/', '/quality/index.html'])(
+    'serves the quality report at %s with status 200',
+    async (path) => {
+      expect((await run(path)).status).toBe(200);
+    },
+  );
+
+  it('still answers 404 for other unknown pages under /quality', async () => {
+    expect((await run('/quality/nope')).status).toBe(404);
+  });
+
   it('passes real static files through', async () => {
     const res = await run('/favicon.svg', false);
     expect(res.status).toBe(200);
