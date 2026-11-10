@@ -52,6 +52,7 @@ export { FailoverStt, realClock } from './stt/failover.js';
 export type { FailoverClock, FailoverOptions } from './stt/failover.js';
 export { ReplayStt, parseTimeline } from './stt/replay.js';
 export type { ReplayScheduler, Timeline } from './stt/replay.js';
+export { DEMO_TIMELINE } from './replay/demo-timeline.js';
 export { buildAudit } from './decide/audit.js';
 export { decide, CONFIRM_TTL_MS } from './decide/decide.js';
 export type { DecideSegment } from './decide/decide.js';
