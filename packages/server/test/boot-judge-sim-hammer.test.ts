@@ -259,6 +259,10 @@ describe('SRV-39: hammer of a judge room with simulated holds', () => {
       tokens.push(token);
     }
     const watcher = await open(port, tokens[0] ?? '', auctionId);
+    // open() resolves when the socket opens, before the server has processed the join. An unsold
+    // hammer settles in milliseconds, so hammering now could settle before the watcher is in the
+    // room and its settlement_update would never arrive. Wait for the join to be answered.
+    await until(() => watcher.frames.find((f) => f.t === 'state'), 5000, 'state');
     const hammer = await post(
       `/api/auctions/${auctionId}/control`,
       { controlId: 'hammer-2', action: 'hammer', args: { closeNow: 1 } },
@@ -272,7 +276,7 @@ describe('SRV-39: hammer of a judge room with simulated holds', () => {
             f.t === 'settlement_update' &&
             (f.auctionState === 'SETTLED' || f.auctionState === 'FAILED_NEEDS_REVIEW'),
         ),
-      60_000,
+      15_000,
       'terminal settlement',
     );
     // A retry armed by the first run fires after 15 s: wait it out, then probe again.
