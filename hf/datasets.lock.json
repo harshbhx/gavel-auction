@@ -9,7 +9,7 @@
     "gavel-gates": {
       "rows": {
         "gates.jsonl": 6,
-        "evidence_files.jsonl": 61,
+        "evidence_files.jsonl": 64,
         "nightly_results.jsonl": 20
       }
     }
@@ -162,6 +162,18 @@
     {
       "path": "docs/evidence/nightly/NIGHTLY-42317068784.json",
       "sha256": "d3f4add63b30e08066daa83c0a7d289fae880472e94d98582065d859a7a05652"
+    },
+    {
+      "path": "docs/evidence/perf/PAGESPEED.md",
+      "sha256": "db3901e3c9ae2d3ca5b8f5c01f5bb536b3bf0afc81f8606adf7ecdc37a5d3c12"
+    },
+    {
+      "path": "docs/evidence/perf/pagespeed-desktop-2026-11-10.jpg",
+      "sha256": "d3604379120f0b01b6d42f3dfa46b4bfae6c28f4716376479ad824eb5e59d356"
+    },
+    {
+      "path": "docs/evidence/perf/pagespeed-mobile-2026-11-10.jpg",
+      "sha256": "e2f6fd81e64ed163f18e391cd725305c76710301fe87fa423be617a76aab4659"
     },
     {
       "path": "docs/evidence/security/SEC-14-source-probe.md",
