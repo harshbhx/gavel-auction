@@ -45,13 +45,17 @@ const STEPS = [
 function Guide() {
   return (
     <section className="gv-audit-guide" aria-labelledby="gv-audit-guide-title">
-      <h2 id="gv-audit-guide-title">{t('audit.intro.title')}</h2>
-      <p>{t('audit.intro.body')}</p>
-      <ol>
-        {STEPS.map((k) => (
-          <li key={k}>{t(k)}</li>
-        ))}
-      </ol>
+      <details>
+        <summary>
+          <h2 id="gv-audit-guide-title">{t('audit.intro.title')}</h2>
+        </summary>
+        <p>{t('audit.intro.body')}</p>
+        <ol>
+          {STEPS.map((k) => (
+            <li key={k}>{t(k)}</li>
+          ))}
+        </ol>
+      </details>
     </section>
   );
 }

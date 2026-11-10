@@ -31,29 +31,29 @@ export function OpsView({ summary, labels, error }: OpsViewProps) {
   if (summary === undefined) return <p>{labels.loading}</p>;
   return (
     <div className="gv-ops">
-      <section aria-label={labels.sagas}>
+      <section className="gv-ops__card" aria-label={labels.sagas}>
         <h2>{labels.sagas}</h2>
         {summary.sagas.length === 0 ? (
           <p>{labels.noSagas}</p>
         ) : (
-          <ul>
+          <ul className="gv-ops__list">
             {summary.sagas.map((s) => (
               <li key={`${s.auctionId}:${s.lotId}`}>{`${s.auctionId} ${s.lotId} ${s.state}`}</li>
             ))}
           </ul>
         )}
       </section>
-      <section aria-label={labels.paypal}>
+      <section className="gv-ops__card" aria-label={labels.paypal}>
         <h2>{labels.paypal}</h2>
-        <ul>
+        <ul className="gv-ops__list gv-ops__chips">
           {Object.entries(summary.paypal).map(([k, v]) => (
             <li key={k}>{`${k}: ${String(v)}`}</li>
           ))}
         </ul>
       </section>
-      <section aria-label={labels.logs}>
+      <section className="gv-ops__card" aria-label={labels.logs}>
         <h2>{labels.logs}</h2>
-        <pre>{summary.logs.join('\n')}</pre>
+        <pre className="gv-ops__log">{summary.logs.join('\n')}</pre>
       </section>
     </div>
   );

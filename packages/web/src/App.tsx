@@ -1068,10 +1068,11 @@ function OpsRoute({ api }: { api: Api | undefined }) {
         }}
       >
         <OperatorKeyField value={key} onChange={setKey} />
-        <button type="submit" className="gv-ops__load">
+        <Button type="submit">
           {t('ops.load')}
-        </button>
+        </Button>
       </form>
+      <p className="gv-ops__help">{t('ops.keyHelp')}</p>
       {(summary !== undefined || error !== undefined) && (
         <OpsView labels={labels} summary={summary} error={error} />
       )}
@@ -1373,7 +1374,12 @@ function Routed({
   ) {
     return (
       <RoomGate apiBase={api.apiBase} roomId={roomId} onNavigate={navigate}>
-        <WatcherGate roomId={roomId} onNavigate={navigate} apiBase={api.apiBase} />
+        <WatcherGate
+          roomId={roomId}
+          onNavigate={navigate}
+          apiBase={api.apiBase}
+          receipt={id === 'receipt'}
+        />
       </RoomGate>
     );
   }

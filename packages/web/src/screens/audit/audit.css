@@ -65,9 +65,21 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+.gv-audit__top {
+  align-items: stretch;
+}
+
+.gv-audit-summary {
+  height: 100%;
+}
+
+/* Six tiles fill a 1, 2 or 3 column grid with no empty cell. */
 .gv-audit-summary dl {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-rows: 1fr;
+  height: 100%;
+  box-sizing: border-box;
   margin: 0;
   border: var(--border-width-strong) solid var(--color-border);
   border-radius: var(--radius-md);
@@ -512,6 +524,28 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+
+@media (min-width: 520px) {
+  .gv-audit-summary dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) {
+  .gv-audit-summary dl {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.gv-audit-guide summary {
+  cursor: pointer;
+}
+
+.gv-audit-guide summary > h2 {
+  display: inline;
+  margin: 0;
+  font-size: var(--font-size-3);
 }
 
 @media (min-width: 700px) {
