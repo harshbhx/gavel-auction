@@ -145,33 +145,39 @@ export function LiveConsole({
   };
 
   const controls = (
+    <Controls
+      port={port}
+      lotId={roomId}
+      status={status}
+      online={online}
+      stopped={stopped}
+      leader={leader}
+      priceCents={priceCents}
+      seq={seq}
+    />
+  );
+  const floor = (
+    <ManualEntry
+      roster={rows}
+      rejection={rejection === '' ? null : rejection}
+      offline={!online}
+      status={manualBid === '' ? null : manualBid}
+      onSubmit={sendManual}
+      onRetry={retryManual}
+    />
+  );
+  const bidders = (
+    <Roster
+      roster={rows}
+      connected={rows.length}
+      leaderId={leaderId}
+      highBids={highBids}
+      ceilings={ceilings}
+      closed={status === 'CLOSING' || status === 'SETTLING' || status === 'DONE'}
+    />
+  );
+  const danger = (
     <>
-      <Controls
-        port={port}
-        lotId={roomId}
-        status={status}
-        online={online}
-        stopped={stopped}
-        leader={leader}
-        priceCents={priceCents}
-        seq={seq}
-      />
-      <ManualEntry
-        roster={rows}
-        rejection={rejection === '' ? null : rejection}
-        offline={!online}
-        status={manualBid === '' ? null : manualBid}
-        onSubmit={sendManual}
-        onRetry={retryManual}
-      />
-      <Roster
-        roster={rows}
-        connected={rows.length}
-        leaderId={leaderId}
-        highBids={highBids}
-        ceilings={ceilings}
-        closed={status === 'CLOSING' || status === 'SETTLING' || status === 'DONE'}
-      />
       <KillSwitch stopped={stopped} onKill={kill} />
       {killFailed !== '' && <p role="alert">{killFailed}</p>}
     </>
@@ -188,6 +194,9 @@ export function LiveConsole({
       <ConsoleScreen
         settlementView={settlementView}
         controls={controls}
+        floor={floor}
+        bidders={bidders}
+        danger={danger}
         voiceFeed={
           <ChunkBoundary fallback={<p role="status">{t('console.mic.reason.checking')}</p>}>
             <VoiceControl

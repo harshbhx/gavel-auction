@@ -103,6 +103,26 @@
   border-width: 2px;
 }
 
+.gv-field__control {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.gv-field__adornment {
+  position: absolute;
+  inset-inline-start: var(--space-3);
+  color: var(--color-fg-muted);
+  font-size: var(--font-size-3);
+  pointer-events: none;
+}
+
+.gv-field__control > .gv-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-inline-start: calc(var(--space-3) + 1.25ch + var(--space-1));
+}
+
 .gv-chip {
   display: inline-flex;
   align-items: center;
