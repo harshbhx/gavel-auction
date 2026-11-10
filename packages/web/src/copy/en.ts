@@ -569,9 +569,9 @@ export const en = {
   'reg.continueReason': 'Enter a name to continue.',
   'reg.step3': 'Approve your hold',
   'reg.heldTitle': 'Hold in place',
-  'reg.heldReassure': 'Held, not charged. You pay only if you win.',
+  'reg.heldReassure': 'Held, not charged. A charge happens only if you win.',
   'reg.checking': 'Checking the room...',
-  'reg.chooseFirst': 'Choose a limit first, then press and hold to approve.',
+  'reg.chooseFirst': 'Choose a limit, then press and hold to approve.',
   'reg.heldExplainRange':
     'PayPal holds up to the limit you choose, from {min} to {max}, while the auction runs. You are charged only if you win, and only the winning price.',
   'reg.name': 'Display name',
