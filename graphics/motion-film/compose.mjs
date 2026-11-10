@@ -613,7 +613,7 @@ card('proof', 12, [
     0,
     docsAt,
   );
-  const wd = window('docs', { fill: dur - docsAt });
+  const wd = window('docs', { from: 1.2, fill: dur - docsAt }); // skip the page load
   const docsA = meta.actors.docs;
   const dw = panel.w;
   const dh = docsA ? Math.round(docsA.h * (dw / docsA.w)) : 464;

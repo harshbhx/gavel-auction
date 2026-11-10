@@ -576,8 +576,8 @@ function Tile({
             transform: `translateY(${(-sweep * 100).toFixed(1)}px)`,
           }}
         >
-          <div>{state[0]}</div>
-          <div>{state[1]}</div>
+          <div style={{ height: 100, overflow: 'hidden' }}>{state[0]}</div>
+          <div style={{ height: 100, overflow: 'hidden' }}>{state[1]}</div>
         </div>
       </div>
       <Mono
