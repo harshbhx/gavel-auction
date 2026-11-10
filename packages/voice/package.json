@@ -15,7 +15,7 @@
     "check:heldout": "node --experimental-strip-types scripts/check-heldout.ts"
   },
   "dependencies": {
-    "zod": "3.25.76"
+    "zod": "4.6.6"
   },
   "devDependencies": {
     "@size-limit/preset-small-lib": "11.2.0",
