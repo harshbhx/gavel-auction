@@ -1,6 +1,6 @@
-/* Judge panel at /try: the Ledger front page with the auction stage as its Fig. 1.
- * Newsprint tokens only. Mobile first: one column; the trust column joins at 1040 px; the stage
- * floor and the headline re-balance at 1440 px so a wide screen is filled, not left half empty. */
+/* Judge panel at /try: a compact masthead, one headline, three numbered cards (start, join, judge
+ * tools) beside the simulated run, and an evidence band. Newsprint tokens only. Mobile first: one
+ * column in reading order; two balanced columns from 1040 px. */
 
 .gv-judge {
   --judge-muted: color-mix(in srgb, var(--color-on-sheet) 82%, var(--color-sheet));
@@ -115,19 +115,24 @@
 
 .gv-judge__mast {
   display: grid;
-  gap: var(--space-2);
-  padding-block: var(--space-5) var(--space-3);
+  gap: var(--space-2) var(--space-6);
+  padding-block: var(--space-5) var(--space-4);
   border-bottom: 3px double var(--color-fg);
-  text-align: center;
 }
 
 .gv-judge__brand {
   font-family: var(--font-display);
-  font-size: clamp(52px, 13vw, 168px);
+  font-size: clamp(40px, 7vw, 84px);
   font-weight: 900;
-  line-height: 0.86;
+  line-height: 0.88;
   letter-spacing: 0.01em;
   text-transform: uppercase;
+}
+
+.gv-judge__mastside {
+  display: grid;
+  gap: var(--space-2);
+  align-content: end;
 }
 
 .gv-judge__tagline {
@@ -139,14 +144,16 @@
 .gv-judge__meta {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
-  gap: var(--space-1) var(--space-4);
-  padding-top: var(--space-2);
-  border-top: 1px solid var(--color-fg);
+  gap: var(--space-1) var(--space-3);
   color: var(--color-fg-muted);
 }
 
-/* Grid: main column and trust column */
+.gv-judge__meta span + span::before {
+  content: '\00b7';
+  margin-inline-end: var(--space-3);
+}
+
+/* Grid: the left column holds the moves, the right column the simulated run */
 
 .gv-judge__grid {
   display: grid;
@@ -155,9 +162,10 @@
   margin-top: var(--space-5);
 }
 
-.gv-judge__maincol {
+.gv-judge__left,
+.gv-judge__right {
   display: grid;
-  gap: var(--space-6);
+  gap: var(--space-5);
   min-width: 0;
   align-content: start;
 }
@@ -181,9 +189,9 @@
 
 .gv-judge h1 {
   font-family: var(--font-display);
-  font-size: clamp(44px, 9vw, 132px);
+  font-size: clamp(40px, 5.6vw, 84px);
   font-weight: 900;
-  line-height: 0.9;
+  line-height: 0.92;
   text-transform: uppercase;
   text-wrap: balance;
 }
@@ -196,16 +204,10 @@
   -webkit-box-decoration-break: clone;
 }
 
-.gv-judge__dek {
-  display: grid;
-  gap: var(--space-2);
-  align-content: end;
-}
-
 .gv-judge__deck {
-  max-width: 48ch;
-  font-size: clamp(18px, 2.2vw, 22px);
-  line-height: 1.35;
+  max-width: 52ch;
+  font-size: clamp(17px, 1.7vw, 20px);
+  line-height: 1.4;
 }
 
 .gv-judge__by {
@@ -795,48 +797,121 @@
   }
 }
 
-/* Three moves */
+/* Three moves: one card system, numbered 1 to 3 */
 
 .gv-judge__acts {
-  container-type: inline-size;
-}
-
-.gv-judge__cols {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
 }
 
 .gv-judge__col {
   display: grid;
   min-width: 0;
-  gap: var(--space-2);
+  gap: var(--space-3);
   align-content: start;
-  padding-block: var(--space-4);
-  border-bottom: 1px solid var(--color-rule);
+  padding: var(--space-4) var(--space-5) var(--space-4);
+  border: 2px solid var(--color-fg);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
 }
 
-.gv-judge__col > p {
-  max-width: 40ch;
+.gv-judge__col--start {
+  border-width: 3px;
+  box-shadow: 6px 6px 0 var(--color-shadow);
+}
+
+.gv-judge__colhead {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
 }
 
 .gv-judge__num {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-pill);
+  background: var(--color-action);
+  color: var(--color-on-action);
   font-family: var(--font-display);
-  font-size: 64px;
+  font-size: 24px;
   font-weight: 900;
-  line-height: 0.8;
-  color: var(--color-accent);
+  line-height: 1;
 }
 
 .gv-judge__col h3 {
   font-family: var(--font-display);
-  font-size: 30px;
+  font-size: 28px;
   font-weight: 800;
   line-height: 1;
   text-transform: uppercase;
 }
 
 .gv-judge__tag {
+  margin-top: 2px;
   color: var(--color-fg-muted);
+  font-size: 11px;
+}
+
+.gv-judge__lead {
+  max-width: 52ch;
+}
+
+.gv-judge__more {
+  border-top: 1px solid var(--color-rule);
+}
+
+.gv-judge__more summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  color: var(--color-fg-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-1);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  list-style: none;
+}
+
+.gv-judge__more summary::-webkit-details-marker {
+  display: none;
+}
+
+.gv-judge__more summary::before {
+  content: '+';
+  width: 1em;
+  text-align: center;
+}
+
+.gv-judge__more[open] summary::before {
+  content: '\2212';
+}
+
+.gv-judge__more summary:focus-visible {
+  outline: var(--border-width-strong) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.gv-judge__morebody {
+  display: grid;
+  gap: var(--space-3);
+  padding-bottom: var(--space-2);
+}
+
+.gv-judge__joinrow {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.gv-judge__joinrow .gv-judge__room {
+  margin-top: 0;
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--color-border);
 }
 
 .gv-judge__stack,
@@ -849,12 +924,11 @@
 }
 
 .gv-judge__stack {
-  flex-direction: column;
   align-items: stretch;
 }
 
-.gv-judge__stack .gv-btn {
-  width: 100%;
+.gv-judge__stack > * {
+  flex: 1 1 200px;
 }
 
 .gv-judge__row > * {
@@ -933,9 +1007,17 @@
 
 .gv-judge__side {
   display: grid;
-  gap: var(--space-6);
+  gap: var(--space-4);
   align-content: start;
   min-width: 0;
+  margin-top: var(--space-6);
+}
+
+@media (min-width: 760px) {
+  .gv-judge__side .gv-judge__proof {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--space-6);
+  }
 }
 
 .gv-judge__proof {
@@ -1019,8 +1101,8 @@
 }
 
 .gv-judge__qr {
-  width: 132px;
-  height: 132px;
+  width: 120px;
+  height: 120px;
   padding: 6px;
   border: var(--border-width-strong) solid var(--color-fg);
   background: var(--color-surface);
@@ -1136,7 +1218,7 @@ html:has(.gv-judge) {
   z-index: 40;
   display: flex;
   gap: var(--space-2);
-  width: min(calc(100% - 24px), 780px);
+  width: min(calc(100% - 24px), 640px);
   padding: var(--space-2);
   border: var(--border-width-strong) solid var(--color-on-sheet);
   border-radius: var(--radius-lg);
@@ -1170,12 +1252,11 @@ html:has(.gv-judge) {
 }
 
 .gv-judge__bar .gv-judge__go {
-  flex: 2.2;
-  border-color: var(--color-action);
-  background: var(--color-action);
-  box-shadow: 3px 3px 0 var(--color-on-sheet);
-  color: var(--color-on-action);
-  font-size: 15px;
+  flex: 1.6;
+  border-color: var(--color-on-sheet);
+  background: var(--color-on-sheet);
+  color: var(--color-sheet);
+  font-size: 14px;
 }
 
 .gv-judge__bar .gv-btn:focus-visible {
@@ -1326,42 +1407,20 @@ html:has(.gv-judge) {
 
 /* Layout steps */
 
-@container (min-width: 840px) {
-  .gv-judge__cols {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) minmax(0, 1fr);
-  }
-
-  .gv-judge__col {
-    border-bottom: 0;
-  }
-
-  .gv-judge__col + .gv-judge__col {
-    padding-left: var(--space-5);
-    border-left: 1px solid var(--color-fg);
-  }
-
-  .gv-judge__col:not(:last-child) {
-    padding-right: var(--space-5);
-  }
-}
-
 @media (min-width: 1040px) {
   .gv-judge__page {
+    max-width: 1600px;
     padding-inline: var(--space-6);
   }
 
+  .gv-judge__mast {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 28ch);
+    align-items: end;
+  }
+
   .gv-judge__grid {
-    grid-template-columns: minmax(0, 1fr) 380px;
-    gap: 0;
-  }
-
-  .gv-judge__maincol {
-    padding-right: var(--space-6);
-    border-right: 1px solid var(--color-fg);
-  }
-
-  .gv-judge__side {
-    padding-left: var(--space-5);
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    align-items: start;
   }
 }
 
@@ -1370,35 +1429,19 @@ html:has(.gv-judge) {
     padding-inline: var(--space-7);
   }
 
-  .gv-judge__grid {
-    grid-template-columns: minmax(0, 1fr) 460px;
-  }
-
-  .gv-judge__maincol {
-    padding-right: var(--space-7);
-  }
-
-  .gv-judge__side {
-    padding-left: var(--space-6);
-  }
-
-  .gv-judge__headline {
-    grid-template-columns: minmax(0, 1.9fr) minmax(0, 1fr);
-    column-gap: var(--space-6);
-    align-items: end;
-  }
-
-  .gv-judge__kicker {
-    grid-column: 1 / -1;
-  }
-
   .gv-judge__qr {
-    width: 156px;
-    height: 156px;
+    width: 136px;
+    height: 136px;
+  }
+}
+
+@media (max-width: 560px) {
+  .gv-judge__col {
+    padding: var(--space-3) var(--space-4);
   }
 
-  .gv-judge__col h3 {
-    font-size: 36px;
+  .gv-judge__col--start {
+    box-shadow: 4px 4px 0 var(--color-shadow);
   }
 }
 
