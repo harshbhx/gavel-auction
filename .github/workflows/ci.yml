@@ -133,6 +133,8 @@ jobs:
       - uses: ./.github/actions/setup
       - name: Fail on tracked node_modules paths
         run: node scripts/check-no-tracked-node-modules.mjs
+      - name: Fail on new duplicate binaries
+        run: node scripts/check-duplicate-binaries.mjs
       - name: Fail on live host references
         run: npm run check:live-host
       # Runs gitleaks directly (pinned version, sha256-verified, retried download, container
