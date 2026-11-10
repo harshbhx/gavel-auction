@@ -9,6 +9,7 @@ import {
   type VoiceState,
 } from '../../audio/voiceController';
 import { t } from '../../copy/t';
+import { ActionGroup } from '../../design/primitives/ActionGroup';
 import { Button } from '../../design/primitives/Button';
 import { useVoiceCapability, type VoiceCapability } from '../../net/voiceCapability';
 import { VoiceFeed, type MicState, type VoiceFeedEntry } from './VoiceFeed';
@@ -172,7 +173,7 @@ export function VoiceControl({
           {t('console.mic.modeHold')}
         </label>
       </fieldset>
-      <div className="gv-voice-control__buttons">
+      <ActionGroup className="gv-voice-control__buttons">
         <Button
           variant="outline"
           disabled={disabled}
@@ -197,7 +198,7 @@ export function VoiceControl({
             {t('console.mic.stop')}
           </Button>
         )}
-      </div>
+      </ActionGroup>
       {replayOffered && (
         <div className="gv-voice-control__replay">
           <Button variant="outline" aria-pressed={state.replay} onClick={replayToggle}>

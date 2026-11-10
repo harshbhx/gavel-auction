@@ -8,24 +8,56 @@
   color: var(--color-fg);
 }
 
-.gv-console-columns {
+/* One balanced grid from 1000 px: three rows, two equal columns, every cell fills its row.
+ * Row 1 lot | floor bid + stream, row 2 voice | bidders, row 3 the stop card across both. */
+.gv-console-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas:
+    'lot floor'
+    'voice bidders'
+    'danger danger';
   gap: var(--space-5);
   align-items: stretch;
 }
 
-/* One column of panels. The panels share one gap so the two columns line up. */
+.gv-console-grid > * {
+  min-width: 0;
+}
+
+.gv-console-panel--lot {
+  grid-area: lot;
+}
+
+.gv-console-stack {
+  grid-area: floor;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.gv-console-stack > .gv-console-panel--stream {
+  flex: 1 1 auto;
+}
+
+.gv-console-panel--voice {
+  grid-area: voice;
+}
+
+.gv-console-panel--bidders {
+  grid-area: bidders;
+}
+
+.gv-console-panel--danger {
+  grid-area: danger;
+}
+
+/* One column of panels (below 1000 px). */
 .gv-console-col {
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
   min-width: 0;
-}
-
-/* The two columns end together: the last panel of each takes the spare height. */
-.gv-console-columns > .gv-console-col > :last-child {
-  flex-grow: 1;
 }
 
 .gv-console-header:empty {
@@ -42,6 +74,24 @@
 
 .gv-console-panel > h2 {
   margin: 0 0 var(--space-3);
+}
+
+/* Every panel is a column so the last block can take the height its row gives it. */
+.gv-console-panel {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-md);
+}
+
+.gv-console-panel > :last-child {
+  flex-grow: 1;
+}
+
+/* A second heading inside one panel (the confirm queue under the voice feed). */
+.gv-console-panel > .gv-console-panel__sub {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-rule, var(--color-border));
 }
 
 .gv-console-panel ul,
@@ -94,6 +144,7 @@
 
 .gv-console-controls {
   display: grid;
+  align-content: start;
   gap: var(--space-3);
   padding-top: var(--space-4);
 }
@@ -180,20 +231,50 @@
   color: var(--color-fg);
 }
 
-/* Danger zone: a calm bordered section at the bottom of the lot column. */
+/* Danger zone: a panel like the others, with the danger colour on its edge. */
 .gv-console-danger {
-  display: grid;
   gap: var(--space-3);
+}
+
+.gv-console-panel--danger {
+  border-color: var(--color-danger);
 }
 
 .gv-console-kill {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  padding: var(--space-4);
-  border: var(--border-width, 2px) solid var(--color-danger);
-  background: var(--color-surface);
   color: var(--color-fg);
+}
+
+.gv-console-kill > .gv-btn {
+  min-height: 48px;
+  width: 100%;
+}
+
+/* Wide: the hold button on the left, the dialog fallback on the right, one row. */
+[data-layout='wide'] .gv-console-kill {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: 1fr auto;
+  gap: var(--space-3) var(--space-5);
+}
+
+[data-layout='wide'] .gv-console-kill > .ui-hold {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  justify-content: center;
+}
+
+[data-layout='wide'] .gv-console-kill > .gv-console-hammer__alt {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: end;
+}
+
+[data-layout='wide'] .gv-console-kill > .gv-btn {
+  grid-column: 2;
+  grid-row: 2;
 }
 
 /* The hold button already says how it works; its spoken note stays for screen readers only. */
@@ -421,10 +502,8 @@
     padding-inline: var(--space-7);
   }
 
-  .gv-console-columns {
-    gap: var(--space-6);
-  }
-
+  .gv-console-grid,
+  .gv-console-stack,
   .gv-console-col {
     gap: var(--space-6);
   }
@@ -537,10 +616,13 @@
   color: var(--color-fg-muted);
 }
 
-.gv-voice-control__buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
+/* The shared ActionGroup lays the buttons out; a lone button spans the row. */
+.gv-voice-control__buttons > :only-child {
+  grid-column: 1 / -1;
+}
+
+.gv-voice-control {
+  flex: 1 1 auto;
 }
 
 .gv-voice-control__hint,
