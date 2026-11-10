@@ -34,10 +34,16 @@ import { StateBanner, bidsLocked, bidsNotice } from './StateBanner';
 import { myStatus, StatusChip, type ChipStatus } from './StatusChip';
 import { useBidAnnounce } from './useBidAnnounce';
 import { useOutbid } from './useOutbid';
+import { markWinnerSeen, winnerSeen, winnerSeenKey } from './winnerSeen';
 
 // Loaded on first use: a confirm question is rare, and this keeps the first route small.
 const ConfirmSheet = lazy(() =>
   import('./ConfirmSheet').then((m) => ({ default: m.ConfirmSheet })),
+);
+
+// Loaded when this bidder wins: most visits never see it.
+const WinnerDialog = lazy(() =>
+  import('./WinnerDialog').then((m) => ({ default: m.WinnerDialog })),
 );
 
 export { REJECTION_CLEAR_MS };
@@ -79,6 +85,12 @@ export interface BidScreenProps {
   onConfirm?: (confirmId: string, accept: boolean) => void;
   /** The room was stopped by the operator. */
   stopped?: boolean;
+  /** Winner pop-up: "Go to home". The pop-up shows only when all three handlers are given. */
+  onHome?: () => void;
+  /** Winner pop-up: "Enter a join code" (the join entry with the code field focused). */
+  onJoinCode?: () => void;
+  /** Winner pop-up: "View receipt". */
+  onReceipt?: () => void;
   /** Sends a bidder with no registered hold back to registration. */
   onJoin?: () => void;
   /**
@@ -109,6 +121,9 @@ export function BidScreen({
   onConfirm,
   stopped = false,
   onJoin,
+  onHome,
+  onJoinCode,
+  onReceipt,
   raise,
 }: BidScreenProps) {
   const price = useRoom(selectPrice, store);
@@ -148,6 +163,25 @@ export function BidScreen({
   // A bid with no answer keeps new bids locked until it is answered or resent, so two amounts
   // can never both stand.
   const send = useSendGuard(onBid, pending || unsent);
+
+  // The winner pop-up: only this bidder's own win, once per lot (never watchers or losers).
+  const wonCents = price?.currentCents ?? 0;
+  const winKey = winnerSeenKey(roomId, wonCents);
+  const [winClosed, setWinClosed] = useState<string | null>(null);
+  const showWin =
+    base === 'won' &&
+    closedLot &&
+    wonCents > 0 &&
+    onHome !== undefined &&
+    onJoinCode !== undefined &&
+    onReceipt !== undefined &&
+    winClosed !== winKey &&
+    !winnerSeen(winKey);
+  const closeWin = (after?: () => void): void => {
+    markWinnerSeen(winKey);
+    setWinClosed(winKey);
+    after?.();
+  };
 
   const notice = bidsNotice(auctionStatus, stopped);
   // The result line ("You won at ...") already says the lot closed, so the bare notice stays quiet.
@@ -374,6 +408,19 @@ export function BidScreen({
           </li>
         ))}
       </ul>
+
+      {showWin && (
+        <Suspense fallback={null}>
+          <WinnerDialog
+            lotTitle={lotTitle}
+            amountCents={wonCents}
+            onHome={() => closeWin(onHome)}
+            onJoinCode={() => closeWin(onJoinCode)}
+            onReceipt={() => closeWin(onReceipt)}
+            onClose={() => closeWin()}
+          />
+        </Suspense>
+      )}
 
       {onConfirm !== undefined && myPaddle !== undefined && request !== null && (
         <Suspense fallback={null}>
