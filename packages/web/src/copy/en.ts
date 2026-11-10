@@ -923,13 +923,13 @@ export const en = {
   'instructor.console.3.text': 'Freezes the clock and holds new bids until you resume.',
   'instructor.console.4.name': 'Hammer',
   'instructor.console.4.text':
-    'Press and hold for 3 seconds to sell at the current price. Letting go early cancels it. The winning hold is captured only now; every other hold is released.',
+    'Press and hold for 3 seconds to sell at the current price. Letting go early cancels it. Only the winning hold is used, now; every other hold is released.',
   'instructor.console.5.name': 'Stop',
   'instructor.console.5.text':
     'Press and hold to end the auction with no winner. Every hold is released.',
   'instructor.bid.1.name': 'Quick bid',
   'instructor.bid.1.text':
-    'One tap bids the next price shown on the button. It places a hold on your PayPal sandbox account, not a charge.',
+    'One tap bids the next price shown on the button. It places a hold on your PayPal sandbox account. Held, not charged.',
   'instructor.bid.2.name': 'Plus and minus',
   'instructor.bid.2.text':
     'Raise or lower the amount by a set step before you bid. It never goes above your limit.',
@@ -938,7 +938,7 @@ export const en = {
     'Type any amount in dollars, at least the minimum, then press Place bid.',
   'instructor.bid.4.name': 'Confirm',
   'instructor.bid.4.text':
-    'Approving the hold with PayPal sets your limit. The money is captured only if you win, at the hammer.',
+    'Approving the hold with PayPal sets your limit. Money moves only if you win, at the hammer.',
   'instructor.bid.5.name': 'Raise my limit',
   'instructor.bid.5.text':
     'If you are outbid or near your limit, approve a higher hold. The old one stays until the new one is in place.',
@@ -986,7 +986,7 @@ export const en = {
     'Type your own limit in whole dollars instead of using the slider or a preset.',
   'instructor.register.3.name': 'Approve hold with PayPal',
   'instructor.register.3.text':
-    'Press and hold to approve. PayPal sets a hold for your limit, which is held, not charged. Money is captured only if you win, at the hammer.',
+    'Press and hold to approve. PayPal sets a hold for your limit, which is held, not charged. Money moves only if you win, at the hammer.',
   'kill.failed': 'The stop request was not accepted. The auction is still running.',
   'kill.holdHint': 'Press and hold the button, or press Enter on it, to stop the auction.',
   'common.cancel': 'Cancel',
