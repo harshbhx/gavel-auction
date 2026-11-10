@@ -29,7 +29,7 @@ Which graphic is animated, which is static and why: see [`CURATION.md`](CURATION
 | README "see it run" screenshots (six static PNGs; recordings archived)                         | `docs/assets/readme/see-it-run-*`                      | Root `README.md`                                            |
 | AG Grid screenshots                                                                            | `docs/assets/ag-grid`                                  | Docs and the AG Grid sponsor write-up                       |
 | Devpost gallery (hero GIF plus 7 PNGs) and thumbnail                                           | `brand/devpost/gallery`, `brand/devpost/thumbnail.png` | Devpost gallery                                             |
-| Devpost description images (5 animated, 10 static, numbered) and the credits outro            | `brand/devpost/description`, `brand/devpost/outro`                            | Devpost description                                         |
+| Devpost description images (5 animated, 10 static, numbered) and the credits outro             | `brand/devpost/description`, `brand/devpost/outro`     | Devpost description                                         |
 | Social images (X, LinkedIn, GitHub preview, YouTube end card, thumbnails, lower thirds, chips) | `docs/assets/social`                                   | Share posts, repo social preview, demo video                |
 
 ## Index of every file in the kit
@@ -181,17 +181,16 @@ Used in: Devpost description (About the project).
 | `14-what-we-learned.png`     | 1000x560 | 38 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/14-what-we-learned.png     |
 | `15-what-is-next.png`        | 1000x560 | 43 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/15-what-is-next.png        |
 
-
 ### `devpost/outro/`
 
 The credits outro (Harsh Bhanushali and Dhairya Patel), last image of the Devpost description. Used in: Devpost description ("Try it"). The previous closing slide is in `archive/devpost-description/`.
 
-| File                         | Pixels   | Size   | URL |
-| ---------------------------- | -------- | ------ | --- |
-| `09-outro-credits.gif`       | 1200x800 | 797 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/outro/09-outro-credits.gif |
-| `09-outro-credits-poster.png`| 1200x800 | 64 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/outro/09-outro-credits-poster.png |
-| `09-outro-credits.mp4`       |          | 226 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/09-outro-credits.mp4 |
-| `09-outro-credits.webm`      |          | 183 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/09-outro-credits.webm |
+| File                          | Pixels   | Size   | URL                                                                                                                 |
+| ----------------------------- | -------- | ------ | ------------------------------------------------------------------------------------------------------------------- |
+| `09-outro-credits.gif`        | 1200x800 | 797 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/outro/09-outro-credits.gif              |
+| `09-outro-credits-poster.png` | 1200x800 | 64 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/outro/09-outro-credits-poster.png       |
+| `09-outro-credits.mp4`        |          | 226 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/09-outro-credits.mp4  |
+| `09-outro-credits.webm`       |          | 183 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/09-outro-credits.webm |
 
 ### `devpost/`
 

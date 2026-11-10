@@ -81,15 +81,15 @@ The credits outro GIF (`brand/devpost/outro/09-outro-credits.gif`, 1200x800, 0.8
 
 `brand/` is the single source: every file below is under `brand/devpost/`, raw URLs are in `DESCRIPTION.md`. Full used and unused list: [`INDEX.md`](INDEX.md).
 
-| Place on the page                    | GIF                                            | Role                                   |
-| ------------------------------------ | ---------------------------------------------- | -------------------------------------- |
-| Gallery slot 1                       | `gallery/01-hero.gif`                          | Intro (the only gallery GIF)           |
-| Description, first line              | `description/01-banner.gif`                    | Intro banner                           |
-| What it does                         | `description/04-how-it-works.gif`              | Hold, bid, hammer, receipt             |
-| How we built it                      | `description/05-architecture.gif`              | Architecture: one bid, four hops       |
-| Ledger verify (judge flow)           | `description/07-audit-and-verify.gif`          | Do not trust, verify                   |
-| Accomplishments                      | `description/13-results.gif`                   | Kill survived, voice 24 of 24, chain   |
-| Try it (last image)                  | `outro/09-outro-credits.gif`                   | Outro with credits                     |
+| Place on the page          | GIF                                   | Role                                 |
+| -------------------------- | ------------------------------------- | ------------------------------------ |
+| Gallery slot 1             | `gallery/01-hero.gif`                 | Intro (the only gallery GIF)         |
+| Description, first line    | `description/01-banner.gif`           | Intro banner                         |
+| What it does               | `description/04-how-it-works.gif`     | Hold, bid, hammer, receipt           |
+| How we built it            | `description/05-architecture.gif`     | Architecture: one bid, four hops     |
+| Ledger verify (judge flow) | `description/07-audit-and-verify.gif` | Do not trust, verify                 |
+| Accomplishments            | `description/13-results.gif`          | Kill survived, voice 24 of 24, chain |
+| Try it (last image)        | `outro/09-outro-credits.gif`          | Outro with credits                   |
 
 Compulsory three: intro (`01-banner`, `01-hero`), architecture (`05-architecture`), outro (`09-outro-credits`). Everything else in the description and gallery is a static PNG.
 
