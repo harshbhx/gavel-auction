@@ -338,6 +338,8 @@ export const en = {
   'try.bar.screen': 'Screen',
   'try.bar.screenSub': 'projector',
   'try.acts.title': 'Your three moves',
+  'try.help.opts': 'More options',
+  'try.help.more': 'More detail',
   'try.a1.title': 'Try it',
   'try.a1.tag': 'No sign-up',
   'try.a1.body': 'Open the scripted demo with no login, or start a live sandbox room of your own.',
