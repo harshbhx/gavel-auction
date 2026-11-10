@@ -147,7 +147,7 @@ export function JoinScreen({
     <main className="gv-flow" data-state="open">
       <p className="ui-kicker">{t('app.name')}</p>
       <h1 tabIndex={-1}>{t('join.title', { room: roomName })}</h1>
-      <Steps current={1} />
+      <Steps current={2} />
       <div className="gv-flow__qr">
         <ChunkBoundary>
           <QrCode url={url} size={192} />

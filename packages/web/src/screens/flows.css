@@ -63,6 +63,22 @@ main[data-route='return'] {
   color: var(--color-fg);
 }
 
+/* Phones: the QR helps the big screen, not a phone that already scanned it (#2519). */
+@media (max-width: 839px) {
+  main[data-state='open'] > .gv-flow__qr,
+  main[data-state='open'] > .gv-flow__code {
+    display: none;
+  }
+}
+
+/* Keep the join actions clear of the floating help button on phones (#2518). */
+@media (max-width: 839px) {
+  main[data-state='open'] .gv-join__ways,
+  main[data-state='open'] > .gv-action-group {
+    padding-bottom: calc(48px + var(--space-4));
+  }
+}
+
 /* A link that is the next step: reads as a button */
 
 .gv-flow__action {
