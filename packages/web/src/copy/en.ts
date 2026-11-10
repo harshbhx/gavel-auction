@@ -569,7 +569,7 @@ export const en = {
   'reg.continueReason': 'Enter a name to continue.',
   'reg.step3': 'Approve your hold',
   'reg.heldTitle': 'Hold in place',
-  'reg.heldReassure': 'Held, not charged. A charge happens only if you win.',
+  'reg.heldReassure': 'Held, not charged. You are charged only if you win.',
   'reg.checking': 'Checking the room...',
   'reg.chooseFirst': 'Choose a limit, then press and hold to approve.',
   'reg.heldExplainRange':
