@@ -32,13 +32,18 @@ Built for the PayPal Hackathon 2026.
 
 **PageSpeed Insights, landing page `/`: 100 Performance, 100 Accessibility, 100 Best Practices and 100 SEO on both mobile and desktop** (Lighthouse 13.6.0, lab data, measured by hand on 10 Nov 2026; this URL only, not the whole app). Details and screenshots: [docs/evidence/perf](docs/evidence/perf/PAGESPEED.md).
 
-<p align="center">
-  <picture>
-    <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/readme/reel-poster.png">
-    <img src="docs/assets/readme/reel-poster.png" alt="GAVEL in 10 seconds, five quick scenes. One: the logo draws, the mallet strikes and the tagline appears. Two: a bid is a hold, a simulated bid ladder ticks from 10 to 15 to 20 dollars, held on PayPal, not charged. Three: the hammer falls, a simulated lot sold to paddle 2 for 20 dollars, winner captured and other holds released. Four: check it yourself, hash-chain links snap together and a receipt shows 19 ledger entries with 0 differences, measured in the server-kill run. Five: links to the web app, the docs and the source. PayPal sandbox only." width="100%">
-  </picture>
-  <br><sub><b>In 10 seconds.</b> The lot in scenes two and three is a simulated example. The live app is below under <a href="#see-it-run">See it run</a>.</sub>
-</p>
+Online auctions usually make a bidder pay first or trust the bidder to pay later. GAVEL uses a third way: a PayPal authorization hold. The bidder approves a ceiling, PayPal holds that amount without charging it, and when the hammer falls GAVEL captures only the winning price and releases every other hold. Nobody is charged for a lot they lost, and nobody can bid more than they have put on hold.
+
+## At a glance
+
+|                                   |                                                                                                                                                                                                                                                                                            |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Hold, not charge**              | Every bid is backed by a PayPal authorization hold. Only the winner pays, and only the hammer price.                                                                                                                                                                                       |
+| **Crash-safe settlement**         | A real server process killed mid-capture: one capture, two losers voided, 0 differences between the journal and PayPal ([evidence](docs/evidence/server-kill)).                                                                                                                            |
+| **Verifiable result**             | A hash-chained ledger and a public export: anyone can re-hash the chain and spot an edited entry.                                                                                                                                                                                          |
+| **Voice bidding, with a confirm** | Deepgram and Groq speech-to-text with failover; a spoken bid never counts until the bidder confirms it. 24 of 24 synthetic clips answered on the live socket.                                                                                                                              |
+| **Fast landing page**             | PageSpeed Insights on `/`: **100 Performance, 100 Accessibility, 100 Best Practices, 100 SEO** on mobile and desktop (Lighthouse 13.6.0, lab data, measured by hand on 10 Nov 2026; the landing page only, not the whole app). [Details and screenshots](docs/evidence/perf/PAGESPEED.md). |
+| **Open and documented**           | A docs site with a guided tour, an OpenAPI spec, five open datasets on Hugging Face and an honest [limits page](docs/LIMITATIONS.md).                                                                                                                                                      |
 
 <p align="center">
   <picture>
