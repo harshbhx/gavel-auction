@@ -623,9 +623,7 @@ main[data-route='token-gate'] .gv-flow__action,
   }
 }
 
-/* Not found: the help links stack on a phone and sit in a row where there is room. */
+/* Not found: one primary link, the rest are text links, all inside an ActionGroup (UIX-56). */
 .gv-notfound__links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
+  display: block;
 }

@@ -1,6 +1,5 @@
 /* Judge room hub and token help, Newsprint and Signal. Tokens only.
- * Phones stack in one column. From 1100 px wide and 640 px tall the hub is one screen with no
- * scrolling: preview on the left, join ticket in the middle, console and bidder on the right. */
+ * Phones stack in one column; from 1100 px wide it is two columns and the page scrolls. */
 
 .gv-hub {
   display: flex;
@@ -77,52 +76,50 @@
   order: 3;
 }
 
-@media (min-width: 1100px) and (min-height: 640px) {
-  .gv-hub {
-    box-sizing: border-box;
-    /* The sandbox banner above the hub is one line at these sizes: 68 px with its margins */
-    height: calc(100vh - var(--gv-hub-chrome, 68px));
-    height: calc(100dvh - var(--gv-hub-chrome, 68px));
-    overflow: hidden;
-    padding-bottom: var(--space-4);
-  }
-
+/* From 1100 px the hub is two balanced columns, projection screen on the left and the join ticket
+ * on the right, with the console and bidder cards as one row under them. The page scrolls as a
+ * whole at any height: nothing is height-capped and no column scrolls inside itself. */
+@media (min-width: 1100px) {
   .gv-hub__grid {
     display: grid;
-    flex: 1;
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 0.8fr);
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    grid-template-areas:
+      'screen ticket'
+      'side side';
+    align-items: start;
     gap: var(--space-5);
-    min-height: 0;
   }
 
   .gv-hub__screen,
   .gv-hub__ticket,
   .gv-hub__side {
     order: 0;
-    min-height: 0;
+    min-width: 0;
   }
 
-  /* Whatever does not fit scrolls inside its own column, never the page */
-  .gv-hub__side,
-  .gv-hub__test {
-    overflow-y: auto;
+  .gv-hub__screen {
+    grid-area: screen;
   }
 
-  .gv-hub__test {
-    flex: 0 1 auto;
-    min-height: 0;
+  .gv-hub__ticket {
+    grid-area: ticket;
+  }
+
+  .gv-hub__side {
+    grid-area: side;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+
+  .gv-hub__more {
+    grid-column: 1 / -1;
     margin-top: 0;
   }
-}
 
-.gv-hub__row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-}
-
-.gv-hub__row--center {
-  justify-content: center;
+  .gv-hub__test {
+    margin-top: 0;
+  }
 }
 
 .gv-hub__missing,
@@ -170,8 +167,6 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 1920px;
-  height: 1080px;
   transform-origin: top left;
 }
 
@@ -209,7 +204,7 @@
 }
 
 .gv-hub__test {
-  margin-top: auto;
+  margin-top: var(--space-2);
   padding: var(--space-3) var(--space-4);
   border: var(--border-width) dashed var(--color-fg);
   border-radius: var(--radius-md);
@@ -394,10 +389,34 @@
 
 .gv-hub__body {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
+  flex-direction: column;
   gap: var(--space-3);
   margin-top: var(--space-2);
+}
+
+.gv-hub__body > p {
+  margin: 0;
+}
+
+/* Action rows (UIX-56): ActionGroup does the sizing; these two modifiers pick the column rule. */
+.gv-actions.gv-hub__actions--stack {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.gv-actions.gv-hub__actions--fit {
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+.gv-actions.gv-hub__actions--fit > .gv-flow__action--text {
+  grid-column: 1 / -1;
+}
+
+.gv-hub__more > .gv-actions {
+  align-self: stretch;
+}
+
+.gv-hub__ticket-actions {
+  width: 100%;
 }
 
 .gv-hub__more {
@@ -409,10 +428,6 @@
 
 .gv-hub__more > p {
   margin: 0;
-}
-
-.gv-hub__more .gv-flow__action {
-  align-self: stretch;
 }
 
 .gv-hub__note {
