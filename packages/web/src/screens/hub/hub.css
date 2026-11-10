@@ -80,9 +80,9 @@
 @media (min-width: 1100px) and (min-height: 640px) {
   .gv-hub {
     box-sizing: border-box;
-    /* The sandbox banner above the hub is one line at these sizes: 68 px with its margins */
-    height: calc(100vh - var(--gv-hub-chrome, 68px));
-    height: calc(100dvh - var(--gv-hub-chrome, 68px));
+    /* The sandbox banner and the page margin above the hub measure 98 px in the browser run */
+    height: calc(100vh - var(--gv-hub-chrome, 100px));
+    height: calc(100dvh - var(--gv-hub-chrome, 100px));
     overflow: hidden;
     padding-bottom: var(--space-4);
   }
