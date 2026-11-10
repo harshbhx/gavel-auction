@@ -67,6 +67,16 @@ describe('judge key field on /try', () => {
     expect(screen.queryByText(t('try.key.active'))).toBeNull();
   });
 
+  it('says what is missing when Unlock is pressed with nothing typed', () => {
+    const checkKey = vi.fn(() => Promise.resolve('ok' as const));
+    render(panel({ keyOffered: true, checkKey }));
+    const unlock = screen.getByRole('button', { name: t('try.key.unlock') });
+    expect(unlock.getAttribute('aria-disabled')).not.toBe('true');
+    fireEvent.click(unlock);
+    expect(checkKey).not.toHaveBeenCalled();
+    expect(screen.getByText(t('try.key.typeKey'))).toBeTruthy();
+  });
+
   it('says so when this connection is locked out, and when the server is down', async () => {
     const checkKey = vi
       .fn<(key: string) => Promise<'locked' | 'unreachable'>>()

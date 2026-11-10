@@ -26,7 +26,7 @@ export const en = {
   'landing.promise': 'Held, not charged until the hammer falls.',
   'landing.explain':
     'Bidders approve a hold as their limit. The winner is charged only if the hammer falls and PayPal confirms the hold. Every other hold is released.',
-  'landing.start': 'Start a demo auction',
+  'landing.start': 'Start a live demo room',
   'landing.join': 'Join with a code',
   'landing.codeInvalid': 'No room with that code.',
   'mk.nav.label': 'Main',
@@ -218,12 +218,12 @@ export const en = {
   'demo.failedKey': 'The operator key was not accepted.',
   'demo.failedCap': 'The server is at its demo room limit. Try again soon.',
   'demo.failedBusy':
-    'Judge rooms are busy or switched off right now. Try again soon, or run the scripted demo.',
+    'Judge rooms are busy or switched off right now. Try again soon, or watch the scripted demo.',
   'demo.failedRate':
-    'Too many tries from this network. Try again in {wait}, or run the scripted demo.',
+    'Too many tries from this network. Try again in {wait}, or watch the scripted demo.',
   'demo.failedRateUnknown':
-    'Too many tries from this network. Wait a few minutes and try again, or run the scripted demo.',
-  'demo.scriptedInstead': 'Run scripted demo instead',
+    'Too many tries from this network. Wait a few minutes and try again, or watch the scripted demo.',
+  'demo.scriptedInstead': 'Watch the scripted demo',
   'demo.lead':
     'Starts a sandbox room in a few seconds: an auctioneer console, a big screen and a bidder link. No real money moves.',
   'demo.steps': 'What you get',
@@ -298,7 +298,7 @@ export const en = {
   'try.pad.held': 'Held {amount}',
   'try.pad.win': 'Settles {amount}',
   'try.pad.released': 'Released',
-  'try.say.ready': 'Press Run the demo. Nothing here touches a real card or account.',
+  'try.say.ready': 'Press Play the sample run. Nothing here touches a real card or account.',
   'try.say.s1':
     'Step 1. Hold. Asha bids {amount} by voice. A hold is requested for the same amount.',
   'try.say.s1ok': 'Hold confirmed. {amount} is held, not charged.',
@@ -326,13 +326,14 @@ export const en = {
   'try.slip.disclaimer': 'Simulated. Not a PayPal transaction. Sandbox only.',
   'try.slip.fine': 'Money is held, not charged, until the hammer. Losing holds are released.',
   'try.stamp': 'Sold',
-  'try.run.go': 'Run the demo',
-  'try.run.sub': 'No setup, about 30 s',
-  'try.run.running': 'Running',
-  'try.run.replay': 'Replay',
+  'try.run.go': 'Play the sample run',
+  'try.run.sub': 'Fig. 1, about 30 s',
+  'try.run.running': 'Restart the run',
+  'try.run.replay': 'Play it again',
   'try.bar.label': 'Judge actions',
   'try.bar.join': 'Join',
   'try.bar.joinSub': 'as bidder',
+  'try.bar.needsRoom': 'needs a room',
   'try.bar.console': 'Console',
   'try.bar.consoleSub': 'host view',
   'try.bar.screen': 'Screen',
@@ -343,8 +344,8 @@ export const en = {
   'try.a1.title': 'Try it',
   'try.a1.tag': 'No sign-up',
   'try.a1.body': 'Open the scripted demo with no login, or start a live sandbox room of your own.',
-  'try.a1.script': 'Run the scripted demo',
-  'try.a1.room': 'Start a demo room',
+  'try.a1.script': 'Watch the scripted demo',
+  'try.a1.room': 'Start a live demo room',
   'try.a1.creating': 'Creating room',
   'try.a1.open': 'Rooms are off, full or unreachable. The scripted demo needs no server.',
   'try.a1.failed': 'We could not create a room.',
@@ -363,8 +364,11 @@ export const en = {
   'try.a2.body':
     'Type the room code from the host screen. Any case, spaces and a GVL- start are fine.',
   'try.a2.go': 'Find room',
+  'try.a2.typeCode': 'Type the {n} characters of the room code.',
+  'try.key.typeKey': 'Type the judge key.',
+  'try.a1.goalFirst': 'Fix the fundraiser goal above to start a room.',
   'try.a2.checking': 'Looking for the room',
-  'try.a2.nocode': 'No code yet? Start a demo room to get one.',
+  'try.a2.nocode': 'No code yet? Start a live demo room to get one.',
   'try.a3.title': 'See it all',
   'try.a3.tag': 'Three views of one room',
   'try.a3.body':
@@ -409,7 +413,7 @@ export const en = {
   'try.room.sample': 'Sample',
   'try.room.liveNote': 'Your live room. Scan the QR or share the code.',
   'try.room.sampleNote':
-    'Sample code and sample QR. They do not open a room. Start a demo room to get a live one.',
+    'Sample code and sample QR. They do not open a room. Start a live demo room to get a live one.',
   'try.room.qrLive': 'QR code for the join page of your room',
   'try.room.qrSample': 'Sample QR, not scannable',
   'try.room.hub': 'Open your room page',
@@ -433,7 +437,7 @@ export const en = {
   'try.dlg.receiptWhat':
     'Proof of the hammer: one winner settles and the rest are released. It prints after the hammer.',
   'try.dlg.needsRoom':
-    "This opens inside a room and needs that room's key. Start a demo room to get one, or run the scripted demo to watch the same views play.",
+    "This opens inside a room and needs that room's key. Start a live demo room to get one, or watch the scripted demo to see the same views play.",
   'try.dlg.liveNote':
     'Your live room. These links carry its private keys, so keep them to yourself.',
   'try.dlg.openConsole': 'Open your console',
@@ -456,7 +460,7 @@ export const en = {
   'hub.kicker': 'Judge room',
   'hub.title': 'Your demo room is ready',
   'hub.lead': 'Put the screen up, let people scan the ticket, run the lot from the console.',
-  'hub.expired': 'This room has expired. Start a new demo.',
+  'hub.expired': 'This room has expired. Start a live demo room.',
   'hub.expiresAt': 'This room is deleted {minutes} minutes after it is created.',
   'hub.step1': 'Projection screen',
   'hub.step1Hint': 'Live preview. Open it on the big screen.',
@@ -498,7 +502,7 @@ export const en = {
   'hub.shareAll': 'Share all links',
   'hub.shareCopied': 'All links copied',
   'hub.shareHeader': 'GAVEL demo room',
-  'hub.newDemo': 'Start a new demo',
+  'hub.newDemo': 'Start a live demo room',
   'hub.auditLink': 'Read-only audit trail',
   'hub.verifyLink': 'Verify the ledger',
   'hub.backToHub': 'Back to the room hub',
@@ -506,7 +510,7 @@ export const en = {
   'tokenHelp.lead':
     'The console, the big screen and the audit trail open with a private key that sits after the # in the link. A link that lost it, or a link that expired, cannot open them.',
   'tokenHelp.step1': 'Go back to the room hub and open the link from there.',
-  'tokenHelp.step2': 'Or start a new demo and use the links it shows.',
+  'tokenHelp.step2': 'Or start a live demo room and use the links it shows.',
   'tokenHelp.registerLead':
     'This room only lets in bidders who hold a personal invite link. Ask the host for one, or open the room hub and make a new invite.',
   'scriptedJoin.title': 'This is the scripted demo',
@@ -514,7 +518,7 @@ export const en = {
     'You scanned the QR code of a recorded auction. It plays inside the page, so no phone can place a real bid in it.',
   'scriptedJoin.bidder': 'Open the scripted bidder view',
   'scriptedJoin.screen': 'Back to the scripted screen',
-  'scriptedJoin.live': 'Start a live demo you can bid in',
+  'scriptedJoin.live': 'Start a live demo room',
   'scriptedJoin.liveHint': 'The live demo makes a real sandbox room with its own join code and QR.',
   'scriptedDemo.barLabel': 'Scripted demo notice',
   'scriptedDemo.banner':
@@ -564,7 +568,7 @@ export const en = {
   'scriptedDemo.b9.label': 'Receipt',
   'scriptedDemo.b9.body':
     'Settled: $350 taken, $150 of her hold released. The holds of Sam and Ana are released in full. The receipt is recorded.',
-  'scriptedDemo.live': 'Try the live demo',
+  'scriptedDemo.live': 'Start a live demo room',
   'scriptedDemo.judge': 'Judge guide',
   'bid.recorded': 'Recorded demo: bids are played by the tour, so the bid controls are off here.',
   'bid.recordedLive': 'Start a live demo to place a real sandbox bid',
@@ -644,7 +648,7 @@ export const en = {
   'join.notFoundHelp':
     'The code may have a typo, or the room was closed. Codes are six characters. Check the big screen and try again.',
   'join.tryAgain': 'Enter another code',
-  'join.startDemo': 'Start a demo room instead',
+  'join.startDemo': 'Start a live demo room',
   'join.endedHelp': 'Bidding is over. You can still watch the result and open the receipt.',
   'join.full': 'This room is full.',
   'join.fullHelp':
@@ -1078,7 +1082,7 @@ export const en = {
   'verify.room.button': 'Check my room',
   'verify.room.hint':
     'Loads the ledger of the room you started in this tab, with its read-only link.',
-  'verify.room.none': 'Start a demo room from the judge panel to check its own ledger here.',
+  'verify.room.none': 'Start a live demo room from the judge panel to check its own ledger here.',
   'verify.room.loading': 'Fetching the ledger',
   'verify.room.notYet': 'This room has no ledger entries yet. Place a bid, then try again.',
   'verify.room.denied': 'The read-only link was not accepted. It may have expired.',
@@ -1345,7 +1349,7 @@ export const en = {
   'err.home': 'Go to the start page',
   'nf.pageHelp': 'This address does not match a page. Try one of these instead.',
   'nf.linksLabel': 'Where to go next',
-  'nf.demo': 'Try a demo room',
+  'nf.demo': 'Start a live demo room',
   'nf.judges': 'Judges guide',
   'nf.docs': 'Docs',
   'room.missingTitle': 'We could not find this room',
