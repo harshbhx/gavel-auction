@@ -9,6 +9,15 @@ name: launch-film
 # Artifacts: silent-raw (the recording, reusable by both films) and launch-film (the cut). Commit the
 # final files to brand/video/launch-film/.
 on:
+  # Development trigger while the workflow is not yet on main (the dispatch API only finds workflows that
+  # exist on the default branch). Reads graphics/motion-film/ci.json for the inputs. Remove before merge.
+  push:
+    branches: [feat/GFX-15-launch-film]
+    paths:
+      - 'graphics/motion-film/**'
+      - 'graphics/motion-silent/**'
+      - '.github/workflows/launch-film.yml'
+      - '.github/actions/record-ui/**'
   workflow_dispatch:
     inputs:
       raw_run:
@@ -60,6 +69,23 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
+      - name: Resolve the inputs (dispatch inputs, or graphics/motion-film/ci.json on a push)
+        env:
+          IN_RAW: ${{ inputs.raw_run }}
+          IN_FPS: ${{ inputs.fps }}
+          IN_RECORD_ONLY: ${{ inputs.record_only }}
+          IN_WEBM: ${{ inputs.webm }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            RAW_RUN="$IN_RAW"; FPS="$IN_FPS"; RECORD_ONLY="$IN_RECORD_ONLY"; WEBM="$IN_WEBM"
+          else
+            RAW_RUN="$(jq -r '.raw_run // ""' graphics/motion-film/ci.json)"
+            FPS="$(jq -r '.fps // "30"' graphics/motion-film/ci.json)"
+            RECORD_ONLY="$(jq -r '.record_only // false' graphics/motion-film/ci.json)"
+            WEBM="$(jq -r '.webm // false' graphics/motion-film/ci.json)"
+          fi
+          { echo "RAW_RUN=$RAW_RUN"; echo "FPS=${FPS:-60}"; echo "RECORD_ONLY=$RECORD_ONLY"; echo "WEBM=$WEBM"; } >> "$GITHUB_ENV"
+          echo "raw_run='$RAW_RUN' fps=$FPS record_only=$RECORD_ONLY webm=$WEBM"
       - name: Install Playwright, chromium and ffmpeg
         run: |
           mkdir -p "$RUNNER_TEMP/pw" && cd "$RUNNER_TEMP/pw"
@@ -68,7 +94,7 @@ jobs:
           sudo apt-get install -y -qq ffmpeg
           ffmpeg -version | head -1
       - name: Build, boot and record the judge flow
-        if: ${{ inputs.raw_run == '' }}
+        if: ${{ env.RAW_RUN == '' }}
         uses: ./.github/actions/record-ui
         with:
           raw: ${{ env.RAW }}
@@ -77,7 +103,7 @@ jobs:
           api_port: ${{ env.API_PORT }}
           keyed_port: ${{ env.KEYED_PORT }}
       - name: Upload the raw recording
-        if: ${{ !cancelled() && inputs.raw_run == '' }}
+        if: ${{ !cancelled() && env.RAW_RUN == '' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: silent-raw
@@ -89,33 +115,31 @@ jobs:
           retention-days: 7
           compression-level: 0
       - name: Fetch the raw recording of an earlier run
-        if: ${{ inputs.raw_run != '' }}
+        if: ${{ env.RAW_RUN != '' }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p "$RAW"
-          gh run download "${{ inputs.raw_run }}" -R "$GITHUB_REPOSITORY" -n silent-raw -D "$RUNNER_TEMP/rawdl"
+          gh run download "$RAW_RUN" -R "$GITHUB_REPOSITORY" -n silent-raw -D "$RUNNER_TEMP/rawdl"
           cp -r "$RUNNER_TEMP/rawdl/out/raw/." "$RAW/" 2>/dev/null || cp -r "$RUNNER_TEMP/rawdl/." "$RAW/"
           ls "$RAW" | head
       - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
-        if: ${{ !inputs.record_only }}
+        if: ${{ env.RECORD_ONLY != 'true' }}
         with:
           node-version-file: .nvmrc
       - name: Install the Remotion project
-        if: ${{ !inputs.record_only }}
+        if: ${{ env.RECORD_ONLY != 'true' }}
         working-directory: graphics/motion-film
         run: |
           npm ci --no-audit --no-fund
           npx remotion versions
           npx tsc --noEmit || echo "::warning::type errors in graphics/motion-film (render continues)"
       - name: Compose the film
-        if: ${{ !inputs.record_only }}
+        if: ${{ env.RECORD_ONLY != 'true' }}
         working-directory: graphics/motion-film
-        env:
-          FPS: ${{ inputs.fps }}
-          WEBM: ${{ inputs.webm && '1' || '' }}
         run: |
           mkdir -p "$FINAL"
+          if [ "$WEBM" != "true" ]; then unset WEBM; fi
           node compose.mjs "$RAW" "$FINAL"
       - name: Job summary
         if: ${{ !cancelled() }}
@@ -127,7 +151,7 @@ jobs:
             find "$FINAL" -maxdepth 1 -type f -printf '%s %f\n' 2>/dev/null | sort -k2
           } >> "$GITHUB_STEP_SUMMARY"
       - name: Upload the film
-        if: ${{ !cancelled() && !inputs.record_only }}
+        if: ${{ !cancelled() && env.RECORD_ONLY != 'true' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: launch-film
