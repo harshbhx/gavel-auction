@@ -74,7 +74,7 @@ export async function startStack(opts: StackOptions = {}): Promise<Stack> {
   const serverUrl = `http://127.0.0.1:${serverPort}`;
   const serverDir = join(ROOT, 'packages', 'server');
 
-  const viteNode = bin(serverDir, 'vite-node/vite-node.mjs');
+  const viteNode = bin(serverDir, 'vite-node/cli');
   const external = opts.externalFake === true;
   const sandbox = opts.sandbox === true;
   if (sandbox && external) throw new Error('sandbox and externalFake cannot be combined');

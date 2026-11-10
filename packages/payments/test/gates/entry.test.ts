@@ -10,7 +10,7 @@ const require = createRequire(import.meta.url);
 
 describe('gate entry scripts', () => {
   it('g1 run through vite-node prints a refusal and exits nonzero when secrets are missing', () => {
-    const bin = join(dirname(require.resolve('vite-node/package.json')), 'vite-node.mjs');
+    const bin = require.resolve('vite-node/cli');
     const res = spawnSync(process.execPath, [bin, 'gates/g1.ts', '--', '--browser'], {
       cwd: pkgDir,
       encoding: 'utf8',
@@ -21,7 +21,7 @@ describe('gate entry scripts', () => {
   });
 
   it('g3 run through vite-node does not exit silently when secrets are missing', () => {
-    const bin = join(dirname(require.resolve('vite-node/package.json')), 'vite-node.mjs');
+    const bin = require.resolve('vite-node/cli');
     const res = spawnSync(process.execPath, [bin, 'gates/g3.ts', '--', '--browser'], {
       cwd: pkgDir,
       encoding: 'utf8',
