@@ -186,29 +186,75 @@
 }
 
 @media (max-width: 900px) {
+  /* Phone: caption first, then the scripted screen, then notes and the folded step list. The four
+   * transport buttons are pinned to the bottom edge so every tap is made while the screen is in view. */
   .gv-scripted-frame {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto auto;
-  }
-
-  .gv-scripted-frame .gv-player,
-  .gv-scripted-frame .gv-scripted-stage {
-    grid-column: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
   }
 
   .gv-scripted-frame .gv-player {
-    grid-row: 2;
-    border-inline-start: 0;
-    border-block-end: var(--border-width-strong, 3px) solid var(--color-fg);
+    display: contents;
+  }
+
+  .gv-scripted-frame > .gv-scripted-bar {
+    order: 0;
+  }
+
+  .gv-scripted-frame .gv-player__progress {
+    order: 1;
+    padding: var(--space-3) var(--space-4) 0;
+  }
+
+  .gv-scripted-frame .gv-player__caption {
+    order: 2;
+    min-height: 8rem;
+    margin: var(--space-2) var(--space-4) var(--space-3);
   }
 
   .gv-scripted-frame .gv-scripted-stage {
-    grid-row: 3;
+    order: 3;
   }
 
   .gv-scripted-frame .gv-scripted-stage .gv-screen {
-    height: 100vh;
+    height: auto;
+    min-height: 60vh;
   }
+
+  .gv-scripted-frame .gv-player__note,
+  .gv-scripted-frame .gv-player__speed,
+  .gv-scripted-frame .gv-player__more {
+    order: 4;
+    margin: var(--space-3) var(--space-4) 0;
+  }
+
+  .gv-scripted-frame .gv-player__controls {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 40;
+    flex-wrap: nowrap;
+    padding: var(--space-2) var(--space-3) calc(var(--space-2) + env(safe-area-inset-bottom, 0px));
+    border-top: var(--border-width-strong, 3px) solid var(--color-fg);
+    background: var(--color-bg);
+  }
+
+  .gv-scripted-frame .gv-player__controls .gv-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-inline: var(--space-2);
+    font-size: var(--font-size-2);
+  }
+}
+
+.gv-player__more > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: var(--font-size-2);
+  color: var(--color-fg-muted);
 }
 
 @media (prefers-reduced-motion: reduce) {
