@@ -29,7 +29,7 @@ describe('config', () => {
   it('keeps GAVEL_MAX_CEILING_CENTS in the range the engine can run (FIX-118)', () => {
     for (const bad of ['50', '99', '5000000001', '9000000000']) {
       expect(() => loadConfig({ ...base, GAVEL_MAX_CEILING_CENTS: bad })).toThrow(
-        /GAVEL_MAX_CEILING_CENTS must be an integer in 100\.\.100000000/,
+        /GAVEL_MAX_CEILING_CENTS must be an integer in 100\.\.5000000000/,
       );
     }
     expect(loadConfig({ ...base, GAVEL_MAX_CEILING_CENTS: '100' }).maxCeilingCents).toBe(100);
