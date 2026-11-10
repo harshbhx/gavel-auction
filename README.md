@@ -15,6 +15,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node 22](https://img.shields.io/badge/node-22-339933.svg?logo=node.js&logoColor=white)](package.json)
 [![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178c6.svg?logo=typescript&logoColor=white)](tsconfig.base.json)
+[![PageSpeed landing 100/100/100/100](https://img.shields.io/badge/PageSpeed%20landing-100%20%7C%20100%20%7C%20100%20%7C%20100-0cce6b.svg?logo=lighthouse&logoColor=white)](docs/evidence/perf/PAGESPEED.md)
 [![PayPal sandbox only](https://img.shields.io/badge/PayPal-sandbox%20only-003087.svg?logo=paypal&logoColor=white)](#security-and-data-notes)
 [![Open data on Hugging Face](https://img.shields.io/badge/Hugging%20Face-5%20datasets-ffd21e.svg?logo=huggingface&logoColor=black)](https://huggingface.co/collections/harshbhx/gavel-evidence-auction-holds-hammer-and-receipts-6af0afebebb37eb4c9184504)
 
@@ -28,9 +29,9 @@ PayPal sandbox only: no real money moves.
 
 > **GAVEL is a live auction where every bid is a PayPal authorization hold, and at the hammer only the winning price is captured.** Bidders approve a ceiling up front, a deterministic engine checks every bid against it, the winner pays the hammer price, every other hold is voided, and a hash-chained ledger lets anyone verify the result. Bids can be spoken, and a spoken bid never counts until the bidder confirms it.
 
-Built for the PayPal Hackathon 2026.
+Built for the PayPal Hackathon 2026 by Harsh Bhanushali and Dhairya Patel.
 
-**PageSpeed Insights, landing page `/`: 100 Performance, 100 Accessibility, 100 Best Practices and 100 SEO on both mobile and desktop** (Lighthouse 13.6.0, lab data, measured by hand on 10 Nov 2026; this URL only, not the whole app). Details and screenshots: [docs/evidence/perf](docs/evidence/perf/PAGESPEED.md).
+## Why GAVEL
 
 Online auctions usually make a bidder pay first or trust the bidder to pay later. GAVEL uses a third way: a PayPal authorization hold. The bidder approves a ceiling, PayPal holds that amount without charging it, and when the hammer falls GAVEL captures only the winning price and releases every other hold. Nobody is charged for a lot they lost, and nobody can bid more than they have put on hold.
 
@@ -63,7 +64,7 @@ Online auctions usually make a bidder pay first or trust the bidder to pay later
 
 ## Contents
 
-[Live links](#live-links) | [Judge path](#judge-path-in-60-seconds) | [What is proven](#what-is-proven) | [How it works](#how-it-works) | [See it run](#see-it-run) | [Tech stack and sponsors](#tech-stack-and-sponsors) | [Evidence and gates](#evidence-and-gates) | [Run it locally](#run-it-locally) | [Call the API](#call-the-api) | [Documentation](#documentation) | [License](#license)
+[Why GAVEL](#why-gavel) | [Live links](#live-links) | [Judge path](#judge-path-in-60-seconds) | [What is proven](#what-is-proven) | [How it works](#how-it-works) | [See it run](#see-it-run) | [Tech stack and sponsors](#tech-stack-and-sponsors) | [Evidence and gates](#evidence-and-gates) | [Run it locally](#run-it-locally) | [Call the API](#call-the-api) | [Security](#security-and-data-notes) | [Documentation](#documentation) | [Team](#team) | [License](#license)
 
 ## Live links
 
@@ -377,15 +378,18 @@ Package guides: [server](packages/server/README.md), [voice](packages/voice/READ
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [code of conduct](CODE_OF_CONDUCT.md). Work goes through branches and pull requests, and the pull request template lists the checks.
 
+## Team
+
+Built by [Harsh Bhanushali](https://github.com/harshbhx) and Dhairya Patel for the PayPal Hackathon 2026. Product, engine, payments, voice, web app, docs and evidence are all in this repository.
+
 ## License
 
 [MIT](LICENSE)
 
 <p align="center">
-  <picture>
-    <source media="(prefers-reduced-motion: reduce) and (prefers-color-scheme: dark)" srcset="docs/assets/readme/readme-footer-dark-poster.png">
-    <source media="(prefers-reduced-motion: reduce)" srcset="docs/assets/readme/readme-footer-poster.png">
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/readme/readme-footer-dark.gif">
-    <img src="docs/assets/readme/readme-footer.gif" alt="GAVEL closing card with the animated logo and links: web app gavel.dualmindlab.tech, docs docs.gavel.dualmindlab.tech, source github.com/harshbhx/gavel-auction. PayPal sandbox only, bids are held, not charged." width="100%">
-  </picture>
+  <b><a href="https://gavel.dualmindlab.tech">Web app</a></b> &nbsp;|&nbsp;
+  <b><a href="https://docs.gavel.dualmindlab.tech">Docs</a></b> &nbsp;|&nbsp;
+  <b><a href="https://github.com/harshbhx/gavel-auction">Source</a></b> &nbsp;|&nbsp;
+  <b><a href="https://huggingface.co/collections/harshbhx/gavel-evidence-auction-holds-hammer-and-receipts-6af0afebebb37eb4c9184504">Open data</a></b>
+  <br><sub>PayPal sandbox only. Bids are held, not charged.</sub>
 </p>
