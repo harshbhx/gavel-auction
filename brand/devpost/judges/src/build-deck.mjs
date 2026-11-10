@@ -71,6 +71,7 @@ for (const [name, bg, muted] of [
             color: muted,
             charSpacing: 3,
             margin: 0,
+            align: 'left',
             valign: 'middle',
           },
           text: '',
@@ -255,7 +256,7 @@ function rings(s, cx, cy, fades) {
 // 2. Hook
 {
   const s = newSlide('dark', ['LOT 01', 'A CHARITY NIGHT'], 'morph');
-  rings(s, 2.9, 3.0, [80, 86, 92]);
+  rings(s, 2.75, 2.85, [84, 89, 94]);
   cornerMark(s);
   label(s, 'hook-label', 'A SIGNED PRINT. THE AUCTIONEER CALLS', { x: 0.6, y: 1.05, w: 6, h: 0.3 });
   disp(s, 'hook_200', 0.55, 1.72, 'hook-200');
@@ -473,7 +474,7 @@ function rings(s, cx, cy, fades) {
   const s = newSlide('paper', ['LOT 04', 'HOW IT WORKS'], 'fade');
   cornerMark(s);
   disp(s, 'how_h', 0.6, 1.1, 'how-h');
-  const trackY = 2.72;
+  const trackY = 2.95;
   s.slide.addShape(pres.shapes.LINE, {
     x: 0.78,
     y: trackY,
@@ -502,9 +503,9 @@ function rings(s, cx, cy, fades) {
         fill: { color: K.paper },
       },
     );
-    label(s, `how-num${i + 1}`, `0${i + 1}`, { x, y: 3.12, w: 1, h: 0.3 });
-    disp(s, word, x, 3.62, `how-word${i + 1}`);
-    text(s, `how-body${i + 1}`, body, { x, y: 4.45, w: 2.78, h: 1.4 }, { fontSize: 17 });
+    label(s, `how-num${i + 1}`, `0${i + 1}`, { x, y: 3.38, w: 1, h: 0.3 });
+    disp(s, word, x, 3.9, `how-word${i + 1}`);
+    text(s, `how-body${i + 1}`, body, { x, y: 4.75, w: 2.78, h: 1.4 }, { fontSize: 17 });
   });
   oval(s, 'how-packet', colX(0) + 0.18, trackY, 0.24, undefined, { fill: { color: K.orange } });
   fx('how-h', 'float', { dur: 600, delay: 150 });
@@ -742,10 +743,10 @@ function rings(s, cx, cy, fades) {
   });
   const cx = 10.15;
   const cy = 3.7;
-  oval(s, 'ham-shock2', cx, cy, 4.3, { color: K.orange, width: 1.25, transparency: 72 });
-  oval(s, 'ham-shock1', cx, cy, 3.6, { color: K.orange, width: 1.5, transparency: 45 });
-  oval(s, 'ham-track', cx, cy, 2.9, { color: K.line, width: 10 });
-  oval(s, 'ham-ring', cx, cy, 2.9, { color: K.orange, width: 10 });
+  oval(s, 'ham-shock2', cx, cy, 4.5, { color: K.orange, width: 1.25, transparency: 72 });
+  oval(s, 'ham-shock1', cx, cy, 3.8, { color: K.orange, width: 1.5, transparency: 45 });
+  oval(s, 'ham-track', cx, cy, 3.1, { color: K.line, width: 10 });
+  oval(s, 'ham-ring', cx, cy, 3.1, { color: K.orange, width: 10 });
   const sold = A.ham_sold;
   s.slide.addImage({
     path: sold.file,
@@ -760,7 +761,7 @@ function rings(s, cx, cy, fades) {
     s,
     'ham-cap',
     'Press and hold for three seconds. GAVEL captures the winning price and voids every other hold.',
-    { x: 7.75, y: 6.0, w: 4.95, h: 0.8 },
+    { x: 7.75, y: 6.12, w: 4.95, h: 0.75 },
     { fontSize: 15, color: K.mutedDark },
   );
   label(
@@ -922,13 +923,13 @@ function rings(s, cx, cy, fades) {
     ['arch_w4', 'Sandbox holds, capture and void. Signed webhooks come back to the API.'],
   ];
   const sx = (i) => 0.6 + i * 3.13;
-  const wireY = 5.42;
+  const wireY = 5.15;
   stops.forEach(([word, body], i) => {
     const x = sx(i);
     rect(
       s,
       `arch-card${i + 1}`,
-      { x, y: 2.2, w: 2.75, h: 2.75 },
+      { x, y: 2.2, w: 2.75, h: 2.45 },
       {
         fill: { color: K.ink2 },
         line: { color: K.line, width: 1 },
@@ -961,12 +962,25 @@ function rings(s, cx, cy, fades) {
     line: { color: K.line, width: 2 },
     objectName: 'arch-wire',
   });
+  stops.forEach((_, i) => {
+    oval(
+      s,
+      `arch-stop${i + 1}`,
+      sx(i) + 1.375,
+      wireY,
+      0.16,
+      { color: K.mutedDark, width: 1.5 },
+      {
+        fill: { color: K.ink },
+      },
+    );
+  });
   oval(s, 'arch-packet', sx(0) + 1.375, wireY, 0.24, undefined, { fill: { color: K.orange } });
   text(
     s,
     'arch-foot',
     'TypeScript monorepo on Node 22. A deterministic engine keeps money in integer cents. AG Grid powers the ledger lab, and five open datasets sit on Hugging Face.',
-    { x: 0.6, y: 5.85, w: 12.1, h: 0.8 },
+    { x: 0.6, y: 5.65, w: 12.1, h: 0.8 },
     { fontSize: 15, color: K.mutedDark },
   );
   fx('arch-h', 'float', { dur: 600, delay: 150 });
@@ -979,6 +993,9 @@ function rings(s, cx, cy, fades) {
     fx(`arch-body${i + 1}`, 'fade', { dur: 500, start: 'with', delay: d + 250 });
   });
   fx('arch-wire', 'wipe', { dir: 'left', dur: 700, delay: 100 });
+  stops.forEach((_, i) =>
+    fx(`arch-stop${i + 1}`, 'zoom', { from: 0.3, dur: 300, start: 'with', delay: 150 * i }),
+  );
   fx('arch-packet', 'zoom', { from: 0.2, dur: 300 });
   for (let i = 1; i < 4; i += 1) {
     fx('arch-packet', 'path', {
@@ -1009,7 +1026,7 @@ function rings(s, cx, cy, fades) {
     [
       'proof_n1',
       'proof_u1',
-      'A real server process killed mid-settlement. On restart: one capture, two holds voided, 19 ledger entries verify.',
+      'A real server killed mid-settlement. On restart: one capture, two holds voided, the journal equal to PayPal.',
     ],
     [
       'proof_n2',
@@ -1046,8 +1063,8 @@ function rings(s, cx, cy, fades) {
     ['G1 PASS', 1.12, true],
     ['G2 PASS', 1.12, true],
     ['G4 PASS', 1.12, true],
-    ['G3 IN PROGRESS', 1.8, false],
-    ['G5 PARTIAL', 1.4, false],
+    ['G3 IN PROGRESS', 2.05, false],
+    ['G5 PARTIAL', 1.45, false],
   ];
   let cx = 2.55;
   chips.forEach(([t, w, pass], i) => {

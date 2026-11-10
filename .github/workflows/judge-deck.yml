@@ -74,6 +74,24 @@ jobs:
           pdftoppm -png -r 110 GAVEL-judge-deck.pdf png/slide
           montage png/slide-*.png -tile 3x -geometry 640x360+8+8 -background '#777777' contact-sheet.png
           ls -la "$OUT" "$OUT/png"
+      - name: Read the animations back through LibreOffice
+        run: |
+          # An independent reader: LibreOffice imports the slide timing into ODP animation nodes.
+          cd "$OUT"
+          soffice --headless --convert-to odp GAVEL-judge-deck.pptx >/dev/null
+          unzip -p GAVEL-judge-deck.odp content.xml > content.xml
+          python - <<'PY' | tee animations.txt
+          import re
+          xml = open('content.xml', encoding='utf-8').read()
+          pages = re.findall(r'<draw:page\b.*?</draw:page>', xml, re.S)
+          print(f'{len(pages)} pages')
+          for i, p in enumerate(pages, 1):
+              effects = len(re.findall(r'presentation:node-type="(?:after|with)-previous"', p))
+              name = re.search(r'draw:style-name="([^"]+)"', p).group(1)
+              style = re.search(rf'<style:style style:name="{name}".*?</style:style>', xml, re.S)
+              trans = re.search(r'smil:type="([^"]+)"', style.group(0) if style else '')
+              print(f'page {i}: {effects} effects imported, transition {trans.group(1) if trans else "none"}')
+          PY
       - name: Upload the preview
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -82,5 +100,6 @@ jobs:
           path: |
             out/GAVEL-judge-deck.pdf
             out/contact-sheet.png
+            out/animations.txt
             out/png/
           retention-days: 14

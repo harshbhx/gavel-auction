@@ -267,6 +267,9 @@ def main():
                 if "</p:clrMapOvr>" not in xml or "<p:timing" in xml or "<p:transition" in xml:
                     raise ValueError(f"slide {n}: unexpected structure")
                 xml = xml.replace("</p:clrMapOvr>", "</p:clrMapOvr>" + add, 1)
+                # pptxgenjs repeats <a:pPr> before every run of a multi-run paragraph; the schema
+                # allows it only first, so drop the copies that follow a run.
+                xml = re.sub(r"(</a:r>)<a:pPr\b[^>]*?(?:/>|>.*?</a:pPr>)", r"\1", xml)
                 data = xml.encode("utf-8")
                 report.append(f"slide {n}: {len(spec['anims'])} effects, builds run {total / 1000:.1f} s")
             if info.filename.endswith(".xml"):

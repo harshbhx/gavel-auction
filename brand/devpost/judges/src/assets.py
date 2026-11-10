@@ -68,7 +68,7 @@ DISPLAY = {
     },
     # 8 hammer
     "ham_h": {"size": 60, "lines": [[("HOLD THE ", "paper"), ("HAMMER.", "orange")]]},
-    "ham_sold": {"size": 84, "lines": [[("SOLD.", "orange")]]},
+    "ham_sold": {"size": 72, "lines": [[("SOLD.", "orange")]]},
     # 9 verify
     "ver_h": {"size": 60, "lines": [[("DO NOT TRUST. ", "ink"), ("VERIFY.", "deep")]]},
     "ver_e1": {"size": 32, "lines": [[("HOLD", "ink")]]},
@@ -83,11 +83,11 @@ DISPLAY = {
     "arch_w4": {"size": 34, "lines": [[("PAYPAL", "paper")]]},
     # 11 proof
     "proof_h": {"size": 60, "lines": [[("BUILT. THEN ", "paper"), ("PROVEN.", "orange")]]},
-    "proof_n1": {"size": 80, "lines": [[("1", "orange")]]},
+    "proof_n1": {"size": 80, "lines": [[("0", "orange")]]},
     "proof_n2": {"size": 80, "lines": [[("24/24", "orange")]]},
     "proof_n3": {"size": 80, "lines": [[("17/17", "orange")]]},
     "proof_n4": {"size": 80, "lines": [[("4,500+", "orange")]]},
-    "proof_u1": {"size": 26, "lines": [[("CAPTURE", "paper")]]},
+    "proof_u1": {"size": 26, "lines": [[("DIFFS", "paper")]]},
     "proof_u2": {"size": 26, "lines": [[("VOICE CLIPS", "paper")]]},
     "proof_u3": {"size": 26, "lines": [[("JUDGE STEPS", "paper")]]},
     "proof_u4": {"size": 26, "lines": [[("TEST CASES", "paper")]]},
@@ -121,7 +121,7 @@ def load_font(size_px, weight=800):
 def render_display(spec):
     size_px = int(round(spec["size"] * DPI / 72))
     font = load_font(size_px, spec.get("weight", 800))
-    line_h = spec.get("lh", 0.94) * size_px
+    line_h = spec.get("lh", 1.0 if len(spec["lines"]) > 1 else 0.94) * size_px
     cap_h = -font.getbbox("H", anchor="ls")[1]
     lines = spec["lines"]
     widths = [sum(font.getlength(t) for t, _ in line) for line in lines]
