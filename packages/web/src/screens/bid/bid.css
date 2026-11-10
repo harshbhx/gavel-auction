@@ -216,7 +216,7 @@
   font-weight: 700;
   letter-spacing: var(--letter-spacing-label);
   text-transform: uppercase;
-  color: var(--bid-ink-soft);
+  color: var(--bid-ink);
 }
 
 .bid__nextamt {
