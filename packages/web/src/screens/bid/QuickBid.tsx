@@ -56,11 +56,12 @@ export function QuickBid({ nextMinCents, incrementCents, ceilingCents, onBid }: 
   const anyOver = amounts.some(over);
 
   return (
-    <div>
-      {amounts.map((cents) => (
+    <div className="bid__quick">
+      {amounts.map((cents, i) => (
         <Button
           key={cents}
           size="bid"
+          variant={i === 0 ? 'solid' : 'outline'}
           disabled={over(cents)}
           {...(over(cents) ? { 'aria-describedby': REASON_ID } : {})}
           onClick={() => onBid(cents)}

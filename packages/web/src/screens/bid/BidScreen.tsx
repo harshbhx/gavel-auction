@@ -35,6 +35,7 @@ import { myStatus, StatusChip, type ChipStatus } from './StatusChip';
 import { useBidAnnounce } from './useBidAnnounce';
 import { useOutbid } from './useOutbid';
 import { markWinnerSeen, winnerSeen, winnerSeenKey } from './winnerSeen';
+import { VoiceBid } from './VoiceBid';
 
 // Loaded on first use: a confirm question is rare, and this keeps the first route small.
 const ConfirmSheet = lazy(() =>
@@ -91,6 +92,11 @@ export interface BidScreenProps {
   onJoinCode?: () => void;
   /** Winner pop-up: "View receipt". */
   onReceipt?: () => void;
+  /**
+   * Where spoken bids listen. Without it, or without a paddle, there is no microphone button. The
+   * button also needs a live speech provider and a browser microphone.
+   */
+  voice?: { apiBase: string; token: string };
   /** Sends a bidder with no registered hold back to registration. */
   onJoin?: () => void;
   /**
@@ -120,6 +126,7 @@ export function BidScreen({
   myPaddle,
   onConfirm,
   stopped = false,
+  voice,
   onJoin,
   onHome,
   onJoinCode,
@@ -353,6 +360,10 @@ export function BidScreen({
             paddingBottom: 'env(safe-area-inset-bottom)',
           }}
         >
+          <div className="bid__next">
+            <span className="bid__nextlabel">{t('bid.next.label')}</span>
+            <span className="bid__nextamt">{formatUsd(nextMin)}</span>
+          </div>
           <QuickBid
             nextMinCents={nextMin}
             incrementCents={increment}
@@ -364,6 +375,23 @@ export function BidScreen({
             ceilingCents={ceiling}
             incrementCents={increment}
             onBid={send}
+            {...(voice === undefined || myPaddle === undefined || roomId === ''
+              ? {}
+              : {
+                  voice: (
+                    <VoiceBid
+                      apiBase={voice.apiBase}
+                      roomId={roomId}
+                      token={voice.token}
+                      closed={closedLot || stopped}
+                      paddle={myPaddle}
+                      nextMinCents={nextMin}
+                      ceilingCents={ceiling}
+                      currentCents={price?.currentCents ?? null}
+                      onBid={send}
+                    />
+                  ),
+                })}
           />
         </section>
       )}

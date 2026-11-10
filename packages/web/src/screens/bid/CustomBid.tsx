@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type KeyboardEvent } from 'react';
+import { useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react';
 
 import { announce } from '../../a11y/announce';
 import { t } from '../../copy/t';
@@ -13,6 +13,8 @@ export interface CustomBidProps {
   incrementCents?: number;
   /** The guarded send. */
   onBid: (cents: number) => void;
+  /** The voice button, shown in the amount row when there is one. */
+  voice?: ReactNode;
 }
 
 /** Hint text for an amount, or undefined when it looks fine. The server stays authoritative. */
@@ -85,6 +87,7 @@ export function CustomBid({
   ceilingCents,
   incrementCents = 100,
   onBid,
+  voice,
 }: CustomBidProps) {
   const [text, setText] = useState('');
   const [attempted, setAttempted] = useState(false);
@@ -161,6 +164,7 @@ export function CustomBid({
         >
           {t('bid.plus', { amount: formatUsdCompact(inc) })}
         </Button>
+        {voice}
       </div>
       {top !== null && top > nextMinCents && (
         <input
