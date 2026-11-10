@@ -271,6 +271,8 @@ async function main() {
     await go(host, `${WEB}/try`, { wait: 1500 });
     const field = host.page.getByLabel(/judge key/i).first();
     await field.waitFor({ state: 'visible', timeout: 12000 });
+    await field.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+    await sleep(500);
     await rect('key.field', host, field);
     await glide(host, 700, 400, 600);
     await sleep(700);

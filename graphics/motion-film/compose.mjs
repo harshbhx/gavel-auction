@@ -463,7 +463,7 @@ card('voice', 9, [
         sub: 'No accidental sales.',
       },
       { a: released + 0.3, b: cut - 0.2, text: '**Sold.**' },
-      { a: cut + 0.3, b: dur - 0.3, text: 'The big screen / names the winner.' },
+      { a: cut + 0.3, b: dur - 0.3, text: 'The big screen / names the / winner.' },
     ],
     ev: { press, released, cut },
     data: {},
@@ -508,7 +508,7 @@ card('settle', 9, [
     ],
     caps: [
       { a: 0.4, b: 3.6, text: 'A **receipt** / for every bidder.' },
-      { a: 3.8, b: dur - 0.3, text: 'With a share link / and a QR.' },
+      { a: 3.8, b: dur - 0.3, text: 'With a / share link / and a QR.' },
     ],
     ev: {},
     data: {},
@@ -551,8 +551,12 @@ card('settle', 9, [
     ],
     caps: [
       { a: 0.4, b: verified - 0.2, text: 'Paste a ledger / **export.**' },
-      { a: verified, b: edit - 0.1, text: 'Chain **verified.**' },
-      { a: edit, b: broken - 0.1, text: 'Edit one entry.' },
+      {
+        a: verified,
+        b: broken - 0.1,
+        text: 'Chain **verified.**',
+        sub: 'Then one entry is edited.',
+      },
       { a: broken, b: dur - 0.3, text: 'Chain **broken.**' },
     ],
     ev: { verified, edit, broken },
@@ -595,8 +599,11 @@ card('proof', 12, [
   const kw = hostA ? Math.round(hostA.w * kScale) : 1296;
   const kh = hostA ? Math.round(hostA.h * kScale) : 729;
   const fieldRect = rectList.find((r) => r.id === 'key.field' && r.actor === 'host');
-  const fx = fieldRect ? fieldRect.x * kScale : kw / 2;
-  const fy = fieldRect ? fieldRect.y * kScale : kh / 2;
+  const inView = fieldRect && hostA && fieldRect.y >= 0 && fieldRect.y + fieldRect.h <= hostA.h;
+  if (fieldRect && !inView)
+    warn.push('key.field rect is outside the viewport; the key pane shows the page top');
+  const fx = inView ? (fieldRect.x + fieldRect.w / 2) * kScale : kw / 2;
+  const fy = inView ? (fieldRect.y + fieldRect.h / 2) * kScale : kh * 0.3;
   const kx = Math.round(panel.w / 2 - fx);
   const ky = Math.round(panel.h * 0.42 - fy);
   const pKey = panesOf(

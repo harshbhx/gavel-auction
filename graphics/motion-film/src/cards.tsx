@@ -1,6 +1,6 @@
 // The ink world: type and graphics only. Every component is a pure function of the scene time.
 import { AbsoluteFill } from 'remotion';
-import { cl, IO, lerp, pr, useT, EXIT } from './anim';
+import { cl, IO, lerp, pr, useT, usd, EXIT } from './anim';
 import { Lockup, Mark, strikeTime, Waves } from './brand';
 import { Pane } from './pane';
 import { DIM, DISPLAY, INK, MONO, ORANGE, PALE, PAPER, W, worldColors } from './theme';
@@ -196,25 +196,28 @@ export function Problem(_p: P) {
 /* ---------- 4. the idea: ceiling, bids under it, capture the winner, release the rest ---------- */
 export function Idea(_p: P) {
   const t = useT();
+  // the ceiling bar: a $25 ceiling, bids at $10, $15, $20, the hammer at $20
   const bx = 200;
-  const by = 200;
+  const by = 190;
   const bw = 170;
   const bh = 600;
+  const CEIL = 2500;
+  const level = (cents: number) => by + bh - (cents / CEIL) * bh;
   const fill = pr(t, 1.0, 1.2);
   const bids = [
-    { c: 1000, a: 2.8, label: '$10' },
-    { c: 1500, a: 3.5, label: '$15' },
-    { c: 2000, a: 4.2, label: '$20' },
+    { c: 1000, a: 2.8 },
+    { c: 1500, a: 3.5 },
+    { c: 2000, a: 4.2 },
   ];
-  const hammer = pr(t, 5.6, 0.5);
+  const hammer = pr(t, 5.7, 0.5);
   const split = pr(t, 6.6, 0.9, IO);
-  const level = (frac: number) => by + bh - frac * bh;
-  const winFrac = 0.4;
+  const win = 2000;
+  const winH = (win / CEIL) * bh;
+  const restH = bh * fill - winH;
   return (
     <AbsoluteFill style={{ background: INK }}>
       <Wipe t={t} a={0} d={0.7} color={PAPER} />
       <Chrome world="paper" t={t} a={0.5} />
-      {/* the ceiling bar */}
       <div
         style={{
           position: 'absolute',
@@ -226,61 +229,76 @@ export function Idea(_p: P) {
           opacity: pr(t, 0.8, 0.4),
         }}
       />
-      {/* the hold fill rises, then splits at the hammer */}
-      <div
-        style={{
-          position: 'absolute',
-          left: bx,
-          top: level(fill) + split * 0,
-          width: bw,
-          height: bh * fill * (1 - split * (1 - winFrac)),
-          background: split > 0 ? ORANGE : PALE,
-          opacity: 1,
-        }}
-      />
+      {/* the hold fills the bar; at the hammer the winning part turns orange and the rest lifts away */}
       {split > 0 ? (
+        <>
+          <div
+            style={{
+              position: 'absolute',
+              left: bx,
+              top: level(win),
+              width: bw,
+              height: winH,
+              background: ORANGE,
+            }}
+          />
+          <div
+            style={{
+              position: 'absolute',
+              left: bx,
+              top: level(win) - restH - split * 70,
+              width: bw,
+              height: Math.max(0, restH),
+              background: PALE,
+              opacity: 1 - split,
+            }}
+          />
+        </>
+      ) : (
         <div
           style={{
             position: 'absolute',
             left: bx,
-            top: level(1) - split * 90,
+            top: by + bh - bh * fill,
             width: bw,
-            height: bh * (1 - winFrac),
+            height: bh * fill,
             background: PALE,
-            opacity: 1 - split,
           }}
         />
-      ) : null}
-      <Rise t={t} a={1.0} x={bx} y={by - 64} w={700} size={26} f="m" color={paper.mute}>
+      )}
+      <Rise t={t} a={1.0} out={6.6} x={bx} y={by - 54} w={700} size={22} f="m" color={paper.mute}>
         Hold. The ceiling this bidder approves
+      </Rise>
+      <Rise t={t} a={7.2} d={0.6} x={bx} y={by - 54} w={700} size={22} f="m" color={paper.mute}>
+        The rest is released. Nothing was charged
       </Rise>
       {bids.map((b, i) => {
         const p = pr(t, b.a, 0.5);
-        const yy = level(b.c / 5000);
+        const yy = level(b.c);
         return (
           <div key={i} style={{ opacity: p }}>
             <div
               style={{
                 position: 'absolute',
                 left: bx - 20,
-                top: yy,
+                top: yy - 1,
                 width: (bw + 40) * p,
                 height: 3,
                 background: INK,
               }}
             />
-            <Rise t={t} a={b.a} d={0.5} x={bx + bw + 36} y={yy - 30} w={300} size={60} color={INK}>
-              {b.label}
+            <Rise t={t} a={b.a} d={0.5} x={bx + bw + 40} y={yy - 26} w={200} size={54} color={INK}>
+              {usd(b.c, true)}
             </Rise>
           </div>
         );
       })}
-      {/* hammer line */}
+      {/* the hammer line at the winning price */}
       <div
         style={{
           position: 'absolute',
           left: bx - 60,
-          top: level(winFrac) - 3,
+          top: level(win) - 4,
           width: (bw + 120) * hammer,
           height: 7,
           background: ORANGE,
@@ -288,52 +306,45 @@ export function Idea(_p: P) {
       />
       <Rise
         t={t}
-        a={5.7}
+        a={5.8}
         d={0.5}
-        x={bx + bw + 36}
-        y={level(winFrac) + 28}
-        w={400}
-        size={24}
+        x={bx + bw + 40}
+        y={level(win) - 70}
+        w={500}
+        size={22}
         f="m"
         color={ORANGE}
       >
-        Hammer at $20
+        Hammer. Sold at $20
       </Rise>
-      {split > 0 ? (
-        <>
-          <Rise
-            t={t}
-            a={6.8}
-            d={0.6}
-            x={bx}
-            y={level(winFrac) + 70}
-            w={600}
-            size={26}
-            f="m"
-            color={ORANGE}
-          >
-            Capture $20.00. final_capture
-          </Rise>
-          <Rise t={t} a={7.4} d={0.6} x={bx} y={by - 20} w={600} size={26} f="m" color={paper.mute}>
-            The rest is released
-          </Rise>
-        </>
-      ) : null}
+      <Rise
+        t={t}
+        a={6.8}
+        d={0.6}
+        x={bx - 60}
+        y={by + bh + 24}
+        w={700}
+        size={22}
+        f="m"
+        color={ORANGE}
+      >
+        Capture $20.00 with final_capture
+      </Rise>
       {/* the words */}
-      <Rise t={t} a={1.0} d={0.8} x={1000} y={200} w={824} size={110} color={INK}>
+      <Rise t={t} a={1.0} d={0.8} x={1000} y={200} w={824} size={82} color={INK}>
         Authorize a <span style={{ color: ORANGE }}>ceiling.</span>
       </Rise>
-      <Rise t={t} a={2.7} d={0.8} x={1000} y={330} w={824} size={110} color={INK}>
+      <Rise t={t} a={2.7} d={0.8} x={1000} y={310} w={824} size={82} color={INK}>
         Bid <span style={{ color: ORANGE }}>under</span> it.
       </Rise>
-      <Rise t={t} a={5.7} d={0.8} x={1000} y={460} w={824} size={110} color={INK}>
+      <Rise t={t} a={5.8} d={0.8} x={1000} y={420} w={824} size={82} color={INK}>
         Capture only the <span style={{ color: ORANGE }}>winner.</span>
       </Rise>
-      <Rise t={t} a={7.3} d={0.8} x={1000} y={590} w={824} size={110} color={INK}>
+      <Rise t={t} a={7.2} d={0.8} x={1000} y={530} w={824} size={82} color={INK}>
         Release the rest.
       </Rise>
-      <Rule t={t} a={8.0} d={0.7} x={1000} y={730} w={824} color={INK} />
-      <Body t={t} a={8.2} x={1000} y={752} w={824} size={27} color={paper.mute}>
+      <Rule t={t} a={8.0} d={0.7} x={1000} y={660} w={824} color={INK} />
+      <Body t={t} a={8.2} x={1000} y={684} w={824} size={27} color={paper.mute}>
         PayPal Orders v2 with intent AUTHORIZE holds the ceiling. At the hammer, Payments v2
         captures the winning price with final_capture and voids every other hold.
       </Body>
@@ -562,7 +573,7 @@ function Tile({
             fontSize: 96,
             lineHeight: '100px',
             color: orange ? (sweep > 0.5 ? INK : PAPER) : PAPER,
-            transform: `translateY(${(-sweep * 100).toFixed(1)}%)`,
+            transform: `translateY(${(-sweep * 100).toFixed(1)}px)`,
           }}
         >
           <div>{state[0]}</div>
@@ -804,8 +815,8 @@ export function Judges({ sc }: P) {
         >
           <Mono x={20} y={16} w={784} size={15} color={paper.mute} upper={false}>
             {t < (sc.ev.docsAt ?? 6.5)
-              ? '/try: the key goes into a password field, so it shows as dots. Unlock, then rooms use the judge allowance.'
-              : 'docs.gavel.dualmindlab.tech: Call the API as a judge, with a Try-it panel for every call.'}
+              ? '/try. The key field is a password input: dots only. Unlock.'
+              : 'Docs: Call the API as a judge, with a Try-it panel for every call.'}
           </Mono>
         </div>
       </div>
