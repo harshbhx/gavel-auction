@@ -5,7 +5,7 @@
 const TARGETS = {
   engine: {
     mutate: ['packages/engine/src/**/*.ts', '!packages/engine/src/**/index.ts'],
-    configFile: 'packages/engine/vitest.config.ts',
+    configFile: 'packages/engine/vitest.mutation.config.ts',
     dir: 'packages/engine',
   },
   saga: {
