@@ -1,5 +1,5 @@
 // Conventional Commits with the project scope list (R-QA-006).
-const TYPES = ['feat', 'fix', 'test', 'docs', 'chore', 'refactor', 'perf', 'ci', 'build'];
+const TYPES = ['feat', 'fix', 'test', 'docs', 'chore', 'refactor', 'perf', 'ci', 'build', 'style'];
 const SCOPES = [
   'shared',
   'engine',
@@ -35,6 +35,6 @@ module.exports = {
     'scope-enum': [2, 'always', SCOPES],
     'subject-empty': [2, 'never'],
     'subject-full-stop': [2, 'never', '.'],
-    'header-max-length': [2, 'always', 72],
+    'header-max-length': [2, 'always', 100],
   },
 };
