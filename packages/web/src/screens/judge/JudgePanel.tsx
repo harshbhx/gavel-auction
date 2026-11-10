@@ -26,6 +26,7 @@ import { EvidenceColumn } from './EvidenceColumn';
 import { JudgeDialog, type JudgeTab } from './JudgeDialog';
 import { JudgeStage } from './JudgeStage';
 import { liveRoomFrom, type LiveRoom } from './liveRoom';
+import { RoomCard } from './RoomCard';
 import { useDemoScript } from './useDemoScript';
 import './judge.css';
 
@@ -113,9 +114,9 @@ function canStart(rooms: RoomsState): boolean {
 }
 
 /**
- * The judge page at /try, laid out as a newspaper front page: masthead, headline, Fig. 1 (a
- * simulated run on an auction stage), three moves and a trust column. Nothing on it is live
- * except the server status, the links and a room code the visitor already holds.
+ * The judge page at /try: a masthead, one headline, three numbered moves (start, join, judge
+ * tools) beside Fig. 1 (a simulated run on an auction stage) and an evidence band. Nothing on it
+ * is live except the server status, the links and a room code the visitor already holds.
  */
 export function JudgePanel({
   rooms,
@@ -254,6 +255,29 @@ export function JudgePanel({
     );
   };
 
+  const scriptPrimary = !startable && rooms !== 'checking';
+
+  const scriptLink = (
+    <a
+      key="script"
+      className={`gv-judge__linkbtn${scriptPrimary ? '' : ' gv-judge__linkbtn--alt'}`}
+      href={SCRIPTED_DEMO_PATH}
+    >
+      {t('try.a1.script')}
+    </a>
+  );
+  const startButton = (
+    <Button
+      key="start"
+      size="bid"
+      variant={scriptPrimary ? 'outline' : 'solid'}
+      disabled={phase === 'busy' || !startable || !goalOk}
+      onClick={start}
+    >
+      {phase === 'busy' ? t('try.a1.creating') : t('try.a1.room')}
+    </Button>
+  );
+
   return (
     <main className="gv-judge" data-route="try">
       <a className="gv-judge__skip" href="#gv-judge-main">
@@ -274,114 +298,116 @@ export function JudgePanel({
       </div>
       <header className="gv-judge__page gv-judge__mast">
         <p className="gv-judge__brand">{t('try.brand')}</p>
-        <p className="gv-judge__tagline">{t('try.tagline')}</p>
-        <p className="gv-judge__meta">
-          <span>{t('try.strip1')}</span>
-          <span>{t('try.strip2')}</span>
-          <span>{t('try.editionNote')}</span>
-        </p>
+        <div className="gv-judge__mastside">
+          <p className="gv-judge__tagline">{t('try.tagline')}</p>
+          <p className="gv-judge__meta">
+            <span>{t('try.strip1')}</span>
+            <span>{t('try.strip2')}</span>
+            <span>{t('try.editionNote')}</span>
+          </p>
+        </div>
       </header>
 
-      <div className="gv-judge__page gv-judge__grid">
-        <div className="gv-judge__maincol" id="gv-judge-main">
+      <div className="gv-judge__page gv-judge__grid" id="gv-judge-main">
+        <div className="gv-judge__left">
           <section className="gv-judge__headline" aria-labelledby="gv-judge-h1">
             <p className="gv-judge__kicker">{t('try.kicker')}</p>
             <h1 id="gv-judge-h1" ref={heading} tabIndex={-1}>
               {t('try.hl1')} <mark>{t('try.hl2')}</mark> {t('try.hl3')} <mark>{t('try.hl4')}</mark>
             </h1>
-            <div className="gv-judge__dek">
-              <p className="gv-judge__deck">{t('try.deck')}</p>
-              <p className="gv-judge__by">{t('try.by')}</p>
-            </div>
+            <p className="gv-judge__deck">{t('try.deck')}</p>
+            <p className="gv-judge__by">{t('try.by')}</p>
           </section>
 
           <Instructor screen="try" judge current={0} />
-
-          <JudgeStage state={script.state} />
 
           <section className="gv-judge__acts" aria-labelledby="gv-judge-acts">
             <h2 id="gv-judge-acts" className="gv-judge__rule">
               {t('try.acts.title')}
             </h2>
-            <div className="gv-judge__cols">
-              <article className="gv-judge__col" aria-labelledby="gv-judge-a1">
+
+            <article className="gv-judge__col gv-judge__col--start" aria-labelledby="gv-judge-a1">
+              <header className="gv-judge__colhead">
                 <span className="gv-judge__num" aria-hidden="true">
                   {1}
                 </span>
-                <h3 id="gv-judge-a1">{t('try.a1.title')}</h3>
-                <p className="gv-judge__tag">{t('try.a1.tag')}</p>
-                <p>{t('try.a1.body')}</p>
-                <GoalField value={goal} onChange={setGoal} />
-                <div className="gv-judge__stack">
-                  <a className="gv-judge__linkbtn" href={SCRIPTED_DEMO_PATH}>
-                    {t('try.a1.script')}
-                  </a>
-                  <Button
-                    variant="outline"
-                    disabled={phase === 'busy' || !startable || !goalOk}
-                    onClick={start}
-                  >
-                    {phase === 'busy' ? t('try.a1.creating') : t('try.a1.room')}
-                  </Button>
+                <div>
+                  <h3 id="gv-judge-a1">{t('try.a1.title')}</h3>
+                  <p className="gv-judge__tag">{t('try.a1.tag')}</p>
                 </div>
-                {keyOffered && (
-                  <div className="gv-judge__key" data-unlocked={unlocked}>
-                    {unlocked ? (
-                      <>
-                        <p className="gv-judge__note" role="status">
-                          {t('try.key.active')}
-                        </p>
-                        <Button variant="outline" onClick={lock}>
-                          {t('try.key.forget')}
-                        </Button>
-                      </>
-                    ) : (
-                      <form onSubmit={unlock}>
-                        <Field
-                          label={t('try.key.label')}
-                          hint={t('try.key.hint')}
-                          type="password"
-                          name="judge-key"
-                          autoComplete="off"
-                          autoCapitalize="none"
-                          spellCheck={false}
-                          maxLength={JUDGE_KEY_MAX_CHARS}
-                          value={keyInput}
-                          onChange={(e) => {
-                            setKeyInput(e.target.value);
-                            if (keyState !== 'checking') setKeyState('idle');
-                          }}
-                          {...(keyMessage === null ? {} : { error: keyMessage })}
-                        />
-                        <Button
-                          type="submit"
-                          variant="outline"
-                          disabled={keyState === 'checking' || keyInput.trim() === ''}
-                        >
-                          {keyState === 'checking' ? t('try.key.checking') : t('try.key.unlock')}
-                        </Button>
-                      </form>
-                    )}
-                  </div>
-                )}
-                {(phase === 'failed' || (!startable && rooms !== 'checking')) && (
-                  <div className="gv-flow__error" role="alert">
-                    <p>
-                      {phase === 'failed'
-                        ? `${t('try.a1.failed')} ${failureText(failure, retryAfterS)}`
-                        : t('try.a1.open')}
-                    </p>
-                  </div>
-                )}
-              </article>
+              </header>
+              <p className="gv-judge__lead">{t('try.a1.body')}</p>
+              <div className="gv-judge__stack">
+                {scriptPrimary ? [scriptLink, startButton] : [startButton, scriptLink]}
+              </div>
+              {(phase === 'failed' || (!startable && rooms !== 'checking')) && (
+                <div className="gv-flow__error" role="alert">
+                  <p>
+                    {phase === 'failed'
+                      ? `${t('try.a1.failed')} ${failureText(failure, retryAfterS)}`
+                      : t('try.a1.open')}
+                  </p>
+                </div>
+              )}
+              <details className="gv-judge__more" {...(keyOffered ? { open: true } : {})}>
+                <summary>{t('try.help.opts')}</summary>
+                <div className="gv-judge__morebody">
+                  <GoalField value={goal} onChange={setGoal} />
+                  {keyOffered && (
+                    <div className="gv-judge__key" data-unlocked={unlocked}>
+                      {unlocked ? (
+                        <>
+                          <p className="gv-judge__note" role="status">
+                            {t('try.key.active')}
+                          </p>
+                          <Button variant="outline" onClick={lock}>
+                            {t('try.key.forget')}
+                          </Button>
+                        </>
+                      ) : (
+                        <form onSubmit={unlock}>
+                          <Field
+                            label={t('try.key.label')}
+                            hint={t('try.key.hint')}
+                            type="password"
+                            name="judge-key"
+                            autoComplete="off"
+                            autoCapitalize="none"
+                            spellCheck={false}
+                            maxLength={JUDGE_KEY_MAX_CHARS}
+                            value={keyInput}
+                            onChange={(e) => {
+                              setKeyInput(e.target.value);
+                              if (keyState !== 'checking') setKeyState('idle');
+                            }}
+                            {...(keyMessage === null ? {} : { error: keyMessage })}
+                          />
+                          <Button
+                            type="submit"
+                            variant="outline"
+                            disabled={keyState === 'checking' || keyInput.trim() === ''}
+                          >
+                            {keyState === 'checking' ? t('try.key.checking') : t('try.key.unlock')}
+                          </Button>
+                        </form>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </details>
+            </article>
 
-              <article className="gv-judge__col" aria-labelledby="gv-judge-a2">
+            <article className="gv-judge__col" aria-labelledby="gv-judge-a2">
+              <header className="gv-judge__colhead">
                 <span className="gv-judge__num" aria-hidden="true">
                   {2}
                 </span>
-                <h3 id="gv-judge-a2">{t('try.a2.title')}</h3>
-                <p className="gv-judge__tag">{t('try.a2.tag')}</p>
-                <p>{t('try.a2.body')}</p>
+                <div>
+                  <h3 id="gv-judge-a2">{t('try.a2.title')}</h3>
+                  <p className="gv-judge__tag">{t('try.a2.tag')}</p>
+                </div>
+              </header>
+              <div className="gv-judge__joinrow">
                 <form className="gv-judge__join" onSubmit={find}>
                   <JoinCodeInput
                     value={code}
@@ -396,30 +422,60 @@ export function JudgePanel({
                       setProblem(null);
                     }}
                   />
-                  <Button type="submit" disabled={looking || code.trim() === ''}>
+                  <Button type="submit" variant="outline" disabled={looking || code.trim() === ''}>
                     {looking ? t('try.a2.checking') : t('try.a2.go')}
                   </Button>
                 </form>
-                <p className="gv-judge__note">{t('try.a2.nocode')}</p>
-              </article>
+                <RoomCard room={room} id="gv-judge-room-side" />
+              </div>
+              <details className="gv-judge__more">
+                <summary>{t('try.help.more')}</summary>
+                <div className="gv-judge__morebody">
+                  <p>{t('try.a2.body')}</p>
+                  <p className="gv-judge__note">{t('try.a2.nocode')}</p>
+                </div>
+              </details>
+            </article>
 
-              <article className="gv-judge__col" aria-labelledby="gv-judge-a3">
+            <article className="gv-judge__col" aria-labelledby="gv-judge-a3">
+              <header className="gv-judge__colhead">
                 <span className="gv-judge__num" aria-hidden="true">
                   {3}
                 </span>
-                <h3 id="gv-judge-a3">{t('try.a3.title')}</h3>
-                <p className="gv-judge__tag">{t('try.a3.tag')}</p>
-                <p>{t('try.a3.body')}</p>
-                <div className="gv-judge__row">
-                  {view('console', 'try.a3.console')}
-                  {view('screen', 'try.a3.screen')}
-                  {view('receipt', 'try.a3.receipt')}
+                <div>
+                  <h3 id="gv-judge-a3">{t('try.a3.title')}</h3>
+                  <p className="gv-judge__tag">{t('try.a3.tag')}</p>
                 </div>
-              </article>
-            </div>
+              </header>
+              <div className="gv-judge__row">
+                {view('console', 'try.a3.console')}
+                {view('screen', 'try.a3.screen')}
+                {view('receipt', 'try.a3.receipt')}
+                <Button variant="outline" onClick={() => setDialog('verify')}>
+                  {t('try.tab.verify')}
+                </Button>
+              </div>
+              <details className="gv-judge__more">
+                <summary>{t('try.help.more')}</summary>
+                <div className="gv-judge__morebody">
+                  <p>{t('try.a3.body')}</p>
+                </div>
+              </details>
+            </article>
           </section>
         </div>
-        <EvidenceColumn room={room} />
+
+        <div className="gv-judge__right">
+          <JudgeStage state={script.state} />
+          <blockquote className="gv-judge__quote">
+            <p>{t('try.quote')}</p>
+            <cite>{t('try.quoteCite')}</cite>
+          </blockquote>
+        </div>
+      </div>
+
+      <div className="gv-judge__page">
+        <EvidenceColumn />
       </div>
 
       <footer className="gv-judge__page gv-judge__foot">
@@ -436,7 +492,13 @@ export function JudgePanel({
       </footer>
 
       <nav ref={bar} className="gv-judge__bar" aria-label={t('try.bar.label')}>
-        <Button size="bid" className="gv-judge__go" disabled={running} onClick={script.run}>
+        <Button
+          size="bid"
+          variant="outline"
+          className="gv-judge__go"
+          disabled={running}
+          onClick={script.run}
+        >
           <span>
             {running
               ? t('try.run.running')
