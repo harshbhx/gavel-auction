@@ -56,4 +56,9 @@ describe('public/_headers', () => {
   it('caches hashed assets as immutable', () => {
     expect(rule('/assets/*').get('cache-control')).toContain('immutable');
   });
+
+  it('serves security.txt as plain text and caches landing images', () => {
+    expect(rule('/.well-known/security.txt').get('content-type')).toContain('text/plain');
+    expect(rule('/landing/*').get('cache-control')).toMatch(/max-age=\d{6,}/);
+  });
 });
