@@ -119,6 +119,7 @@ _Two bids arrive together: one is accepted, one is refused as not higher._
 - A real server process was killed after the capture request and before the response. On restart with the same data folder it settled with one capture of 12500 equal to the hammer price, two losers voided, a journal equal to PayPal and a ledger of 19 entries that verifies. That ran on a CI runner, not on the deployed host.
 - Live speech through the audio socket: both providers answered 24 of 24 synthetic clips; no bid was accepted without a confirm.
 - The hosted judge flow passed all 17 steps on the live domains.
+- PageSpeed Insights scored the landing page 100 for Performance, Accessibility, Best Practices and SEO on both mobile and desktop (lab data, 10 Nov 2026, landing page only, not the whole app).
 - More than 4,500 test cases run in CI, and all eight P0 security items pass.
 - Audit waves found and closed real bugs: as of 9 Nov 2026, 172 deep-dig issues and 597 red-team issues are closed on GitHub (the deep-dig round was still running).
 
