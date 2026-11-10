@@ -1,0 +1,67 @@
+name: landing-shots
+# Captures the four landing page screenshots (UIX-50) from the screen tour specs: console and public
+# screen at 1440x900, bidder and receipt at 390x844 at 2x, all in one room state. Converts them to
+# WebP and uploads the artifact `landing-shots`; copy its files to packages/web/public/landing.
+# Informational: not part of the required roll-up in ci.yml and uses no secrets.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'packages/web/test/screens/landing-shots.spec.ts'
+      - '.github/workflows/landing-shots.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: landing-shots-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Install the browser and the WebP encoder
+        run: |
+          npx playwright install --with-deps chromium
+          sudo apt-get install -y --no-install-recommends webp
+      - name: Capture the four views
+        env:
+          LANDING_SHOTS_DIR: ${{ github.workspace }}/landing-shots-png
+        run: >
+          npx playwright test -c playwright.screens.config.ts landing-shots
+          --project=desktop-light --project=phone-light
+        working-directory: packages/web
+      - name: Convert to WebP and check the size budget
+        run: |
+          mkdir -p landing-shots-out
+          for f in landing-shots-png/*.png; do
+            name="$(basename "$f" .png)"
+            cwebp -quiet -q 84 -m 6 "$f" -o "landing-shots-out/$name.webp"
+          done
+          ls -l landing-shots-out
+          for f in landing-shots-out/*.webp; do
+            size="$(stat -c %s "$f")"
+            if [ "$size" -gt 307200 ]; then echo "$f is over 300 KB ($size)"; exit 1; fi
+          done
+          test "$(ls landing-shots-out | wc -l)" -eq 4
+          {
+            echo '## Landing shots'
+            echo
+            file landing-shots-png/*.png | sed 's/^/- /'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload the WebP files and the PNG originals
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: landing-shots
+          path: |
+            landing-shots-out
+            landing-shots-png
+          if-no-files-found: error
+          retention-days: 14
