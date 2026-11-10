@@ -493,6 +493,11 @@
   margin: 0;
 }
 
+.bid-win__fields {
+  display: grid;
+  gap: var(--space-3);
+}
+
 .bid-win__money {
   color: var(--color-muted, inherit);
 }

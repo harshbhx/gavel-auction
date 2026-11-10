@@ -12,6 +12,7 @@ import { Empty, Loading, Offline } from '../states/States';
 import { useOnline } from '../states/useOnline';
 import { Receipt } from './Receipt';
 import type { MintReceiptLink } from './ShareControls';
+import { WinnerDetailsBlock } from './WinnerDetailsBlock';
 
 export interface ReceiptViewProps {
   state: RoomState;
@@ -53,6 +54,9 @@ export function ReceiptView({ state, roomId, share, shared = false }: ReceiptVie
               noHold={noHold}
               {...(share === undefined ? {} : { share })}
             />
+            {!shared && view.winnerPaddle !== null && paddle === view.winnerPaddle && (
+              <WinnerDetailsBlock roomId={roomId} paddle={view.winnerPaddle} />
+            )}
             {!shared && (
               <SettlementPanel
                 view={view}

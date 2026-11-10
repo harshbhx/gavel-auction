@@ -414,6 +414,7 @@ export function BidScreen({
           <WinnerDialog
             lotTitle={lotTitle}
             amountCents={wonCents}
+            roomId={roomId}
             onHome={() => closeWin(onHome)}
             onJoinCode={() => closeWin(onJoinCode)}
             onReceipt={() => closeWin(onReceipt)}

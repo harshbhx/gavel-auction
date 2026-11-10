@@ -54,8 +54,23 @@ function renderBid(store: RoomStore, handlers = true) {
 beforeEach(() => {
   announce.mockClear();
   window.sessionStorage.clear();
+  window.localStorage.clear();
 });
-afterEach(() => window.sessionStorage.clear());
+afterEach(() => {
+  window.sessionStorage.clear();
+  window.localStorage.clear();
+});
+
+function savedRecords(): Array<Record<string, unknown>> {
+  const out: Array<Record<string, unknown>> = [];
+  for (let i = 0; i < window.localStorage.length; i += 1) {
+    const key = window.localStorage.key(i);
+    if (key !== null && key.startsWith('gavel:winner:')) {
+      out.push(JSON.parse(window.localStorage.getItem(key) ?? '{}') as Record<string, unknown>);
+    }
+  }
+  return out;
+}
 
 describe('winner pop-up (UIX-60)', () => {
   it('opens a modal dialog for the winning bidder with both choices and the receipt', async () => {
@@ -98,6 +113,43 @@ describe('winner pop-up (UIX-60)', () => {
   it('never shows for a bidder who lost', () => {
     renderBid(closedStore(7));
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('renders the email and contact fields with the on-device note', async () => {
+    renderBid(closedStore(12));
+    await screen.findByRole('dialog');
+    expect(screen.getByLabelText(t('win.email'))).toBeTruthy();
+    expect(screen.getByLabelText(t('win.phone'))).toBeTruthy();
+    expect(screen.getByText(t('win.local'))).toBeTruthy();
+  });
+
+  it('blocks save and shows an error for an invalid email', async () => {
+    const { onReceipt } = renderBid(closedStore(12));
+    fireEvent.change(await screen.findByLabelText(t('win.email')), {
+      target: { value: 'not-an-email' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: t('win.save') }));
+    expect(screen.getByText(t('win.emailError'))).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: t('win.receipt') }));
+    expect(onReceipt).not.toHaveBeenCalled();
+    expect(savedRecords()).toHaveLength(0);
+  });
+
+  it('writes valid details to local storage and then runs the action', async () => {
+    const { onReceipt } = renderBid(closedStore(12));
+    fireEvent.change(await screen.findByLabelText(t('win.email')), {
+      target: { value: 'ana@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText(t('win.phone')), {
+      target: { value: '+1 555-010-2030' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: t('win.receipt') }));
+    expect(onReceipt).toHaveBeenCalledTimes(1);
+    const rec = savedRecords();
+    expect(rec).toHaveLength(1);
+    expect(rec[0]?.email).toBe('ana@example.com');
+    expect(rec[0]?.phone).toBe('+1 555-010-2030');
+    expect(typeof rec[0]?.savedAt).toBe('number');
   });
 
   it('never shows while the lot is open', () => {
