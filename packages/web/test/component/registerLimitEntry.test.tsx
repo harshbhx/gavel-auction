@@ -159,10 +159,12 @@ describe('open limit above $1,000 (UIX-59)', () => {
     const { box, slider } = toLimitStep(BIG);
     fireEvent.change(box, { target: { value: '20000' } });
     expect(slider.getAttribute('aria-valuemax')).toBe('2000000');
-    fireEvent.keyDown(slider, { key: 'Home' });
-    fireEvent.keyDown(slider, { key: 'ArrowRight' });
-    // The first rest after the minimum is a round amount for the new span, not $2.
-    expect(Number(slider.getAttribute('aria-valuenow'))).toBe(sliderStep(100, 2_000_000));
+    fireEvent.keyDown(slider, { key: 'End' });
+    fireEvent.keyDown(slider, { key: 'ArrowLeft' });
+    // The last rest before the top is one round step for the new span below it, not $2.
+    expect(Number(slider.getAttribute('aria-valuenow'))).toBe(
+      2_000_000 - sliderStep(100, 2_000_000),
+    );
     expect(sliderStep(100, 2_000_000)).toBeGreaterThan(sliderStep(100, 100_000));
   });
 
