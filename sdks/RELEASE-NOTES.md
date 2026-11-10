@@ -5,4 +5,6 @@ Assets:
 - `gavel-sdk-<version>.tgz`: TypeScript SDK (ESM and CommonJS, typed). Install: `npm install ./gavel-sdk-<version>.tgz`
 - `gavel_sdk-<version>-py3-none-any.whl` and `gavel_sdk-<version>.tar.gz`: Python SDK. Install: `pip install ./gavel_sdk-<version>-py3-none-any.whl`, then `import gavel_host_api`
 
-Not published to npm or PyPI. Docs: https://github.com/harshbhx/gavel-auction/blob/main/sdks/README.md
+- `GavelSdk.<version>.nupkg`: C# SDK (netstandard2.0). Install: `dotnet add package GavelSdk --version <version> --source <folder holding the nupkg>`
+
+Not published to npm, PyPI or NuGet. Docs: https://github.com/harshbhx/gavel-auction/blob/main/sdks/README.md
