@@ -11,6 +11,8 @@ function setup(me: number): void {
   const snap = {
     ...openSnapshot(roster([1, 'Ana'], [2, 'Ben'])),
     you: { bidderId: bidderId(me), ceiling: Cents(50000) },
+    // The receipt only renders once the lot has a settlement record.
+    settlement: { rev: 1, auctionState: 'SETTLED' as const, you: 'SETTLED' as const },
   };
   act(() => roomStore.dispatch({ kind: 'reset' }));
   act(() => roomStore.dispatch({ kind: 'wire', msg: stateMsg(1, snap) }));
