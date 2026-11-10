@@ -34,14 +34,14 @@ jobs:
           sudo apt-get install -y -qq imagemagick zip >/dev/null
           cd out/stills
           montage -label '%t' -font DejaVu-Sans -pointsize 14 -fill white -background '#120e0b' \
-            -tile 5x -geometry 480x270+8+8 [0-9]*.png ../contact-sheet.png
-          zip -q ../film-v3-stills.zip *.png index.json
+            -tile 5x -geometry 480x270+8+8 -quality 85 [0-9]*.jpg ../contact-sheet.jpg
+          zip -q ../film-v3-stills.zip *.jpg index.json
           ls -la ..
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: ${{ !cancelled() }}
         with:
           name: film-v3-stills
           path: |
-            out/contact-sheet.png
+            out/contact-sheet.jpg
             out/film-v3-stills.zip
           retention-days: 14

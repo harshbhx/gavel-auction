@@ -1,12 +1,14 @@
 // Composes the GAVEL launch film v3 (full motion graphics, no recording) with Remotion. CI only
 // (.github/workflows/launch-film.yml); run from this directory after npm ci.
 // Usage: [FPS=60|30] [SCALE=1|0.6667] [SCENES=hook,title,mechanism] [NAME=gavel-launch-film-v3]
-//        [SPONSOR_LOGOS=on] [SHARE=0] node compose.mjs <outDir>
+//        [SPONSOR_LOGOS=on] [SHARE=0] [SHARD=i/n | CHUNKS=<dir>] [MAX_MB=56] node compose.mjs <outDir>
 // 1. Links the app fonts, the brand SVGs and the partner marks into public/, writes props.json.
 // 2. Renders the Film composition, writes the 720p30 share copy (full cuts), poster, SRT, timeline.json,
 //    4 fps contact sheets, the frame-difference check and report.txt; re-encodes under a bitrate cap when the
-//    MP4 passes 48 MB.
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+//    MP4 passes MAX_MB (56, so the voice-over copy stays under 60 MB).
+// 3. Full cuts also get a voice-over copy of each MP4 (the picture is copied, audio/voiceover.mp3 is added).
+//    The captions are burned into the picture by the Film composition (src/captions.tsx).
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -72,13 +74,39 @@ if (existsSync(path.join(root, 'brand/partners')))
   cpSync(path.join(root, 'brand/partners'), path.join(PUBLIC, 'partners'), { recursive: true });
 
 // ----------------------------------------------------------------------------- render
+// Three ways to get the picture: render it all here; render one shard of it (SHARD=i/n, a CI matrix job
+// writes chunk-i.mp4 and stops); or stitch the shards another job rendered (CHUNKS=<dir>, no render).
 const mp4 = path.join(OUT, `${NAME}.mp4`);
 const concurrency = process.env.CONCURRENCY || '3';
-sh(
-  'npx',
-  ['remotion', 'render', 'Film', mp4, `--props=${propsFile}`, `--concurrency=${concurrency}`, '--crf=19', '--codec=h264', '--log=info'],
-  'remotion render',
-);
+const frames = scenes.reduce((n, s) => n + Math.max(1, Math.round(s.dur * FPS)), 0);
+const render = (out, range) =>
+  sh(
+    'npx',
+    ['remotion', 'render', 'Film', out, `--props=${propsFile}`, `--concurrency=${concurrency}`, '--crf=17', '--codec=h264', '--muted', '--log=info', ...(range ? [`--frames=${range}`] : [])],
+    'remotion render',
+  );
+if (process.env.SHARD) {
+  const [i, n] = process.env.SHARD.split('/').map(Number);
+  const a = Math.floor((i * frames) / n);
+  const b = Math.floor(((i + 1) * frames) / n) - 1;
+  log(`shard ${i + 1} of ${n}: frames ${a} to ${b} of ${frames}`);
+  render(path.join(OUT, `chunk-${String(i).padStart(2, '0')}.mp4`), `${a}-${b}`);
+  process.exit(0);
+}
+if (process.env.CHUNKS) {
+  const dir = path.resolve(process.env.CHUNKS);
+  const chunks = readdirSync(dir).filter((f) => /^chunk-\d+\.mp4$/.test(f)).sort();
+  if (!chunks.length) throw new Error(`no chunk-*.mp4 in ${dir}`);
+  const list = path.join(OUT, 'chunks.txt');
+  writeFileSync(list, chunks.map((f) => `file '${path.join(dir, f)}'`).join('\n') + '\n');
+  ff(['-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', '-an', '-movflags', '+faststart', mp4], 'stitch');
+  rmSync(list);
+  const got = Number(sh('ffprobe', ['-v', 'error', '-count_packets', '-select_streams', 'v:0', '-show_entries', 'stream=nb_read_packets', '-of', 'csv=p=0', mp4], 'ffprobe', { capture: true }).toString().trim());
+  log(`stitched ${chunks.length} chunks, ${got} frames (expected ${frames})`);
+  if (got !== frames) throw new Error(`stitched ${got} frames, expected ${frames}`);
+} else {
+  render(mp4);
+}
 
 const size = (f) => statSync(f).size / 1048576;
 const cap = (src, dst, mb, vf) => {
@@ -89,7 +117,7 @@ const cap = (src, dst, mb, vf) => {
   ff(['-i', src, ...v, ...common, '-pass', '1', '-f', 'mp4', '/dev/null'], 'pass 1');
   ff(['-i', src, ...v, ...common, '-pass', '2', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', dst], 'pass 2');
 };
-const maxMb = full ? 48 : 12;
+const maxMb = full ? Number(process.env.MAX_MB || 56) : 12;
 if (size(mp4) > maxMb) {
   const tmp = path.join(OUT, 'tmp-cap.mp4');
   cap(mp4, tmp, maxMb - 2);
@@ -101,23 +129,37 @@ let share = null;
 if (SHARE && full) {
   share = path.join(OUT, `${NAME}-720p30.mp4`);
   ff(['-i', mp4, '-vf', 'scale=1280:720:flags=lanczos', '-r', '30', '-c:v', 'libx264', '-preset', 'slow', '-crf', '25', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-an', share], 'share 720p');
-  if (size(share) > 14.5) {
+  if (size(share) > 24) {
     const tmp = path.join(OUT, 'tmp-share.mp4');
-    cap(mp4, tmp, 13.5, 'scale=1280:720:flags=lanczos,fps=30');
+    cap(mp4, tmp, 22, 'scale=1280:720:flags=lanczos,fps=30');
     rmSync(share);
     execFileSync('mv', [tmp, share]);
   }
 }
 
+// ----------------------------------------------------------------------------- narration (voice-over copies)
+// audio/voiceover.mp3 is the narration track laid out on the film timeline by voiceover.mjs. The picture is
+// copied, never re-encoded, so the silent and the voice-over file are the same frames.
+const VO = path.join(here, 'audio/voiceover.mp3');
+const withVoice = (src) => {
+  const dst = src.replace(/\.mp4$/, '-voiceover.mp4');
+  ff(['-i', src, '-i', VO, '-map', '0:v:0', '-map', '1:a:0', '-c:v', 'copy', '-af', 'apad', '-c:a', 'aac', '-b:a', '160k', '-ac', '2', '-t', total.toFixed(3), '-movflags', '+faststart', dst], 'voice-over mux');
+  return dst;
+};
+let voiced = null;
+let voicedShare = null;
+if (full && existsSync(VO)) {
+  voiced = withVoice(mp4);
+  if (share) voicedShare = withVoice(share);
+}
+
 // ----------------------------------------------------------------------------- timeline, SRT, poster, sheets
+// The captions are the narration cues (src/captions.json, film seconds), the same lines that are burned in.
+const cues = full ? JSON.parse(readFileSync(path.join(here, 'src/captions.json'), 'utf8')).cues : [];
 let cursor = 0;
 const timeline = [];
 for (const sc of scenes) {
-  const caps = sc.caps.map((c) => ({
-    a: +(cursor + c.a).toFixed(3),
-    b: +(cursor + c.b).toFixed(3),
-    text: c.text.replace(/\*\*/g, '').replace(/ \/ /g, ' '),
-  }));
+  const caps = cues.filter((c) => c.scene === sc.id).map((c) => ({ a: c.a, b: c.b, text: c.text }));
   timeline.push({ id: sc.id, start: +cursor.toFixed(3), dur: sc.dur, world: sc.world, caps });
   cursor += sc.dur;
 }
@@ -134,7 +176,7 @@ for (const sc of timeline)
     n += 1;
     srt.push(`${n}\n${tc(c.a)} --> ${tc(c.b)}\n${c.text}\n`);
     rows.push(`${String(n).padStart(2)}  ${tc(c.a)} --> ${tc(c.b)}  ${(c.b - c.a).toFixed(1)} s  [${sc.id}] ${c.text}`);
-    if (c.b - c.a < 2.0) warn.push(`caption ${n} [${sc.id}] shows ${(c.b - c.a).toFixed(1)} s (< 2 s)`);
+    if (c.b - c.a < 0.8) warn.push(`caption ${n} [${sc.id}] shows ${(c.b - c.a).toFixed(1)} s (< 0.8 s)`);
   }
 writeFileSync(path.join(OUT, `${NAME}.en.srt`), srt.join('\n'));
 writeFileSync(
@@ -172,6 +214,7 @@ const meanDiff = diffs.reduce((a, b) => a + b, 0) / Math.max(1, diffs.length);
 const report = [
   `${NAME}: duration ${total.toFixed(1)} s, ${FPS} fps, ${W}x${H}${full ? '' : ` (scenes: ${ids.join(', ')})`}`,
   `mp4 ${size(mp4).toFixed(2)} MB${share ? `, share 720p30 ${size(share).toFixed(2)} MB` : ''}`,
+  voiced ? `voice-over ${size(voiced).toFixed(2)} MB${voicedShare ? `, share 720p30 ${size(voicedShare).toFixed(2)} MB` : ''}` : 'voice-over: not built',
   `motion: mean frame difference ${(meanDiff * 100).toFixed(2)} % at 4 fps, static holds (>= 1 s under ${THRESH * 100} %): ${holds.length}`,
   '',
   ...timeline.map((s) => `${tc(s.start)}  ${s.dur.toFixed(1).padStart(5)} s  ${s.world.padEnd(5)}  ${s.id}`),

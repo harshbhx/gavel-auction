@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react';
-import { AbsoluteFill, Series, useVideoConfig } from 'remotion';
+import { AbsoluteFill, Series, useCurrentFrame, useVideoConfig } from 'remotion';
 import { useT } from './anim';
+import { Captions } from './captions';
 import { Hook, Mechanism, Problem, Title } from './scenes/intro';
 import { BuiltWith, Judges, Open, Outro, Proof, Speed } from './scenes/proof';
 import { Bid, Hammer, Hold, Join, Voice } from './scenes/room';
@@ -39,9 +40,15 @@ function Scene({ spec, letters, sponsorLogos }: { spec: SceneSpec; letters: stri
   return <C t={t} dur={spec.dur} fps={fps} frame={frame} spec={spec} letters={letters} sponsorLogos={sponsorLogos} />;
 }
 
-/** The film: hard cuts between scenes; the shared-element moves and wipes live inside the scenes. */
-export function Film({ ids, letters, scale, sponsorLogos }: FilmProps) {
+/** The film: hard cuts between scenes; the shared-element moves and wipes live inside the scenes; the
+    narration captions sit on top of every scene, in film time. */
+export function Film({ ids, letters, scale, sponsorLogos, captions = true }: FilmProps) {
   const { fps } = useVideoConfig();
+  const frame = useCurrentFrame();
+  // A cut that starts later in the film (the stills, a style test) keeps the film's clock for the captions.
+  const first = SPECS.findIndex((s) => s.id === ids[0]);
+  const offset = SPECS.slice(0, Math.max(0, first)).reduce((n, s) => n + s.dur, 0);
+  const contiguous = ids.every((id, i) => SPECS[first + i]?.id === id);
   const specs = ids.map(specOf).filter((s): s is SceneSpec => Boolean(s));
   return (
     <AbsoluteFill style={{ background: INK }}>
@@ -53,6 +60,7 @@ export function Film({ ids, letters, scale, sponsorLogos }: FilmProps) {
             </Series.Sequence>
           ))}
         </Series>
+        {captions && contiguous ? <Captions t={offset + frame / fps} /> : null}
       </div>
     </AbsoluteFill>
   );

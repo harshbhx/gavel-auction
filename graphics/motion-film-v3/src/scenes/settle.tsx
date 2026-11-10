@@ -9,7 +9,7 @@ import type { SceneCtx } from '../types';
    and the remainder goes hollow; the other two void; the journal types. */
 export function Settle({ t, frame, fps, spec }: SceneCtx) {
   const tiles = [
-    { who: 'Paddle 12, Asha', limit: 50000, kind: 'win' as const, at: 1.2, ref: '4F2A' },
+    { who: 'Paddle 12, Asha', limit: 50000, kind: 'win' as const, at: 3.2, ref: '4F2A' },
     { who: 'Paddle 7, Ben', limit: 40000, kind: 'void' as const, at: 6.0, ref: '9C1D' },
     { who: 'Paddle 3, Chi', limit: 10000, kind: 'void' as const, at: 6.6, ref: '2B77' },
   ];
@@ -154,7 +154,7 @@ export function Receipt({ t, frame, fps, spec }: SceneCtx) {
       }
     >
       {/* the phone and the slip */}
-      <div style={{ position: 'absolute', left: 820, top: 60, opacity: 1 - wipe, transform: `translateX(${(-wipe * 200).toFixed(0)}px) rotateY(6deg)` }}>
+      <div style={{ position: 'absolute', left: 820, top: 110, opacity: 1 - wipe, transform: `translateX(${(-wipe * 200).toFixed(0)}px) rotateY(6deg)` }}>
         <Phone scale={0.86}>
           <div style={{ padding: '62px 22px 0' }}>
             <div style={{ fontFamily: MONO, fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: ORANGE_DEEP }}>Sandbox: no real money moves</div>

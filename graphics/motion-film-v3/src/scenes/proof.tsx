@@ -8,11 +8,18 @@ import { card, Chip } from '../ui';
 import type { SceneCtx } from '../types';
 
 /* 12. proof: four cards fly in from depth, counters roll, both latency misses in the same size. */
-export function Proof({ t, frame, fps }: SceneCtx) {
+export function Proof({ t, frame, fps, dur }: SceneCtx) {
+  // The narration walks the row: kill (2.3 s), webhooks (5.9 s), latency (8.8 s). The card it is on lights up.
+  const lit = [
+    { a: 2.3, b: 5.7 },
+    { a: -1, b: -1 },
+    { a: 5.9, b: 8.6 },
+    { a: 8.8, b: 12.4 },
+  ];
   const cards = [
-    { eyebrow: 'KILL SURVIVED', big: [{ at: 1.2, v: 19 }], unit: 'ledger entries verify', sub: 'A real server kill during settlement on the PayPal sandbox: one capture, two voids.', fmt: (v: number) => String(Math.round(v)) },
+    { eyebrow: 'KILL SURVIVED', big: [{ at: 2.6, v: 19 }], unit: 'ledger entries verify', sub: 'A real server kill during settlement on the PayPal sandbox: one capture, two voids.', fmt: (v: number) => String(Math.round(v)) },
     { eyebrow: 'LIVE VOICE', big: [{ at: 1.7, v: 24 }], unit: 'of 24 synthetic clips', sub: 'No bid accepted without a confirm. 5 confirm prompts, 0 accepted.', fmt: (v: number) => String(Math.round(v)) },
-    { eyebrow: 'WEBHOOKS', big: [{ at: 2.2, v: 6 }], unit: 'of 6 real deliveries verified', sub: 'Capture and void events, signature verified at PayPal.', fmt: (v: number) => String(Math.round(v)) },
+    { eyebrow: 'WEBHOOKS', big: [{ at: 6.2, v: 6 }], unit: 'of 6 real deliveries verified', sub: 'Capture and void events, signature verified at PayPal.', fmt: (v: number) => String(Math.round(v)) },
   ];
   return (
     <Stage
@@ -20,7 +27,7 @@ export function Proof({ t, frame, fps }: SceneCtx) {
       frame={frame}
       world="ink"
       seed={12}
-      cam={[{ at: 0, dur: 0, cam: { x: 140, s: 1.04, ry: 3 } }, { at: 0, dur: 9, cam: { x: -140, s: 1.0, ry: -3 } }]}
+      cam={[{ at: 0, dur: 0, cam: { x: 36, s: 1.03, ry: 2.5 } }, { at: 0, dur, cam: { x: -36, s: 1.0, ry: -2.5 } }]}
       over={
         <>
           <Footer t={t} world="ink" text="Numbers and run ids from docs/GATES.md. G3 in progress, G5 partial." />
@@ -28,15 +35,13 @@ export function Proof({ t, frame, fps }: SceneCtx) {
         </>
       }
     >
-      <div style={{ position: 'absolute', left: 96, top: 96 }}>
-        <Display t={t} at={0.3} out={2.2} text="**Proof.**" size={200} color={PAPER} />
-      </div>
-      <div style={{ position: 'absolute', left: 96, top: 110, width: 1400 }}>
-        <Display t={t} at={2.3} text="Measured, / not promised." size={120} color={PAPER} />
+      <div style={{ position: 'absolute', left: 120, top: 130, width: 1500 }}>
+        <Display t={t} at={0.3} text="Measured, / **not promised.**" size={132} color={PAPER} />
       </div>
       {[...cards, null].map((c, i) => {
         const s = sp(t, 1.0 + i * 0.4, fps, { damping: 18, stiffness: 80 });
         const z = (1 - s) * -900;
+        const on = pr(t, lit[i].a, 0.5) * (1 - pr(t, lit[i].b, 0.5));
         return (
           <div
             key={i}
@@ -46,20 +51,20 @@ export function Proof({ t, frame, fps }: SceneCtx) {
               top: 470,
               width: 400,
               height: 500,
-              transform: `translateZ(${z.toFixed(0)}px) rotateY(${((1 - s) * 20).toFixed(1)}deg)`,
+              transform: `translateZ(${(z + on * 60).toFixed(0)}px) translateY(${(-on * 14).toFixed(1)}px) rotateY(${((1 - s) * 20).toFixed(1)}deg)`,
               opacity: cl(s * 1.5),
               filter: `blur(${((1 - s) * 5).toFixed(1)}px)`,
             }}
           >
-            <div style={{ ...card('ink'), position: 'absolute', inset: 0, borderRadius: 12, padding: 28 }}>
+            <div style={{ ...card('ink'), position: 'absolute', inset: 0, borderRadius: 12, padding: 28, borderColor: on > 0.02 ? `rgba(255,106,31,${(0.25 + 0.75 * on).toFixed(2)})` : '#4a3b31', boxShadow: `0 30px 80px rgba(0,0,0,0.45), 0 0 ${(70 * on).toFixed(0)}px rgba(255,106,31,${(0.28 * on).toFixed(2)})` }}>
               {c ? (
                 <>
                   <div style={{ fontFamily: MONO, fontSize: 13, letterSpacing: '0.16em', color: ORANGE }}>{c.eyebrow}</div>
                   <div style={{ color: PAPER, marginTop: 18 }}>
                     <Roll t={t} steps={c.big} fmt={c.fmt} size={170} first={1.0} />
                   </div>
-                  <div style={{ fontFamily: BODY, fontSize: 20, color: PAPER, marginTop: 4 }}>{c.unit}</div>
-                  <div style={{ fontFamily: BODY, fontSize: 16, color: DIM, marginTop: 18, lineHeight: 1.5 }}>{c.sub}</div>
+                  <div style={{ fontFamily: BODY, fontSize: 22, color: PAPER, marginTop: 4 }}>{c.unit}</div>
+                  <div style={{ fontFamily: BODY, fontSize: 17, color: DIM, marginTop: 16, lineHeight: 1.5 }}>{c.sub}</div>
                   <div style={{ position: 'absolute', left: 28, bottom: 24 }}>
                     <Chip text="Passed" tone="orange" size={12} />
                   </div>
@@ -74,11 +79,11 @@ export function Proof({ t, frame, fps }: SceneCtx) {
                     <div key={m.k} style={{ marginTop: j === 0 ? 18 : 22 }}>
                       <div style={{ fontFamily: BODY, fontSize: 15, color: DIM }}>{m.k}</div>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, color: PAPER }}>
-                        <Roll t={t} steps={[{ at: 2.9 + j * 0.4, v: m.v }]} fmt={(v) => `${v.toFixed(1)} s`} size={84} first={1.0} />
+                        <Roll t={t} steps={[{ at: 9.0 + j * 0.4, v: m.v }]} fmt={(v) => `${v.toFixed(1)} s`} size={84} first={1.0} />
                         <span style={{ fontFamily: MONO, fontSize: 15, color: DIM }}>vs {m.target}</span>
                       </div>
                       <div style={{ marginTop: 6 }}>
-                        <Chip text="Missed" tone="hollow" size={12} style={{ color: ORANGE, borderColor: ORANGE, opacity: pr(t, 4.2 + j * 0.3, 0.3) }} />
+                        <Chip text="Missed" tone="hollow" size={12} style={{ color: ORANGE, borderColor: ORANGE, opacity: pr(t, 10.3 + j * 0.3, 0.3) }} />
                       </div>
                     </div>
                   ))}
@@ -122,7 +127,7 @@ export function Speed({ t, frame, fps, spec }: SceneCtx) {
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: flip < 0.5 ? INK : PAPER_HI }}>DESKTOP</div>
           </div>
         </div>
-        <span style={{ fontFamily: MONO, fontSize: 15, color: MUTE }}>gavel.dualmindlab.tech</span>
+        <span style={{ fontFamily: MONO, fontSize: 15, letterSpacing: '0.1em', color: MUTE, marginLeft: 8 }}>LANDING PAGE, LAB DATA</span>
       </div>
       {labels.map((l, i) => {
         const draw = pr(t, 1.0 + i * 0.25, 1.3) * (1 - 0.25 * dip);
@@ -181,16 +186,16 @@ export function Judges({ t, frame, fps, spec }: SceneCtx) {
       frame={frame}
       world="ink"
       seed={14}
-      cam={[{ at: 0, dur: 0, cam: { s: 1.0, ry: -3 } }, { at: 0, dur: 10, cam: { s: 1.05, ry: 1 } }]}
+      cam={[{ at: 0, dur: 0, cam: { s: 1.0, ry: -3 } }, { at: 0, dur: 10, cam: { s: 1.04, ry: 1 } }]}
       over={
         <>
           <Footer t={t} world="ink" text="The shared judge key lives only in the Devpost testing instructions. Never in the repository or this film." />
           <Eyebrow t={t} world="ink" text="11  For judges" />
           <Caps t={t} caps={spec.caps} world="ink" x={96} y={260} size={104} width={820} />
-          <div style={{ position: 'absolute', left: 96, top: 760, width: 820 }}>
-            <Mono t={t} at={7.0} text="gavel.dualmindlab.tech/try" size={22} color={PAPER} dur={0.6} />
-            <Mono t={t} at={7.5} text="docs.gavel.dualmindlab.tech/docs/judges/call-the-api" size={22} color={PAPER} dur={0.8} />
-            <Mono t={t} at={8.1} text="api.gavel.dualmindlab.tech" size={22} color={PAPER} dur={0.6} />
+          <div style={{ position: 'absolute', left: 96, top: 740, width: 860 }}>
+            <Mono t={t} at={7.0} text="Try page      open, no key" size={24} color={PAPER} dur={0.6} style={{ lineHeight: 1.9 }} />
+            <Mono t={t} at={7.5} text="Judge API     the shared key, sent as a header" size={24} color={PAPER} dur={0.8} style={{ lineHeight: 1.9 }} />
+            <Mono t={t} at={8.1} text="Docs          a step-by-step guide for judges" size={24} color={PAPER} dur={0.7} style={{ lineHeight: 1.9 }} />
           </div>
         </>
       }
@@ -198,7 +203,7 @@ export function Judges({ t, frame, fps, spec }: SceneCtx) {
       <div style={{ position: 'absolute', left: 1000, top: 130, width: 820, transform: `rotateY(${(-12 * (1 - pr(t, 0.2, 1.2))).toFixed(2)}deg)`, opacity: pr(t, 0.2, 0.8) }}>
         <div style={{ ...card('paper'), padding: 30, position: 'relative', overflow: 'hidden' }}>
           <LightSweep t={t} at={3.4} alpha={0.6} color="#ffffff" />
-          <div style={{ fontFamily: MONO, fontSize: 13, letterSpacing: '0.14em', color: MUTE }}>JUDGE PANEL, /try</div>
+          <div style={{ fontFamily: MONO, fontSize: 13, letterSpacing: '0.14em', color: MUTE }}>JUDGE PANEL, TRY PAGE</div>
           <div style={{ fontFamily: DISPLAY, fontWeight: 800, fontSize: 34, color: INK, marginTop: 6 }}>Judge key</div>
           <div style={{ fontSize: 15, color: MUTE, marginTop: 4 }}>From the slide deck. It stays in this tab and is never put in a link.</div>
           <div style={{ display: 'flex', gap: 12, marginTop: 18 }}>
@@ -286,8 +291,8 @@ export function BuiltWith({ t, frame, fps, sponsorLogos }: SceneCtx) {
                   <div style={{ fontFamily: DISPLAY, fontWeight: 900, fontSize: 120, color: INK, lineHeight: 1, letterSpacing: `${lerp(0.06, 0, pr(t, p.at, 0.9)).toFixed(3)}em` }}>{p.name}</div>
                 )}
               </div>
-              <div style={{ fontFamily: BODY, fontSize: 30, color: INK, marginTop: 20, fontWeight: 600 }}>{p.line}</div>
-              <div style={{ fontFamily: BODY, fontSize: 18, color: MUTE, marginTop: 12, lineHeight: 1.5 }}>{p.sub}</div>
+              <div style={{ fontFamily: BODY, fontSize: 34, color: INK, marginTop: 20, fontWeight: 600 }}>{p.line}</div>
+              <div style={{ fontFamily: BODY, fontSize: 21, color: MUTE, marginTop: 12, lineHeight: 1.5 }}>{p.sub}</div>
             </div>
           </div>
         );
@@ -298,7 +303,7 @@ export function BuiltWith({ t, frame, fps, sponsorLogos }: SceneCtx) {
           if (s <= 0) return null;
           return (
             <div key={n} style={{ transform: `translateY(${((1 - s) * 24).toFixed(1)}px)`, opacity: cl(s * 2) }}>
-              <Chip text={n} tone="paper" size={14} />
+              <Chip text={n} tone="paper" size={18} />
             </div>
           );
         })}
@@ -308,14 +313,14 @@ export function BuiltWith({ t, frame, fps, sponsorLogos }: SceneCtx) {
 }
 
 /* 16. open: what is still open, three rows with pulsing chips. */
-export function Open({ t, frame }: SceneCtx) {
+export function Open({ t, frame, dur }: SceneCtx) {
   const rows = [
-    { chip: 'In progress', text: 'G3 honor period. Real probe running; final reading about 12 Nov.', at: 1.6 },
-    { chip: 'Partial', text: 'G5 speech accuracy. Synthetic clips only; a confirm step on every voice bid.', at: 2.3 },
-    { chip: 'Sandbox only', text: 'No real money moves anywhere in this build.', at: 3.0 },
+    { chip: 'In progress', text: 'G3 honor period. Real probe running; final reading about 12 Nov.', at: 1.5 },
+    { chip: 'Partial', text: 'G5 speech accuracy. Synthetic clips only; a confirm step on every voice bid.', at: 3.6 },
+    { chip: 'Sandbox only', text: 'No real money moves anywhere in this build.', at: 5.8 },
   ];
   return (
-    <Stage t={t} frame={frame} world="ink" seed={16} cam={[{ at: 0, dur: 0, cam: { s: 1.0 } }, { at: 0, dur: 6, cam: { s: 1.05 } }]} over={<Eyebrow t={t} world="ink" text="13  Open items" />}>
+    <Stage t={t} frame={frame} world="ink" seed={16} cam={[{ at: 0, dur: 0, cam: { s: 1.0 } }, { at: 0, dur, cam: { s: 1.05 } }]} over={<Eyebrow t={t} world="ink" text="13  Open items" />}>
       <div style={{ position: 'absolute', left: 96, top: 110 }}>
         <Display t={t} at={0.3} text="Still **open.**" size={180} color={PAPER} />
       </div>
@@ -324,10 +329,10 @@ export function Open({ t, frame }: SceneCtx) {
         return (
           <div key={r.chip} style={{ position: 'absolute', left: 96, top: 470 + i * 160, width: 1700, opacity: p, transform: `translateY(${((1 - p) * 30).toFixed(1)}px)` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
-              <div style={{ width: 230 }}>
-                <Chip text={r.chip} tone="hollow" size={16} style={{ color: ORANGE, borderColor: ORANGE, opacity: 0.75 + 0.25 * pulse(t, r.at, 1.0) }} />
+              <div style={{ width: 250 }}>
+                <Chip text={r.chip} tone="hollow" size={18} style={{ color: ORANGE, borderColor: ORANGE, opacity: 0.75 + 0.25 * pulse(t, r.at, 1.0) }} />
               </div>
-              <div style={{ fontFamily: BODY, fontSize: 34, color: PAPER }}>{r.text}</div>
+              <div style={{ fontFamily: BODY, fontSize: 38, color: PAPER }}>{r.text}</div>
             </div>
             <Rule t={t} at={r.at + 0.2} x={0} y={70} w={1700} color="#4a3b31" dur={1.0} />
           </div>
@@ -339,25 +344,23 @@ export function Open({ t, frame }: SceneCtx) {
 
 /* 17. outro: the lockup strikes, names rise, links draw, rings keep breathing to the last frame. */
 export function Outro({ t, frame, letters }: SceneCtx) {
-  const links = ['gavel.dualmindlab.tech', 'docs.gavel.dualmindlab.tech', 'github.com/harshbhx/gavel-auction'];
   const strike = 0.3 + 0.72 * 0.8;
   return (
     <Stage t={t} frame={frame} world="ink" seed={17} cam={[{ at: 0, dur: 0, cam: { s: 1.0 } }, { at: 0, dur: 10.5, cam: { s: 1.03, ry: 1 } }]}>
-      <Waves t={t} strikes={[strike, strike + 2.5, strike + 5, strike + 7.5]} x={960} y={330} size={240} n={2} dur={2.2} max={7} alpha={0.28} />
-      <Lockup t={t} x={547} y={190} scale={1.2} letters={letters} ink={PAPER} timing={{ swingStart: 0.3, swingDur: 0.8 }} lettersAt={1.0} />
-      <div style={{ position: 'absolute', left: 0, right: 0, top: 520, textAlign: 'center' }}>
-        <Display t={t} at={2.0} text="Built by **Harsh Bhanushali** / and **Dhairya Patel.**" size={92} color={PAPER} align="center" />
+      <Waves t={t} strikes={[strike, strike + 2.5, strike + 5, strike + 7.5]} x={960} y={300} size={240} n={2} dur={2.2} max={7} alpha={0.28} />
+      <Lockup t={t} x={547} y={160} scale={1.2} letters={letters} ink={PAPER} timing={{ swingStart: 0.3, swingDur: 0.8 }} lettersAt={1.0} />
+      <div style={{ position: 'absolute', left: 0, right: 0, top: 480, textAlign: 'center' }}>
+        <Display t={t} at={2.0} text="Built by **Harsh Bhanushali** / and **Dhairya Patel.**" size={96} color={PAPER} align="center" />
       </div>
-      <div style={{ position: 'absolute', left: 560, top: 790, width: 800 }}>
-        {links.map((l, i) => (
-          <div key={l} style={{ position: 'relative', height: 54 }}>
-            <Mono t={t} at={4.2 + i * 0.5} text={l} size={24} color={PAPER} dur={0.7} style={{ textAlign: 'center' }} />
-            <Rule t={t} at={4.4 + i * 0.5} x={0} y={44} w={800} color="#4a3b31" dur={0.8} />
-          </div>
-        ))}
+      <Rule t={t} at={5.3} x={760} y={738} w={400} color={ORANGE} dur={0.9} thick={2} />
+      <div style={{ position: 'absolute', left: 0, right: 0, top: 772, textAlign: 'center' }}>
+        <Display t={t} at={5.5} text="Every bid is a **hold.** The hammer is the payment." size={60} color={PAPER} align="center" weight={600} />
       </div>
-      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 48, textAlign: 'center' }}>
-        <Mono t={t} at={6.6} text="PayPal sandbox only. No real money moves." size={20} color={DIM} dur={1.0} style={{ display: 'inline-block' }} />
+      <div style={{ position: 'absolute', left: 0, right: 0, top: 890, textAlign: 'center' }}>
+        <Mono t={t} at={7.4} text="Live demo, docs and source code: links in the description." size={22} color={DIM} dur={1.2} style={{ display: 'inline-block' }} />
+      </div>
+      <div style={{ position: 'absolute', left: 0, right: 0, top: 940, textAlign: 'center' }}>
+        <Mono t={t} at={8.4} text="PayPal sandbox only. No real money moves." size={20} color={DIM} dur={1.0} style={{ display: 'inline-block' }} />
       </div>
     </Stage>
   );

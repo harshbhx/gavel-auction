@@ -7,19 +7,25 @@ import { colors, H, INK, INK_DEEP, MONO, ORANGE, PAPER, PAPER_HI, W, type World 
    moving grain, and the mono footer. Every scene sits on one of these, so every frame has at least the
    glow drift and the grain moving even while a type line holds. */
 
+/** Picture-area transform (see Stage). Full-frame fills inside a scene bleed by BLEED px to cover the frame. */
+export const SAFE = 'translateY(8px) scale(0.87)';
+export const BLEED = -260;
+
 const NOISE =
   "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='220' height='220' filter='url(%23n)'/></svg>\")";
 
 export function Grain({ frame, world }: { frame: number; world: World }) {
-  const ox = (frame * 37) % 220;
-  const oy = (frame * 53) % 220;
+  // The grain steps every second frame: it still moves all the time, at half the cost to the encoder.
+  const f = Math.floor(frame / 2);
+  const ox = (f * 37) % 220;
+  const oy = (f * 53) % 220;
   return (
     <AbsoluteFill
       style={{
         backgroundImage: NOISE,
         backgroundSize: '220px 220px',
         backgroundPosition: `${ox}px ${oy}px`,
-        opacity: world === 'ink' ? 0.16 : 0.12,
+        opacity: world === 'ink' ? 0.12 : 0.09,
         mixBlendMode: 'soft-light',
         pointerEvents: 'none',
       }}
@@ -122,38 +128,27 @@ export function Footer({
 }) {
   const c = colors(world);
   const o = pr(t, 0.2, 0.6);
+  void right;
+  // The honesty line sits at the top right, on the eyebrow's line: the bottom band belongs to the captions.
   return (
-    <>
-      <div
-        style={{
-          position: 'absolute',
-          left: 72,
-          bottom: 44,
-          fontFamily: MONO,
-          fontSize: 20,
-          letterSpacing: '0.04em',
-          color: c.mute,
-          opacity: o,
-          transform: `translateY(${(1 - o) * 12}px)`,
-        }}
-      >
-        {text}
-      </div>
-      <div
-        style={{
-          position: 'absolute',
-          right: 72,
-          bottom: 44,
-          fontFamily: MONO,
-          fontSize: 20,
-          letterSpacing: '0.18em',
-          color: c.mute,
-          opacity: o,
-        }}
-      >
-        {right}
-      </div>
-    </>
+    <div
+      style={{
+        position: 'absolute',
+        right: 72,
+        top: 56,
+        maxWidth: 1380,
+        textAlign: 'right',
+        fontFamily: MONO,
+        fontSize: 19,
+        letterSpacing: '0.04em',
+        color: c.mute,
+        opacity: o,
+        transform: `translateY(${(1 - o) * -10}px)`,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {text}
+    </div>
   );
 }
 
@@ -237,22 +232,26 @@ export function Stage({
   return (
     <AbsoluteFill style={{ background: bg, overflow: 'hidden' }}>
       <GlowField t={t} world={world} seed={seed} />
-      <div style={{ position: 'absolute', inset: 0, perspective: 1800, perspectiveOrigin: '50% 50%' }}>
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            transformStyle: 'preserve-3d',
-            transform: camCss(c),
-            transformOrigin: '50% 50%',
-          }}
-        >
-          {children}
+      {/* The picture area: everything a scene draws sits in the upper part of the frame, so the burned-in
+          captions own the bottom band and never cover the product. Ground, glows, vignette and grain stay full frame. */}
+      <div style={{ position: 'absolute', inset: 0, transform: SAFE, transformOrigin: '50% 0' }}>
+        <div style={{ position: 'absolute', inset: 0, perspective: 1800, perspectiveOrigin: '50% 50%' }}>
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              transformStyle: 'preserve-3d',
+              transform: camCss(c),
+              transformOrigin: '50% 50%',
+            }}
+          >
+            {children}
+          </div>
         </div>
+        {over}
       </div>
       <Vignette k={vignette} world={world} />
       <Grain frame={frame} world={world} />
-      {over}
     </AbsoluteFill>
   );
 }

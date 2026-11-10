@@ -36,10 +36,10 @@ for (const sc of table) {
   const inputProps = { fps: FPS, ids: [sc.id], scale: 1, letters, sponsorLogos: false };
   const comp = await selectComposition({ serveUrl, id: 'Film', inputProps });
   for (let i = 0; i < N; i++) {
-    const frac = [0.06, 0.28, 0.5, 0.74, 0.95].slice(0, N)[i] ?? (i + 0.5) / N;
+    const frac = [0.12, 0.3, 0.5, 0.72, 0.93].slice(0, N)[i] ?? (i + 0.5) / N;
     const frame = Math.min(comp.durationInFrames - 1, Math.round(frac * sc.dur * FPS));
-    const name = `${String(sceneNo).padStart(2, '0')}-${sc.id}-${i + 1}.png`;
-    await renderStill({ composition: comp, serveUrl, output: path.join(OUT, name), frame, inputProps, imageFormat: 'png' });
+    const name = `${String(sceneNo).padStart(2, '0')}-${sc.id}-${i + 1}.jpg`;
+    await renderStill({ composition: comp, serveUrl, output: path.join(OUT, name), frame, inputProps, imageFormat: 'jpeg', jpegQuality: 90 });
     index.push({ file: name, scene: sc.id, at: +(start + frame / FPS).toFixed(2), local: +(frame / FPS).toFixed(2) });
     console.log('[stills]', name);
   }

@@ -3,7 +3,7 @@ import type { World } from './theme';
 export type Cap = {
   a: number;
   b: number;
-  /** Display text; `**word**` marks the orange word, ` / ` breaks a line. */
+  /** Display line a scene draws itself; `**word**` marks the orange word, ` / ` breaks a line. */
   text: string;
 };
 
@@ -11,8 +11,6 @@ export type SceneSpec = {
   id: string;
   dur: number;
   world: World;
-  /** The scene draws its own type; the caps are only for the SRT. */
-  srtOnly?: boolean;
   caps: Cap[];
 };
 
@@ -26,6 +24,8 @@ export type FilmProps = {
   letters: string[];
   /** Show the official PayPal mark on the built-with beat (owner decision pending; default off). */
   sponsorLogos: boolean;
+  /** Burn the narration captions in (default on). */
+  captions?: boolean;
 };
 
 export type SceneCtx = {

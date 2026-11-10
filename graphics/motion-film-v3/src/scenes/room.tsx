@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import { cl, EXIT, lerp, mix, pr, press, pulse, sp, usd } from '../anim';
 import { Mark, Waves } from '../brand';
-import { Eyebrow, Footer, LightSweep, Stage } from '../stage';
+import { BLEED, Eyebrow, Footer, LightSweep, Stage } from '../stage';
 import { BODY, DIM, DISPLAY, INK, INK_DEEP, MONO, MUTE, ORANGE, ORANGE_DEEP, PAPER, PAPER_HI, RULE_PAPER } from '../theme';
 import { Caps, Display, Mono, Roll, type Step } from '../type';
 import { card, Chip, HoldBar, Phone, PhoneTop, QR, RingButton, Stamp, Waveform } from '../ui';
@@ -272,7 +272,7 @@ export function Hold({ t, frame, fps, spec }: SceneCtx) {
       cam={[
         { at: 0, dur: 0, cam: { s: 1.0 } },
         { at: 0.2, dur: 3.4, cam: { s: 1.03 } },
-        { at: 3.5, dur: 0.9, cam: { s: 1.22, x: 60, y: -180 } },
+        { at: 3.5, dur: 0.9, cam: { s: 1.1, x: 10, y: -46 } },
         { at: heldAt + 0.1, dur: 1.0, cam: { s: 1.02, x: 0, y: 0 } },
       ]}
       vignette={pr(t, 3.5, 0.9) * (1 - pr(t, heldAt + 0.1, 1.0))}
@@ -441,7 +441,7 @@ export function Bid({ t, frame, fps, spec }: SceneCtx) {
             {spec.caps.map((c, i) =>
               t >= c.a && t <= c.b + 0.35 ? (
                 <div key={i} style={{ position: 'absolute', left: 0, right: 0 }}>
-                  <Display t={t} at={c.a} out={c.b} text={c.text.replace(' / ', ' ')} size={96} color={PAPER} align="center" />
+                  <Display t={t} at={c.a + (i > 0 ? 0.3 : 0)} out={c.b} text={c.text.replace(' / ', ' ')} size={96} color={PAPER} align="center" />
                 </div>
               ) : null,
             )}
@@ -577,8 +577,8 @@ export function Bid({ t, frame, fps, spec }: SceneCtx) {
                 taps={bids.filter((b) => b.side === side).map((b) => ({ at: b.at, i: b.i }))}
               />
             </Phone>
-            <div style={{ position: 'absolute', left: 0, top: 650, fontFamily: MONO, fontSize: 15, letterSpacing: '0.12em', color: DIM }}>
-              {side === 'A' ? 'BIDDER A, PADDLE 12' : 'BIDDER B, PADDLE 7, FROM THE QR'}
+            <div style={{ position: 'absolute', left: 0, top: 650, width: 300, textAlign: 'center', whiteSpace: 'nowrap', fontFamily: MONO, fontSize: 16, letterSpacing: '0.12em', color: DIM }}>
+              {side === 'A' ? 'BIDDER A, PADDLE 12' : 'BIDDER B, PADDLE 7'}
             </div>
           </div>
         );
@@ -735,7 +735,7 @@ export function Voice({ t, frame, fps, spec }: SceneCtx) {
 
 /* 9. hammer: the hold-to-hammer ring fills over 3 s, the camera dollies in, the flash, the strike, SOLD. */
 export function Hammer({ t, frame, fps, spec }: SceneCtx) {
-  const pressAt = 2.0;
+  const pressAt = 3.0;
   const soldAt = pressAt + 3;
   const kick = Math.sin(Math.PI * cl((t - soldAt) / 0.3)) * (t >= soldAt ? 1 : 0);
   const flash = t >= soldAt ? Math.max(0, 1 - (t - soldAt) / 0.14) : 0;
@@ -759,7 +759,7 @@ export function Hammer({ t, frame, fps, spec }: SceneCtx) {
           <Footer t={t} world="ink" />
           <Eyebrow t={t} world="ink" text="05  Hammer" />
           <Caps t={t} caps={spec.caps} world="ink" x={96} y={300} size={128} />
-          <div style={{ position: 'absolute', inset: 0, background: PAPER, opacity: flash, pointerEvents: 'none' }} />
+          <div style={{ position: 'absolute', inset: BLEED, background: PAPER, opacity: flash, pointerEvents: 'none' }} />
           <Waves t={t} strikes={[soldAt]} x={1290} y={560} size={320} n={3} dur={1.4} max={8} alpha={0.9} />
         </>
       }
@@ -804,8 +804,8 @@ export function Hammer({ t, frame, fps, spec }: SceneCtx) {
               <span style={{ fontWeight: 600 }}>{r[1]}</span>
             </div>
           ))}
-          <div style={{ marginTop: 22, ...goingStyle, opacity: pr(t, 3.0, 0.3) }}>GOING ONCE</div>
-          <div style={{ marginTop: 8, ...goingStyle, opacity: pr(t, 4.0, 0.3) }}>GOING TWICE</div>
+          <div style={{ marginTop: 22, ...goingStyle, opacity: pr(t, pressAt + 1, 0.3) }}>GOING ONCE</div>
+          <div style={{ marginTop: 8, ...goingStyle, opacity: pr(t, pressAt + 2, 0.3) }}>GOING TWICE</div>
         </div>
         <div style={{ position: 'absolute', left: 520, top: 150, width: 440, textAlign: 'center' }}>
           <div style={{ fontFamily: BODY, fontSize: 20, color: INK, lineHeight: 1.4, minHeight: 60 }}>

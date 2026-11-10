@@ -202,7 +202,7 @@ export function Caps({
           <div key={i} style={{ position: 'absolute', left: 0, top: 0, width }}>
             <Display
               t={t}
-              at={cap.a}
+              at={cap.a + (i > 0 ? 0.3 : 0)}
               out={cap.b}
               text={cap.text}
               size={size}
@@ -288,6 +288,7 @@ export function Roll({
                 overflow: 'hidden',
                 height: `${lh}em`,
                 verticalAlign: 'top',
+                textAlign: 'center',
               }}
             >
               <span
