@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { t } from '../../src/copy/t';
 import { ConsoleScreen } from '../../src/screens/console/ConsoleScreen';
@@ -48,20 +48,43 @@ describe('PriceHeader', () => {
 });
 
 describe('ConsoleScreen', () => {
-  it('shows three columns and the ladder strip on a wide viewport', () => {
+  it('shows two balanced columns and the ladder strip on a wide viewport', () => {
     render(<ConsoleScreen store={makeStore()} settlementView={null} wide />);
     expect(document.querySelector('[data-layout="wide"]')).not.toBeNull();
+    expect(
+      document.querySelectorAll('[data-testid="console-columns"] > .gv-console-col'),
+    ).toHaveLength(2);
     expect(screen.getByText(t('console.noBids'))).toBeTruthy();
     expect(screen.getByText(t('console.noConfirm'))).toBeTruthy();
     expect(screen.queryByRole('tablist')).toBeNull();
   });
 
-  it('stacks into tabs below 1024 px and switches panels', () => {
-    render(<ConsoleScreen store={makeStore()} settlementView={null} wide={false} />);
-    expect(screen.getByRole('tablist')).toBeTruthy();
-    expect(screen.queryByText(t('console.noBids'))).toBeNull();
-    fireEvent.click(screen.getByRole('tab', { name: t('console.stream') }));
+  it('is one column in a fixed order below 1000 px, with no tabs', () => {
+    render(
+      <ConsoleScreen
+        store={makeStore()}
+        settlementView={null}
+        wide={false}
+        controls={<div data-testid="a-controls" />}
+        floor={<div data-testid="b-floor" />}
+        bidders={<div data-testid="d-bidders" />}
+        danger={<div data-testid="e-danger" />}
+      />,
+    );
+    expect(screen.queryByRole('tablist')).toBeNull();
     expect(screen.getByText(t('console.noBids'))).toBeTruthy();
+    const order = ['a-controls', 'b-floor', 'd-bidders', 'e-danger'].map((id) =>
+      Array.from(document.querySelectorAll('[data-testid]')).findIndex(
+        (n) => n.getAttribute('data-testid') === id,
+      ),
+    );
+    expect(order).toEqual([...order].sort((x, y) => x - y));
+    expect(document.querySelector('[data-layout="stacked"]')).not.toBeNull();
+  });
+
+  it('keeps a named empty slot for the mic button in the console header', () => {
+    render(<ConsoleScreen store={makeStore()} settlementView={null} wide />);
+    expect(document.querySelector('[data-slot="console-header-mic"]')).not.toBeNull();
   });
 
   it('updates the price from a price message', () => {

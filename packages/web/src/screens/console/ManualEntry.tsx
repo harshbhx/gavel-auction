@@ -99,6 +99,7 @@ export function ManualEntry({
       />
       <Field
         label={t('console.manual.amount')}
+        adornment="$"
         inputMode="decimal"
         autoComplete="off"
         value={amount}
@@ -116,15 +117,19 @@ export function ManualEntry({
                 ? { error: rejectionText(rejection), errorIcon: warn }
                 : {})}
       />
-      <Button type="submit" disabled={offline}>
+      <Button type="submit" disabled={offline} className="gv-manual__send">
         {t('console.manual.submit')}
       </Button>
-      {status !== null && status !== 'rejected' && <p role="status">{t(STATUS_COPY[status])}</p>}
-      {status === 'unknown' && onRetry !== undefined && (
-        <Button type="button" variant="outline" onClick={onRetry}>
-          {t('console.manual.retry')}
-        </Button>
-      )}
+      <div className="gv-manual__foot">
+        <p role="status" className="gv-manual__status">
+          {status !== null && status !== 'rejected' ? t(STATUS_COPY[status]) : ''}
+        </p>
+        {status === 'unknown' && onRetry !== undefined && (
+          <Button type="button" variant="outline" onClick={onRetry}>
+            {t('console.manual.retry')}
+          </Button>
+        )}
+      </div>
     </form>
   );
 }

@@ -1,7 +1,5 @@
 import { t } from '../../copy/t';
 import { Icon } from '../../design/icons';
-import { Chip } from '../../design/primitives/Chip';
-import { StatusPill } from '../../ui';
 import { formatUsdCompact } from '../../util/money';
 import type { RoomSnapshot } from '../../wire';
 
@@ -64,20 +62,19 @@ export function Roster({
                   </span>
                 )}
                 {r.bidderId === leaderId && (
-                  <StatusPill tone="win">
+                  <strong className="gv-console-ladder__mark" data-tone="win">
+                    <span aria-hidden="true">{'\u25cf '}</span>
                     {closed ? t('console.ladder.winner') : t('console.ladder.leading')}
-                  </StatusPill>
+                  </strong>
                 )}
                 {!closed && r.hold === 'HELD' && (
-                  <StatusPill tone="held">{t('console.ladder.held')}</StatusPill>
+                  <span className="gv-console-ladder__hold">{t('console.ladder.held')}</span>
                 )}
                 {!closed && r.hold !== 'HELD' && (
-                  <Chip
-                    state="hold-warning"
-                    label={t('console.holdWarn')}
-                    icon={<Icon name="warning" size={16} />}
-                    tone="warning"
-                  />
+                  <span className="gv-console-ladder__hold" data-warn="true">
+                    <Icon name="warning" size={16} />
+                    {t('console.holdWarn')}
+                  </span>
                 )}
               </li>
             );

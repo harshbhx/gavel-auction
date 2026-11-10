@@ -10,6 +10,7 @@ import {
   type Ctx,
   type HttpApp,
 } from './app';
+import { CONTROL_REUSED } from '../room/room';
 import { roomFor, snapshotFor, withConnection } from './auctions';
 
 const ControlBody = z
@@ -28,6 +29,8 @@ const KillBody = z
   .strict();
 
 /** Reasons a hammer is refused because the lot head moved; carried as the 409 message. */
+const REUSED_TEXT = 'That controlId was already used for a different action';
+
 const STALE_HAMMER = new Set(['price_changed', 'leader_changed']);
 
 /**
@@ -53,6 +56,9 @@ export function mountControl(app: HttpApp): void {
     if (failure !== undefined) {
       const code = failure.code;
       const why = failure.message;
+      if (code === 'conflict' && why === CONTROL_REUSED) {
+        throw new HttpError(409, 'conflict', REUSED_TEXT, REUSED_TEXT);
+      }
       if (code === 'conflict' && typeof why === 'string' && STALE_HAMMER.has(why)) {
         throw new HttpError(409, 'conflict', why, why);
       }
@@ -126,7 +132,9 @@ export function controlReason(
         return 'The lot is still open: send closeNow 1 to close it now';
       break;
   }
-  return 'That controlId was already used for a different action';
+  // Not a reused id (the room says so itself): the engine refused it for another reason.
+  if (body.action === 'extend') return 'The lot cannot be extended any further';
+  return 'The lot refused that control';
 }
 
 function stateOf(s: RoomSnapshot): {

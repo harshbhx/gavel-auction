@@ -947,6 +947,10 @@ export const en = {
   'controls.reason.notPaused': 'Available only while the lot is paused.',
   'controls.reason.stopped': 'The auction is stopped.',
   'controls.reason.busy': 'Waiting for the server.',
+  'controls.reason.alreadyOpen': 'The lot is already open.',
+  'controls.reason.openFirst': 'Open the lot to use this.',
+  'controls.reason.paused': 'The lot is paused. Resume it to use this.',
+  'controls.reason.ended': 'The lot has ended.',
   'controls.sent': '{action} sent',
   'controls.hammerChanged':
     'The price or leader changed. Nothing was hammered. Review and try again.',

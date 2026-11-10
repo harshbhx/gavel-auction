@@ -72,10 +72,10 @@ export function KillSwitch({ stopped, onKill }: KillSwitchProps) {
             setHoldRound((n) => n + 1);
           }}
         />
-        <Button tone="danger" onClick={() => setOpen(true)}>
+        <p className="gv-console-hammer__alt">{t('kill.dialogHint')}</p>
+        <Button tone="danger" variant="outline" onClick={() => setOpen(true)}>
           {t('kill.button')}
         </Button>
-        <p className="gv-console-hammer__alt">{t('kill.dialogHint')}</p>
       </div>
       {failed && <p role="alert">{t('kill.failed')}</p>}
       <Dialog open={open} onClose={close} title={t('kill.title')}>

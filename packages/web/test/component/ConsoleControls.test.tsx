@@ -37,7 +37,12 @@ describe('disabledReason', () => {
   it('gives a reason per state and none when allowed', () => {
     expect(disabledReason('pause', base)).toBeNull();
     expect(disabledReason('resume', base)).toBe('controls.reason.notPaused');
-    expect(disabledReason('open', base)).toBe('controls.reason.notScheduled');
+    expect(disabledReason('open', base)).toBe('controls.reason.alreadyOpen');
+    expect(disabledReason('open', { ...base, status: 'SCHEDULED' })).toBeNull();
+    expect(disabledReason('pause', { ...base, status: 'SCHEDULED' })).toBe(
+      'controls.reason.openFirst',
+    );
+    expect(disabledReason('hammer', { ...base, status: 'DONE' })).toBe('controls.reason.ended');
     expect(disabledReason('pause', { ...base, online: false })).toBe('controls.reason.offline');
     expect(disabledReason('pause', { ...base, stopped: true })).toBe('controls.reason.stopped');
   });
@@ -59,9 +64,9 @@ describe('controlStatus (SRV-31)', () => {
       busy: false,
     } as const;
     expect(disabledReason('resume', state)).toBeNull();
-    expect(disabledReason('extend', state)).toBe('controls.reason.notOpen');
-    expect(disabledReason('pause', state)).toBe('controls.reason.notOpen');
-    expect(disabledReason('open', state)).toBe('controls.reason.notScheduled');
+    expect(disabledReason('extend', state)).toBe('controls.reason.paused');
+    expect(disabledReason('pause', state)).toBe('controls.reason.paused');
+    expect(disabledReason('open', state)).toBe('controls.reason.alreadyOpen');
   });
 
   it('enables exactly one of Open and Resume in every status', () => {
