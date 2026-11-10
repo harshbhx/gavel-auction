@@ -958,7 +958,7 @@ export type Decision = {
 // @public (undocumented)
 export function decodeBatch(buf: Uint8Array): AudioBatch;
 
-// @public
+// @public (undocumented)
 export const DEMO_TIMELINE: Timeline;
 
 // @public (undocumented)
