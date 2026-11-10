@@ -152,7 +152,9 @@ export function ConsoleScreen({
     );
   const biddersPanel =
     bidders === undefined ? null : (
-      <div className="gv-console-panel gv-console-panel--bidders" tabIndex={0}>{bidders}</div>
+      <div className="gv-console-panel gv-console-panel--bidders" tabIndex={0}>
+        {bidders}
+      </div>
     );
   const dangerZone =
     danger === undefined ? null : (
