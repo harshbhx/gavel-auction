@@ -28,4 +28,3 @@
 /.gitleaks.toml          @harshbhx
 /.gitleaksignore         @harshbhx
 /vitest.config.ts        @harshbhx
-/vitest.workspace.ts     @harshbhx

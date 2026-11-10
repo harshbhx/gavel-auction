@@ -17,7 +17,7 @@ const THRESHOLDS = join(root, 'coverage.thresholds.json');
 const SUMMARY = join(root, 'coverage', 'coverage-summary.json');
 const METRICS = ['lines', 'branches'];
 const RELEVANT =
-  /^(packages\/|vitest\.(workspace|config)\.ts$|coverage\.thresholds\.json$|scripts\/check-coverage\.mjs$|package(-lock)?\.json$)/;
+  /^(packages\/|vitest\.config\.ts$|coverage\.thresholds\.json$|scripts\/check-coverage\.mjs$|package(-lock)?\.json$)/;
 
 function git(...args) {
   return execFileSync('git', args, {
