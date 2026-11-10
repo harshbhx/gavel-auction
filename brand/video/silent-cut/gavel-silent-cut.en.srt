@@ -1,0 +1,139 @@
+1
+00:00:01,200 --> 00:00:05,000
+GAVEL. Every bid is a hold. The hammer is the payment.
+
+2
+00:00:05,700 --> 00:00:08,300
+Charge a card up front, and bidders hold back.
+
+3
+00:00:08,300 --> 00:00:10,900
+Leave bids unsecured, and winners walk away.
+
+4
+00:00:10,900 --> 00:00:13,400
+Shout bids on paper sheets, and the record is hard to trust.
+
+5
+00:00:13,800 --> 00:00:18,389
+A judge opens /try. One tap starts a sandbox room.
+
+6
+00:00:19,039 --> 00:00:23,889
+A join code and a ticket QR.
+
+7
+00:00:24,539 --> 00:00:31,889
+A bidder types the code. Or scans the ticket QR.
+
+8
+00:00:32,539 --> 00:00:38,199
+Pick a ceiling. The most this bidder may bid.
+
+9
+00:00:38,199 --> 00:00:42,003
+Hold the button 3 seconds.
+
+10
+00:00:42,003 --> 00:00:44,889
+Held, not charged.
+
+11
+00:00:45,539 --> 00:00:51,889
+A second phone joins from the QR link.
+
+12
+00:00:52,539 --> 00:00:56,389
+The auctioneer opens the lot.
+
+13
+00:00:56,739 --> 00:00:59,979
+Bids arrive from the phones.
+
+14
+00:00:59,979 --> 00:01:03,095
+Prices only go up.
+
+15
+00:01:03,095 --> 00:01:06,389
+Every screen agrees.
+
+16
+00:01:07,039 --> 00:01:13,399
+Hold the hammer 3 seconds. No accidental sales.
+
+17
+00:01:13,399 --> 00:01:15,889
+Sold.
+
+18
+00:01:16,439 --> 00:01:19,089
+The big screen names the winner.
+
+19
+00:01:19,739 --> 00:01:23,639
+A receipt for every bidder.
+
+20
+00:01:23,839 --> 00:01:26,470
+With a share link and a QR.
+
+21
+00:01:27,120 --> 00:01:30,821
+Paste a ledger export.
+
+22
+00:01:30,821 --> 00:01:33,751
+Chain verified.
+
+23
+00:01:33,751 --> 00:01:36,470
+Edit one entry. The chain marks it broken.
+
+24
+00:01:37,420 --> 00:01:40,420
+Kill survived. A real server kill during settlement, on the PayPal sandbox: one capture, two holds voided, a ledger of 19 entries that verifies.
+
+25
+00:01:40,420 --> 00:01:43,420
+Live voice 24 of 24. Both speech providers answered 24 of 24 synthetic clips through the live socket. No bid accepted without a confirm.
+
+26
+00:01:43,420 --> 00:01:46,420
+Ledger verified. Every bid joins a hash chain. Anyone can check it again, and an edited entry is marked.
+
+27
+00:01:46,420 --> 00:01:49,320
+Latency, honestly. Hammer to captured p95 3.8 s against a 2.5 s target. Hammer to settled p95 6.9 s against 6 s. Both missed.
+
+28
+00:01:49,620 --> 00:01:53,836
+The ledger lab. A 30 day simulated ledger in an AG Grid table.
+
+29
+00:01:53,836 --> 00:01:56,470
+Edit one entry and the chain marks it.
+
+30
+00:01:57,320 --> 00:02:05,320
+A key. HTTP. JSON. Create a room, bid and read the ledger from the Judge API.
+
+31
+00:02:05,620 --> 00:02:09,470
+The docs list every call.
+
+32
+00:02:10,420 --> 00:02:12,920
+G3 in progress. The honor-period probe is still timing. The final reading is about 12 Nov.
+
+33
+00:02:12,920 --> 00:02:15,420
+G5 partial. Speech is measured on synthetic, noise-free audio only.
+
+34
+00:02:15,420 --> 00:02:18,020
+Sandbox only. No real money moves.
+
+35
+00:02:19,520 --> 00:02:24,020
+Built by Harsh Bhanushali and Dhairya Patel. gavel.dualmindlab.tech. docs.gavel.dualmindlab.tech. github.com/harshbhx/gavel-auction. PayPal sandbox only.

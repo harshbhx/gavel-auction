@@ -8,7 +8,7 @@ One folder for the logo, the Devpost entry (text and images), the GitHub README 
 | [`logo/3d/`](logo/3d) | 3D logo set (turntable video and GIF, still angles): section below, to be added                                          |
 | [`devpost/`](devpost) | Paste-ready description and form fields, gallery, story images, thumbnail, preview page                                  |
 | [`readme/`](readme)   | The GitHub README graphics (GIF and poster)                                                                              |
-| [`video/`](video)     | MP4 and WebM of every kept animation, each file under 10 MB                                                              |
+| [`video/`](video)     | MP4 and WebM of every kept animation, each file under 10 MB; `video/silent-cut/` is the silent product video             |
 | [`archive/`](archive) | Superseded animated variants (GIF, MP4, WebM), moved with `git mv`, not deleted                                          |
 | [`svg/`](svg)         | The original logo SVG set and its usage guide (see "Logo reference" below)                                               |
 
