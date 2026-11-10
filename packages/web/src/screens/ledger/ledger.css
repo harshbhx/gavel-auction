@@ -122,3 +122,16 @@ main[data-route='ledger'] > h1 {
     padding: 0 var(--space-2);
   }
 }
+
+/* The same page margins as the audit trail, so the two lookalike pages line up. */
+@media (min-width: 700px) {
+  main[data-route='ledger'] {
+    padding: var(--space-5);
+  }
+}
+
+@media (min-width: 1100px) {
+  main[data-route='ledger'] {
+    padding: var(--space-6) clamp(var(--space-6), 3vw, var(--space-8));
+  }
+}

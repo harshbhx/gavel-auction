@@ -11,6 +11,8 @@ export interface WatcherGateProps {
   readonly onNavigate: (path: string) => void;
   /** The API origin; with it the page shows the room's public price and status. */
   readonly apiBase?: string | undefined;
+  /** The visitor came by a receipt link: say that the receipt comes after the hammer. */
+  readonly receipt?: boolean;
 }
 
 interface Live {
@@ -66,7 +68,7 @@ function useLive(roomId: string, apiBase: string | undefined): Live | null | 'do
  * What a person sees on the bid or receipt page of a room they have not joined: the lot, the
  * price, who leads and whether bidding is open, with one clear way to join as a bidder.
  */
-export function WatcherGate({ roomId, onNavigate, apiBase }: WatcherGateProps) {
+export function WatcherGate({ roomId, onNavigate, apiBase, receipt = false }: WatcherGateProps) {
   const id = encodeURIComponent(roomId);
   const live = useLive(roomId, apiBase);
   const summary = live !== null && live !== 'down' ? live : null;
@@ -78,6 +80,11 @@ export function WatcherGate({ roomId, onNavigate, apiBase }: WatcherGateProps) {
     <main className="gv-flow" data-route="watcher" data-state="not-joined">
       <p className="ui-kicker">{t('app.name')}</p>
       <h1 tabIndex={-1}>{t('watch.title')}</h1>
+      {receipt && (
+        <p role="status" className="gv-join__help">
+          {t('watch.receiptNote')}
+        </p>
+      )}
       {summary !== null && (
         <section className="gv-watch" aria-label={t('watch.price')} aria-live="polite">
           {summary.title !== null && (

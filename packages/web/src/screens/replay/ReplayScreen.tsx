@@ -83,12 +83,21 @@ export default function ReplayScreen({
 
   return (
     <div>
-      <p role="status">{t('prov.recorded')}</p>
-      <p>{t('replay.readonly')}</p>
       {phase.kind === 'loading' && <p role="status">{t('net.resyncing')}</p>}
-      {phase.kind === 'invalid' && <p role="alert">{t('replay.invalid')}</p>}
+      {phase.kind === 'invalid' && (
+        <>
+          <p role="alert">{t('replay.invalid')}</p>
+          <p>
+            <a className="ui-link" href={`/r/${encodeURIComponent(recordingId)}/audit`}>
+              {t('replay.invalid.room')}
+            </a>
+          </p>
+        </>
+      )}
       {phase.kind === 'ready' && (
         <>
+          <p role="status">{t('prov.recorded')}</p>
+          <p>{t('replay.readonly')}</p>
           <ChainCheck ledger={phase.ledger} allowFile />
           <FrameAgreementNote bundle={phase.bundle} ledger={phase.ledger} />
           <ReplayPlayer bundle={phase.bundle} autoplay={autoplay} createMedia={createMedia} />

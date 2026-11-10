@@ -623,6 +623,8 @@ export const en = {
   'watch.lead':
     'You have not joined as a bidder yet. Join to register a sandbox hold and place bids.',
   'watch.openJoin': 'See the join page and code',
+  'watch.receiptNote':
+    'No receipt yet. A receipt appears here after the hammer, for people who bid.',
   'watch.lot': 'Lot: {title}',
   'watch.price': 'Current price',
   'watch.noBids': 'No bids yet',
@@ -1049,10 +1051,11 @@ export const en = {
   'chain.broken.bad_version': 'Entry {n} is not in the export format this check understands.',
   'chain.broken.truncated':
     'The file ends after entry {n}, but the ledger recorded more entries than that.',
-  'chain.none': 'Chain not checked',
+  'chain.none': 'Ledger not checked',
   'chain.none.detail': 'No ledger came with this view, so nothing here has been verified.',
-  'chain.invalid': 'Chain not checked',
-  'chain.invalid.detail': 'This file is not a ledger export, so it could not be read.',
+  'chain.invalid': 'Ledger not checked',
+  'chain.invalid.detail':
+    'This is not a ledger export, so it could not be read. Paste the whole export, which starts with a curly bracket.',
   'chain.head': 'Closing fingerprint:',
   'chain.explain.summary': 'What a hash chain proves, and what it does not',
   'chain.explain.proves':
@@ -1062,7 +1065,7 @@ export const en = {
   'chain.file.label': 'Check a ledger file',
   'chain.file.hint': 'Choose a replay bundle (JSON). It is read in this browser and not uploaded.',
   'verify.page.title': 'Verify a ledger',
-  'verify.title': 'Verify a ledger',
+  'verify.title': 'Check this ledger',
   'verify.lead':
     'Check that a ledger export has not been changed. The check runs in this browser and nothing is uploaded.',
   'verify.room.button': 'Check my room',
@@ -1076,8 +1079,9 @@ export const en = {
   'verify.audit': 'Open the read-only audit trail',
   'verify.paste.label': 'Paste a ledger export',
   'verify.paste.hint': 'A replay bundle in JSON, as downloaded from a room or a recording.',
-  'verify.check': 'Check the chain',
-  'verify.file': 'Or pick a file',
+  'verify.check': 'Check this ledger',
+  'verify.check.disabled': 'Paste a ledger export above to turn this on.',
+  'verify.file': 'Or choose a file',
   'verify.file.failed': 'That file could not be read.',
   'verify.back': 'Back to the judge page',
   'ops.title': 'Operations',
@@ -1087,6 +1091,8 @@ export const en = {
   'ops.paypal': 'PayPal outcomes',
   'ops.logs': 'Recent logs',
   'ops.keyLabel': 'Operator key',
+  'ops.keyHelp':
+    'The key is the ADMIN_KEY of the server. It stays in this tab and is never stored.',
   'ops.load': 'Load',
   'ops.failed': 'Could not load operations data.',
   'audit.export.csv': 'Export CSV',
@@ -1134,6 +1140,7 @@ export const en = {
   'audit.sum.winning': 'Winning bid',
   'audit.sum.leading': 'Leading bid',
   'audit.sum.noBid': 'No bids yet',
+  'audit.sum.untitled': 'Untitled lot',
   'audit.sum.status': 'Status',
   'audit.sum.bidders': 'Bidders',
   'audit.sum.bids': 'Bids',
@@ -1300,9 +1307,10 @@ export const en = {
   'receipt.shared.invalid': 'This receipt link has expired or is not valid.',
   'replay.readonly': 'Replay is read-only',
   'replay.about':
-    'A replay plays back a recorded auction. It is read-only: nothing here can be changed. Recordings are not hosted on this site yet.',
+    'A replay plays back a recorded auction. It is read-only: nothing here can be changed.',
   'replay.captionsOnly': 'Audio could not load. Showing captions only.',
-  'replay.invalid': 'This recording could not be read.',
+  'replay.invalid': 'No recording was found for this link.',
+  'replay.invalid.room': 'Looking for a room? Open its audit trail.',
   'replay.speed': 'Speed {x}',
   'replay.chapter.reg': 'Registrations',
   'replay.chapter.bid': 'First bid',
