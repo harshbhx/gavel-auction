@@ -5,7 +5,6 @@ One folder for the logo, the Devpost entry (text and images), the GitHub README 
 | Folder                | What is in it                                                                                                            |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | [`logo/`](logo)       | Logo SVGs by background, animated logo, product icons, PNG renders (lockup light and dark, mark, favicons, share images) |
-| [`logo/3d/`](logo/3d) | 3D logo set (turntable video and GIF, still angles): section below, to be added                                          |
 | [`devpost/`](devpost) | Paste-ready description and form fields, gallery, story images, thumbnail, preview page                                  |
 | [`readme/`](readme)   | The GitHub README graphics (GIF and poster)                                                                              |
 | [`video/`](video)     | MP4 and WebM of every kept animation, each file under 10 MB; `video/silent-cut/` is the silent product video             |
@@ -30,9 +29,8 @@ Which graphic is animated, which is static and why: see [`CURATION.md`](CURATION
 | README "see it run" screenshots (six static PNGs; recordings archived)                         | `docs/assets/readme/see-it-run-*`                      | Root `README.md`                                            |
 | AG Grid screenshots                                                                            | `docs/assets/ag-grid`                                  | Docs and the AG Grid sponsor write-up                       |
 | Devpost gallery (hero GIF plus 7 PNGs) and thumbnail                                           | `brand/devpost/gallery`, `brand/devpost/thumbnail.png` | Devpost gallery                                             |
-| Devpost description images (6 animated, 10 static, numbered)                                   | `brand/devpost/description`                            | Devpost description                                         |
+| Devpost description images (5 animated, 10 static, numbered) and the credits outro            | `brand/devpost/description`, `brand/devpost/outro`                            | Devpost description                                         |
 | Social images (X, LinkedIn, GitHub preview, YouTube end card, thumbnails, lower thirds, chips) | `docs/assets/social`                                   | Share posts, repo social preview, demo video                |
-| 3D logo set                                                                                    | `brand/logo/3d` (to be added)                          | Outro, video, Devpost                                       |
 
 ## Index of every file in the kit
 
@@ -159,7 +157,7 @@ Used in: Devpost gallery (hero GIF, then PNGs 02 to 08, 3:2, all under 5 MB); th
 
 ### `devpost/description/`
 
-The images inside `devpost/DESCRIPTION.md`, numbered in the order they appear. Animated (GIF): `01-banner` intro, `04-how-it-works`, `05-architecture`, `07-audit-and-verify`, `13-results` (kill survived, voice 24 of 24, chain verifies) and `16-ending` (outro). Everything else is a static PNG. Superseded animated variants are in `archive/devpost-story/`.
+The images inside `devpost/DESCRIPTION.md`, numbered in the order they appear. Animated (GIF): `01-banner` intro, `04-how-it-works`, `05-architecture`, `07-audit-and-verify`, `13-results` (kill survived, voice 24 of 24, chain verifies) and, in `devpost/outro/`, `09-outro-credits` (outro with credits). Everything else is a static PNG. Superseded animated variants are in `archive/devpost-story/` and `archive/devpost-description/`; the full used and unused list is [`devpost/INDEX.md`](devpost/INDEX.md).
 
 Used in: Devpost description (About the project).
 
@@ -182,7 +180,18 @@ Used in: Devpost description (About the project).
 | `13-results.gif`             | 1000x560 | 315 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/13-results.gif             |
 | `14-what-we-learned.png`     | 1000x560 | 38 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/14-what-we-learned.png     |
 | `15-what-is-next.png`        | 1000x560 | 43 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/15-what-is-next.png        |
-| `16-ending.gif`              | 1200x800 | 779 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/16-ending.gif              |
+
+
+### `devpost/outro/`
+
+The credits outro (Harsh Bhanushali and Dhairya Patel), last image of the Devpost description. Used in: Devpost description ("Try it"). The previous closing slide is in `archive/devpost-description/`.
+
+| File                         | Pixels   | Size   | URL |
+| ---------------------------- | -------- | ------ | --- |
+| `09-outro-credits.gif`       | 1200x800 | 797 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/outro/09-outro-credits.gif |
+| `09-outro-credits-poster.png`| 1200x800 | 64 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/outro/09-outro-credits-poster.png |
+| `09-outro-credits.mp4`       |          | 226 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/09-outro-credits.mp4 |
+| `09-outro-credits.webm`      |          | 183 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/09-outro-credits.webm |
 
 ### `devpost/`
 
@@ -308,8 +317,6 @@ Used in: Optional video versions of the description animations.
 | `07-audit-and-verify.webm` |        | 91 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/07-audit-and-verify.webm |
 | `13-results.mp4`           |        | 89 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/13-results.mp4           |
 | `13-results.webm`          |        | 89 KB  | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/13-results.webm          |
-| `16-ending.mp4`            |        | 205 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/16-ending.mp4            |
-| `16-ending.webm`           |        | 140 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/video/devpost-description/16-ending.webm           |
 
 ## Originals not copied here
 
@@ -384,13 +391,9 @@ Used in: Docs and the AG Grid write-up.
 | `ledger-detail-desktop.png` | 220 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/ag-grid/ledger-detail-desktop.png |
 | `ledger-phone.png`          | 259 KB | https://raw.githubusercontent.com/harshbhx/gavel-auction/main/docs/assets/ag-grid/ledger-phone.png          |
 
-## 3D logo set (to be added)
+## 3D logo set (not built)
 
-`brand/logo/3d/` is reserved for the 3D logo: a turntable video and GIF and still angles. It is being built separately; when it merges, list each file here with its size, raw URL and where it is used (outro, video, Devpost).
-
-| File        | Pixels | Size | Used in | URL |
-| ----------- | ------ | ---- | ------- | --- |
-| to be added |        |      |         |     |
+Dropped on 10 Nov 2026: there is no `brand/logo/3d/` folder. The animated logo (`logo/animated/`) and the credits outro (`devpost/outro/`) cover the intro and outro.
 
 ## Logo reference
 

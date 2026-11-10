@@ -36,8 +36,8 @@ Limits checked: JPG, PNG or GIF, 5 MB at most each, ratio 3:2. All files are 120
 | `13-results.gif` (0.3 MB), `13-results-poster.png` | GIF + PNG | keep animated | Results: kill survived, voice 24 of 24, chain verifies                                      | `DESCRIPTION.md` Accomplishments; videos `13-*`                  |
 | `14-what-we-learned.png`                           | PNG       | static only   | Duplicate-event strike-out reads as a still (GIF archived)                                  | `DESCRIPTION.md` What we learned                                 |
 | `15-what-is-next.png`                              | PNG       | static only   | Three lines (GIF `07-what-is-next.gif` archived)                                            | `DESCRIPTION.md` What is next                                    |
-| `16-ending.gif` (0.8 MB)                           | GIF       | keep animated | The outro, until the new outro lands                                                        | `DESCRIPTION.md` Try it; videos `16-*`                           |
-| `devpost/outro/` (new outro with credits)          | GIF       | pending       | Added by agent gfx-outro; will replace `16-ending.gif`, which stays as the fallback         | `DESCRIPTION.md` Try it (slot reserved in `FIELDS.md`)           |
+| `archive/devpost-description/16-ending.gif` (0.8 MB) | GIF       | archived      | Superseded by the credits outro; kept as the fallback (moved, not deleted)                   | Not embedded |
+| `outro/09-outro-credits.gif` (0.8 MB), `.mp4`, `.webm` in `video/devpost-description/` | GIF | keep animated | The outro with credits (Harsh Bhanushali and Dhairya Patel), compulsory | `DESCRIPTION.md` Try it |
 
 `devpost/preview/index.html` is rebuilt from `DESCRIPTION.md` with `node brand/devpost/build-preview.mjs`.
 
@@ -63,9 +63,9 @@ Limits checked: JPG, PNG or GIF, 5 MB at most each, ratio 3:2. All files are 120
 | Asset                                                                                   | Kind            | Decision      | Reason                                                                            | Where used                  |
 | --------------------------------------------------------------------------------------- | --------------- | ------------- | --------------------------------------------------------------------------------- | --------------------------- |
 | `brand/logo/animated/gavel-intro-{dark,paper}.gif` + mp4, webm in `brand/video/motion/` | GIF, MP4, WebM  | keep animated | Logo intro                                                                        | Video bumpers, social, docs |
-| `brand/logo/animated/gavel-outro-{dark,paper}.gif` + mp4, webm                          | GIF, MP4, WebM  | keep animated | Outro, until the new outro lands                                                  | Video bumpers, social       |
+| `brand/logo/animated/gavel-outro-{dark,paper}.gif` + mp4, webm                          | GIF, MP4, WebM  | keep animated | Logo outro (bumper); the Devpost outro is `devpost/outro/`                                                  | Video bumpers, social       |
 | `brand/svg/*-animated.svg`, `mark-*-loader.svg`, `sting*.svg`                           | animated SVG    | keep animated | Logo intro and loader, a few KB                                                   | Web app, docs, sting render |
-| `brand/logo/3d/` (3D logo set)                                                          | video, GIF, PNG | pending       | Added by agent gfx-outro                                                          | Outro, video, Devpost       |
+| `brand/logo/3d/` (3D logo set)                                                          | n/a             | not built     | Dropped on 10 Nov 2026 (Harsh): the animated logo and the credits outro cover the need | none |
 | `docs/assets/motion/*`                                                                  | GIF, MP4, WebM  | n/a           | Renderer output, the same files as `brand/logo/animated` and `brand/video/motion` | `graphics/motion-brand`     |
 | Static logo SVGs, `brand/logo/png/*`, favicons, app icons                               | SVG, PNG        | n/a           | Static                                                                            | Web app, share previews     |
 
