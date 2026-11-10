@@ -73,7 +73,7 @@ describe('custom ceiling at registration', () => {
       fireEvent.change(field, { target: { value: typed } });
       fireEvent.blur(field);
       expect(screen.getByRole('alert').textContent).toContain(message);
-      expect(screen.queryByTestId('held-block')).toBeNull();
+      expect(screen.getByTestId('held-block').textContent).not.toContain('The rest is released');
       expect(
         screen.getByRole('button', { name: t('reg.approve') }).getAttribute('aria-disabled'),
       ).toBe('true');

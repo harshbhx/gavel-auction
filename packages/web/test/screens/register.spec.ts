@@ -82,7 +82,7 @@ test.describe('register: entry', () => {
 
   test('joining', async ({ page, shoot }) => {
     await openRegister(page, { join: 'hang' });
-    await expect(page.getByText(t('reg.confirming')).first()).toBeVisible();
+    await expect(page.getByText(t('reg.checking')).first()).toBeVisible();
     await shoot('register', 'joining');
   });
 
