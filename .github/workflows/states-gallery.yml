@@ -1,0 +1,134 @@
+name: states-gallery
+# UI states library (GFX-13): captures every screen in every reachable state at desktop 1440x900 and
+# phone 390x844 (light), against a LOCAL stack started here (the screen tour's dev server with
+# scripted sockets and a fake payments adapter; no live site, no real PayPal), then names, optimises
+# and indexes the PNGs for brand/screens/. Reduced motion, frozen clock and the app fonts keep it
+# deterministic. Informational: not part of the required roll-up in ci.yml, no secrets.
+# Manual dispatch; it also runs on a pull request that touches graphics/states or this file, because
+# a dispatch needs the workflow on the default branch first.
+# Download: gh run download <run-id> -n states-gallery  (images, README.md, manifest.json, contact/).
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'graphics/states/**'
+      - '.github/workflows/states-gallery.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: states-gallery-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  tour:
+    name: App states
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Install the browser and the fonts
+        run: npx playwright install --with-deps chromium
+      - name: Run the screen specs (desktop and phone, light)
+        run: npx playwright test -c playwright.screens.config.ts --project=desktop-light --project=phone-light
+        working-directory: packages/web
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: states-raw
+          path: packages/web/ui-screens-out
+          if-no-files-found: error
+          retention-days: 7
+
+  docs:
+    name: Docs site pages
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: docsite/package-lock.json
+      - name: Build the docs site
+        working-directory: docsite
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+          NEXT_PUBLIC_SITE_URL: https://docs.gavel.dualmindlab.tech
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+      - name: Install Playwright
+        run: |
+          mkdir -p "$RUNNER_TEMP/tools"
+          npm install --no-audit --no-fund --prefix "$RUNNER_TEMP/tools" playwright@1.49.1
+          "$RUNNER_TEMP/tools/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Serve and capture
+        working-directory: docsite
+        env:
+          TOOLS_DIR: ${{ runner.temp }}/tools
+        run: |
+          node scripts/write-serve-json.mjs out
+          npx serve out -l 4173 > "$RUNNER_TEMP/serve.log" 2>&1 &
+          for i in $(seq 1 30); do curl -fs http://localhost:4173/ > /dev/null && break; sleep 1; done
+          node ../graphics/states/docs.mjs http://localhost:4173 "$GITHUB_WORKSPACE/docs-raw"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: states-docs-raw
+          path: docs-raw
+          if-no-files-found: warn
+          retention-days: 7
+
+  build:
+    name: Name, optimise and index
+    needs: [tour, docs]
+    if: always() && needs.tour.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
+        with:
+          name: states-raw
+          path: raw
+      - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16
+        continue-on-error: true
+        with:
+          name: states-docs-raw
+          path: docs-raw
+      - name: Build the library
+        env:
+          TOOLS_DIR: ${{ runner.temp }}/tools
+        run: |
+          mkdir -p "$TOOLS_DIR"
+          npm install --no-audit --no-fund --prefix "$TOOLS_DIR" sharp@0.33.5
+          sudo apt-get install -y --no-install-recommends fonts-dejavu-core >/dev/null
+          DOCS=""
+          [ -d docs-raw ] && DOCS=docs-raw
+          node graphics/states/build.mjs raw states-out $DOCS
+          {
+            echo '## States gallery'
+            echo
+            echo "Images: $(find states-out -path states-out/contact -prune -o -name '*.png' -print | wc -l)"
+            du -sh states-out | cut -f1
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: states-gallery
+          path: states-out
+          if-no-files-found: error
+          retention-days: 30

@@ -36,6 +36,11 @@ export default tseslint.config(
   enginePurity,
   roomCore,
   {
+    // page.evaluate callbacks run in the browser
+    files: ['graphics/states/docs.mjs'],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
+  },
+  {
     files: ['packages/web/**/*.{ts,tsx}'],
     plugins: { 'react-hooks': reactHooks },
     languageOptions: { globals: { ...globals.browser } },
