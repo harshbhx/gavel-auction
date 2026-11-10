@@ -36,7 +36,7 @@ describe('commitlint config', () => {
     assert.equal(lint('chore(repo): merge main'), 0);
   });
   it('still rejects a bad header that merely mentions merge', () => {
-    assert.notEqual(lint('fix(engine): merge. '), 0);
+    assert.notEqual(lint('fix(engine): merge main.'), 0);
     assert.notEqual(lint('remerge main into x'), 0);
     assert.notEqual(lint('chore(billing): merge main'), 0);
   });
