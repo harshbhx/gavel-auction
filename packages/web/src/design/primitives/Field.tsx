@@ -8,10 +8,20 @@ export interface FieldProps
   error?: string;
   /** Decorative icon shown with the error text so the error is not colour only (R-WEB-016). */
   errorIcon?: ReactNode;
+  /** Short fixed text shown inside the box before the value, such as a currency sign. */
+  adornment?: string;
 }
 
 /** Wires label, hint and error to the input with htmlFor and aria-describedby. */
-export function Field({ label, hint, error, errorIcon, className, ...input }: FieldProps) {
+export function Field({
+  label,
+  hint,
+  error,
+  errorIcon,
+  adornment,
+  className,
+  ...input
+}: FieldProps) {
   const id = useId();
   const hintId = `${id}-hint`;
   const errorId = `${id}-error`;
@@ -30,13 +40,28 @@ export function Field({ label, hint, error, errorIcon, className, ...input }: Fi
           {hint}
         </span>
       )}
-      <input
-        {...input}
-        id={id}
-        className={['gv-input', className].filter(Boolean).join(' ')}
-        aria-describedby={describedBy.length === 0 ? undefined : describedBy.join(' ')}
-        aria-invalid={error === undefined ? undefined : true}
-      />
+      {adornment === undefined ? (
+        <input
+          {...input}
+          id={id}
+          className={['gv-input', className].filter(Boolean).join(' ')}
+          aria-describedby={describedBy.length === 0 ? undefined : describedBy.join(' ')}
+          aria-invalid={error === undefined ? undefined : true}
+        />
+      ) : (
+        <span className="gv-field__control" data-adorned="true">
+          <span className="gv-field__adornment" aria-hidden="true">
+            {adornment}
+          </span>
+          <input
+            {...input}
+            id={id}
+            className={['gv-input', className].filter(Boolean).join(' ')}
+            aria-describedby={describedBy.length === 0 ? undefined : describedBy.join(' ')}
+            aria-invalid={error === undefined ? undefined : true}
+          />
+        </span>
+      )}
       {error !== undefined && (
         <span className="gv-field__error" id={errorId} role="alert">
           {errorIcon !== undefined && <span aria-hidden="true">{errorIcon}</span>}

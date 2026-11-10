@@ -21,20 +21,24 @@ import '../../a11y/a11y.css';
 import './console.css';
 
 /** Desktop layout from this width up (R-WEB-063). */
-export const WIDE_MIN_PX = 1024;
+export const WIDE_MIN_PX = 1000;
 
 function noAnswer(): void {
   // No sender is wired: the queue lists requests and cannot answer them.
 }
 
-type TabId = 'lot' | 'stream' | 'side';
-
 export interface ConsoleScreenProps {
   store?: RoomStore;
   /** Latest settlement detail, for the bottom strip. */
   settlementView: SettlementView | null;
-  /** Lot controls under the price header. */
+  /** The fixed-slot control bar under the price header. */
   controls?: ReactNode;
+  /** Manual floor bid form. */
+  floor?: ReactNode;
+  /** The bidders list. */
+  bidders?: ReactNode;
+  /** The stop-auction danger zone, last in the lot column. */
+  danger?: ReactNode;
   /** Voice feed content for the right column. */
   voiceFeed?: ReactNode;
   /** Sends the auctioneer's answer to one confirmation. Without it the queue only lists. */
@@ -62,18 +66,20 @@ function useWide(forced: boolean | undefined): boolean {
   return forced ?? wide;
 }
 
-/** Auctioneer console layout: three columns on desktop, tabs below 1024 px. */
+/** Auctioneer console layout: two balanced columns from 1000 px, one column below. */
 export function ConsoleScreen({
   store = roomStore,
   settlementView,
   controls,
+  floor,
+  bidders,
+  danger,
   voiceFeed,
   onConfirmAnswer,
   stoppedHere = false,
   wide: forcedWide,
 }: ConsoleScreenProps) {
   const wide = useWide(forcedWide);
-  const [tab, setTab] = useState<TabId>('lot');
   const price = useRoom(selectPrice, store);
   const stream = useRoom(selectStream, store);
   const confirms = useRoom(selectConfirmQueue, store);
@@ -105,6 +111,8 @@ export function ConsoleScreen({
 
   const left = (
     <section className="gv-console-panel gv-console-panel--lot" aria-label={t('bid.price')}>
+      {/* Reserved for the voice mic button (voice-web-mic); collapses while empty. */}
+      <div className="gv-console-header" data-slot="console-header-mic" />
       <Instructor
         screen="console"
         {...(auctionId === null ? {} : { roomId: auctionId })}
@@ -132,6 +140,17 @@ export function ConsoleScreen({
       {controls}
     </section>
   );
+
+  const floorPanel =
+    floor === undefined ? null : (
+      <section className="gv-console-panel" aria-label={t('console.manual')}>
+        {floor}
+      </section>
+    );
+  const biddersPanel =
+    bidders === undefined ? null : <div className="gv-console-panel">{bidders}</div>;
+  const dangerZone =
+    danger === undefined ? null : <div className="gv-console-danger">{danger}</div>;
 
   const centre = (
     <section className="gv-console-panel" aria-label={t('console.stream')}>
@@ -185,44 +204,34 @@ export function ConsoleScreen({
         <FakePaymentsLabel />
         {skew}
         <div className="gv-console-columns" data-testid="console-columns">
-          {left}
-          {centre}
-          {right}
+          <div className="gv-console-col" data-col="lot">
+            {left}
+            {right}
+            {dangerZone}
+          </div>
+          <div className="gv-console-col" data-col="floor">
+            {floorPanel}
+            {centre}
+            {biddersPanel}
+          </div>
         </div>
         {strip}
       </main>
     );
   }
 
-  const tabs: readonly { id: TabId; label: string }[] = [
-    { id: 'lot', label: t('bid.price') },
-    { id: 'stream', label: t('console.stream') },
-    { id: 'side', label: t('console.voice') },
-  ];
   return (
     <main className="gv-console" data-layout="stacked">
       <h1 className="gv-sr-only">{t('demo.roleConsole')}</h1>
       <FakePaymentsLabel />
       {skew}
-      <div className="gv-console-tabs" role="tablist">
-        {tabs.map((x) => (
-          <button
-            key={x.id}
-            type="button"
-            role="tab"
-            id={`console-tab-${x.id}`}
-            aria-selected={tab === x.id}
-            aria-controls={`console-panel-${x.id}`}
-            onClick={() => setTab(x.id)}
-          >
-            {x.label}
-          </button>
-        ))}
-      </div>
-      <div role="tabpanel" id={`console-panel-${tab}`} aria-labelledby={`console-tab-${tab}`}>
-        {tab === 'lot' && left}
-        {tab === 'stream' && centre}
-        {tab === 'side' && right}
+      <div className="gv-console-col" data-testid="console-columns">
+        {left}
+        {floorPanel}
+        {centre}
+        {biddersPanel}
+        {right}
+        {dangerZone}
       </div>
       {strip}
     </main>

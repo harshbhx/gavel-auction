@@ -49,9 +49,17 @@ export class ControlTimeoutError extends Error {
 }
 
 let counter = 0;
+/**
+ * One fresh id per user action. The random part keeps two tabs, or a reloaded page whose counter
+ * restarted, from ever minting the same id: the server refuses an id it saw under another action.
+ */
 function defaultControlId(): string {
   counter += 1;
-  return `web-${Date.now().toString(36)}-${counter}`;
+  const rand =
+    typeof globalThis.crypto?.randomUUID === 'function'
+      ? globalThis.crypto.randomUUID().slice(0, 8)
+      : Math.random().toString(36).slice(2, 10);
+  return `web-${Date.now().toString(36)}-${counter}-${rand}`;
 }
 
 function textField(rec: Record<string, unknown>): string | null {
