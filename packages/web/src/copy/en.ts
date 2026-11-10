@@ -565,6 +565,8 @@ export const en = {
     'Settled: $350 taken, $150 of her hold released. The holds of Sam and Ana are released in full. The receipt is recorded.',
   'scriptedDemo.live': 'Try the live demo',
   'scriptedDemo.judge': 'Judge guide',
+  'bid.recorded': 'Recorded demo: bids are played by the tour, so the bid controls are off here.',
+  'bid.recordedLive': 'Start a live demo to place a real sandbox bid',
   'reg.step1': 'Your name',
   'reg.name': 'Display name',
   'reg.nameHint': 'Shown to the room.',
