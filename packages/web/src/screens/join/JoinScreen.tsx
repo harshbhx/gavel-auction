@@ -43,22 +43,31 @@ export function joinUrl(origin: string, roomId: string, shortCode: string | null
   return shortCode === null ? base : `${base}?c=${encodeURIComponent(shortCode)}`;
 }
 
-/** The three steps a bidder takes, with the current one marked for assistive tech. */
-function Steps({ current }: { current: 1 | 2 | 3 }) {
-  const keys = ['join.step1', 'join.step2', 'join.step3'] as const;
+/**
+ * The steps still ahead of a bidder who arrived on this page. Finding the room is already done, so
+ * the list starts at the register step, numbered 2 and 3, with the current one marked.
+ */
+function Steps({ current }: { current: 2 | 3 }) {
+  const keys = ['join.step2', 'join.step3'] as const;
   return (
     <ol className="gv-join__steps" aria-label={t('join.steps')}>
       {keys.map((key, i) => (
         <li
           key={key}
           className="gv-join__step"
-          {...(i + 1 === current ? { 'aria-current': 'step' as const } : {})}
+          {...(i + 2 === current ? { 'aria-current': 'step' as const } : {})}
         >
           <span>{t(key)}</span>
         </li>
       ))}
     </ol>
   );
+}
+
+/** Phones scanned the QR to get here, so it starts folded there; wide screens show it open. */
+function qrStartsOpen(): boolean {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return true;
+  return window.matchMedia('(min-width: 840px)').matches;
 }
 
 function hasRegisteredHold(roomId: string): boolean {
@@ -147,27 +156,16 @@ export function JoinScreen({
     <main className="gv-flow" data-state="open">
       <p className="ui-kicker">{t('app.name')}</p>
       <h1 tabIndex={-1}>{t('join.title', { room: roomName })}</h1>
-      <Steps current={1} />
-      <div className="gv-flow__qr">
-        <ChunkBoundary>
-          <QrCode url={url} size={192} />
-        </ChunkBoundary>
-      </div>
-      {shortCode !== null && <p className="gv-flow__code">{t('join.code', { code: shortCode })}</p>}
       {demoHold ? (
         <section className="gv-join__ways" aria-labelledby="gv-join-ways">
           <h2 id="gv-join-ways">{t('join.waysTitle')}</h2>
           <p className="gv-join__help">{t('join.waysWhy')}</p>
           <ActionGroup>
-            <Button size="bid" onClick={() => onNavigate(registerPath)}>
-              {t('join.wayPaypal')}
-            </Button>
-            <Button
-              size="bid"
-              variant="outline"
-              onClick={() => onNavigate(`${registerPath}?mode=demo`)}
-            >
+            <Button size="bid" onClick={() => onNavigate(`${registerPath}?mode=demo`)}>
               {t('join.wayDemo')}
+            </Button>
+            <Button size="bid" variant="outline" onClick={() => onNavigate(registerPath)}>
+              {t('join.wayPaypal')}
             </Button>
             <Button size="bid" variant="text" onClick={() => onNavigate(bidPath)}>
               {t('join.watch')}
@@ -187,6 +185,18 @@ export function JoinScreen({
           </ActionGroup>
         </>
       )}
+      <Steps current={2} />
+      <details className="gv-join__qr" open={qrStartsOpen()}>
+        <summary>{t('join.showQr')}</summary>
+        <div className="gv-flow__qr">
+          <ChunkBoundary>
+            <QrCode url={url} size={192} />
+          </ChunkBoundary>
+        </div>
+        {shortCode !== null && (
+          <p className="gv-flow__code">{t('join.code', { code: shortCode })}</p>
+        )}
+      </details>
       <WideAside />
     </main>
   );

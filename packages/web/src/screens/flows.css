@@ -295,7 +295,7 @@ main[data-route='token-gate'] .gv-flow__action,
   margin: 0;
   padding: 0;
   list-style: none;
-  counter-reset: join-step;
+  counter-reset: join-step 1;
 }
 
 .gv-join__step {
@@ -626,4 +626,24 @@ main[data-route='token-gate'] .gv-flow__action,
 /* Not found: one primary link, the rest are text links, all inside an ActionGroup (UIX-56). */
 .gv-notfound__links {
   display: block;
+}
+
+/* Join: the QR folds on phones (the visitor just scanned it) and the page keeps a clear band at the
+ * bottom so the fixed help button never sits on a page action. */
+.gv-join__qr > summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-size: var(--font-size-2);
+  color: var(--color-fg-muted);
+  text-decoration: underline;
+}
+
+.gv-join__qr[open] > summary {
+  margin-bottom: var(--space-3);
+}
+
+.gv-flow[data-state='open'] {
+  padding-bottom: calc(48px + var(--space-6));
 }

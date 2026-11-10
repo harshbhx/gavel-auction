@@ -43,7 +43,7 @@ describe('button group (UIX-45)', () => {
     const labels = within(group as HTMLElement)
       .getAllByRole('button')
       .map((b) => b.textContent);
-    expect(labels).toEqual([t('join.wayPaypal'), t('join.wayDemo'), t('join.watch')]);
+    expect(labels).toEqual([t('join.wayDemo'), t('join.wayPaypal'), t('join.watch')]);
     const ways = screen.getByRole('region', { name: t('join.waysTitle') });
     expect(ways.contains(group)).toBe(true);
     const result = await axe.run(container, {
