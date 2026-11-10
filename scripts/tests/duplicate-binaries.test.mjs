@@ -12,9 +12,11 @@ test('flags a new twin', () => {
 test('allows listed groups, flags a new member', () => {
   const allowed = new Set(['x/1.gif', 'y/1.gif']);
   assert.deepEqual(findNewDuplicates([e('a', 'x/1.gif'), e('a', 'y/1.gif')], allowed), []);
-  assert.equal(findNewDuplicates([e('a', 'x/1.gif'), e('a', 'y/1.gif'), e('a', 'z/1.gif')], allowed).length, 1);
+  const three = [e('a', 'x/1.gif'), e('a', 'y/1.gif'), e('a', 'z/1.gif')];
+  assert.equal(findNewDuplicates(three, allowed).length, 1);
 });
 test('ignores small files and baselines', () => {
   assert.deepEqual(findNewDuplicates([e('a', 'x', 10), e('a', 'y', 10)], new Set()), []);
-  assert.deepEqual(findNewDuplicates([e('a', 'p/__screenshots__/a.png'), e('a', 'q/__screenshots__/a.png')], new Set()), []);
+  const shots = [e('a', 'p/__screenshots__/a.png'), e('a', 'q/__screenshots__/a.png')];
+  assert.deepEqual(findNewDuplicates(shots, new Set()), []);
 });
