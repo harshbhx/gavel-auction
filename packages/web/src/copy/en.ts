@@ -189,13 +189,13 @@ export const en = {
     'Screenshots of the app on its test stage: a simulated room with sample bids and amounts. Not a real auction.',
   'mk.shots.bidder.cap': 'Bidder, on a phone: the price, your paddle and your hold.',
   'mk.shots.bidder.alt':
-    'The bidder screen on a phone: current price 500 dollars, leading paddle 7, your hold of 500 dollars marked held, and three bid buttons.',
+    'The bidder screen on a phone: a Leading badge, current price 350 dollars with paddle 12 in front, your limit of 500 dollars, and three bid buttons.',
   'mk.shots.screen.cap': 'Public screen: the current bid, the latest bids and a QR code to join.',
   'mk.shots.screen.alt':
-    'The public screen: a large price of 300 dollars, paddle number 7, a countdown, a list of latest bids and a QR code.',
+    'The public screen in cream and ink: a large price of 350 dollars, paddle number 12, a countdown, a list of latest bids and a QR code.',
   'mk.shots.receipt.cap': 'Receipt: the winning amount and the rest of the hold, released.',
   'mk.shots.receipt.alt':
-    'The receipt page: item, winning price 350 dollars, a bar with a solid part for the amount taken and a dashed part for the amount released.',
+    'The receipt page: sandbox notice, item, winning price 350 dollars, a charged amount, a bar with a solid part for the amount taken and a dashed part for the amount released.',
   'mk.shots.console.cap':
     'Auctioneer console: lot controls, the bid stream, bidders and their holds.',
   'mk.shots.console.alt':
