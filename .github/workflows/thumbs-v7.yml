@@ -22,10 +22,9 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/pw" && cd "$RUNNER_TEMP/pw"
           npm init -y >/dev/null && npm install --no-audit --no-fund playwright@1.49.1
-          npx playwright install --with-deps chromium
           cd "$GITHUB_WORKSPACE"
           PW_DIR="$RUNNER_TEMP/pw" node brand/thumbnails/v7/render.mjs "$PWD/out"
-          sudo apt-get install -y -qq imagemagick
+          which convert || which magick
           for f in out/*.png; do case "$f" in *1500x1000*) convert "$f" -resize 300x200 "${f%.png}-300.png";; *) convert "$f" -resize 320x180 "${f%.png}-320.png";; esac; done
           ls -l out
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
