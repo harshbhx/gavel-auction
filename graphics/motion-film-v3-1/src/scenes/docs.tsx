@@ -25,7 +25,7 @@ const GUIDES = 0.6;
 const REFERENCE = 6.5;
 const SDK = 9.0;
 
-const WIN = { left: 180, top: 96, w: 1560, h: 760 };
+const WIN = { left: 180, top: 130, w: 1560, h: 730 };
 
 const ROOTS = ['Learn', 'For judges', 'Reference'];
 const SIDEBAR_GUIDES = [
@@ -70,16 +70,18 @@ const ROUTES: { m: string; p: string; s: string; hot?: boolean }[] = [
 ];
 
 const SDK_LINES = [
-  'import { GavelHostApiClient } from "gavel-sdk";',
+  'import { GavelHostApiClient }',
+  '  from "gavel-sdk";',
   '',
   'const client = new GavelHostApiClient({',
   '  sessionAuth: "YOUR_BEARER_TOKEN",',
   '});',
   '',
-  'const res = await client.judgeRooms.placeJudgeBid({',
-  '  id: roomId,',
-  '  body: { amount: 35000 },',
-  '});',
+  'const res = await client.judgeRooms',
+  '  .placeJudgeBid({',
+  '    id: roomId,',
+  '    body: { amount: 35000 },',
+  '  });',
 ];
 
 function Tab({ text, on }: { text: string; on: boolean }) {
@@ -147,7 +149,7 @@ export function Docs({ t, frame, fps }: SceneCtx) {
             background: PAPER_HI,
             border: `2px solid ${INK}`,
             borderRadius: 10,
-            boxShadow: `0 40px 120px rgba(0,0,0,0.55), 0 0 ${40 * pulse(t, SDK, 3)}px ${ORANGE}`,
+            boxShadow: `0 40px 120px rgba(0,0,0,0.55), 0 0 ${18 * pulse(t, SDK, 3)}px ${ORANGE}`,
             overflow: 'hidden',
           }}
         >
@@ -358,7 +360,7 @@ export function Docs({ t, frame, fps }: SceneCtx) {
               The HTTP API of the host as an OpenAPI 3.1 document, with authentication, errors and
               rate limits.
             </div>
-            <div style={{ marginTop: 26, width: onSdk ? 600 : 1100 }}>
+            <div style={{ marginTop: 26, width: onSdk ? 500 : 1100 }}>
               {ROUTES.map((r, i) => {
                 const s = sp(t, REFERENCE + 0.8 + i * 0.18, fps, { damping: 16, stiffness: 140 });
                 const hot = Boolean(r.hot) && t > REFERENCE + 1.8;
@@ -397,7 +399,9 @@ export function Docs({ t, frame, fps }: SceneCtx) {
                       {r.p}
                     </div>
                     <div style={{ flex: 1 }} />
-                    <div style={{ fontFamily: BODY, fontSize: 18, color: MUTE }}>{r.s}</div>
+                    {onSdk ? null : (
+                      <div style={{ fontFamily: BODY, fontSize: 18, color: MUTE }}>{r.s}</div>
+                    )}
                   </div>
                 );
               })}
@@ -409,7 +413,7 @@ export function Docs({ t, frame, fps }: SceneCtx) {
                 right: 40,
                 top: 150,
                 width: 600,
-                height: 520,
+                height: 500,
                 background: INK_DEEP,
                 border: `2px solid ${INK}`,
                 borderRadius: 8,
@@ -446,7 +450,7 @@ export function Docs({ t, frame, fps }: SceneCtx) {
                   at={SDK + 0.5 + i * 0.28}
                   text={l === '' ? ' ' : l}
                   size={19}
-                  color={l.startsWith('import') || l.includes('new ') ? PAPER : '#f5b488'}
+                  color={i < 6 ? PAPER : '#f5b488'}
                   dur={0.35}
                   style={{ lineHeight: 1.55 }}
                 />
