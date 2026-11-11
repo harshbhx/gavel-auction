@@ -37,7 +37,7 @@ export function WinnerDialog({
 }: WinnerDialogProps) {
   const amount = formatUsd(amountCents);
   useEffect(() => {
-    announce('assertive', t('win.announce', { amount }), 'summary');
+    announce('assertive', t('end.announce', { amount }), 'summary');
   }, [amount]);
 
   return (
@@ -49,11 +49,11 @@ export function WinnerDialog({
         </p>
         <p className="bid-win__money">{t('win.money', { amount })}</p>
         <ActionGroup>
-          <Button size="bid" onClick={onHome}>
-            {t('win.home')}
+          <Button size="bid" onClick={onJoinCode}>
+            {t('end.join')}
           </Button>
-          <Button size="bid" variant="outline" onClick={onJoinCode}>
-            {t('win.joinCode')}
+          <Button size="bid" variant="outline" onClick={onHome}>
+            {t('end.home')}
           </Button>
           <Button size="bid" variant="text" onClick={onReceipt}>
             {t('win.receipt')}
