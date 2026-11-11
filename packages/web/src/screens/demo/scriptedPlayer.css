@@ -210,7 +210,7 @@
 
   .gv-scripted-frame .gv-player__caption {
     order: 2;
-    min-height: 8rem;
+    min-height: 11rem;
     margin: var(--space-2) var(--space-4) var(--space-3);
   }
 

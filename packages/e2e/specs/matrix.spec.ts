@@ -9,14 +9,19 @@ test('landing loads without page errors', async ({ page, stack }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto(stack.webUrl);
-  await expect(page.getByRole('button', { name: /start a demo auction/i })).toBeEnabled();
+  await expect(page.getByRole('button', { name: /start a live demo room/i })).toBeEnabled();
   expect(errors).toEqual([]);
 });
 
-test('join button stays disabled until a code is typed', async ({ page, stack }) => {
+test('join button asks for a code when pressed empty, then accepts one', async ({
+  page,
+  stack,
+}) => {
   await page.goto(stack.webUrl);
   const join = page.getByRole('button', { name: /join/i });
-  await expect(join).toBeDisabled();
+  await expect(join).toBeEnabled();
+  await join.click();
+  await expect(page.getByText(/type the \d+ characters of the room code/i)).toBeVisible();
   await page.getByRole('textbox', { name: /character 1 of/i }).fill('ZZZZ');
   await expect(join).toBeEnabled();
 });

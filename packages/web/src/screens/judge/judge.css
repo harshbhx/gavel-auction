@@ -1263,7 +1263,22 @@ html:has(.gv-judge) {
   outline-color: var(--color-action);
 }
 
+/* No room yet: the three room views read as waiting, with their reason always visible. */
+.gv-judge__bar .gv-judge__wait {
+  border-style: dashed;
+  opacity: 0.75;
+}
+
+.gv-judge__bar .gv-judge__wait small {
+  display: block;
+}
+
 @media (max-width: 560px) {
+  /* On a phone the first screen keeps its reading space: only the run control shows until a room exists. */
+  .gv-judge__bar .gv-judge__wait {
+    display: none;
+  }
+
   .gv-judge__bar .gv-btn small {
     display: none;
   }

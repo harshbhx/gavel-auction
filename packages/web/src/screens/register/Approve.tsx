@@ -141,6 +141,7 @@ export function Approve({
             <Icon name="check" />
             <strong>{t('reg.held', { amount: formatUsdCompact(amount) })}</strong>
           </p>
+          <p>{t('reg.heldReassure')}</p>
           <p>{t('reg.heldRef', { suffix })}</p>
           {paddle !== undefined && <p>{t('reg.yourPaddle', { n: paddle })}</p>}
           {full !== undefined && (
