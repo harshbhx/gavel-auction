@@ -6,7 +6,7 @@ import { ControlError, createControlPort } from '../../src/net/controlPort';
 import { Controls, controlStatus, disabledReason } from '../../src/screens/console/Controls';
 import { HammerDialog } from '../../src/screens/console/HammerDialog';
 import { HAMMER_HOLD_MS } from '../../src/screens/console/hammerHold';
-import { KillSwitch } from '../../src/screens/console/KillSwitch';
+import { KILL_HOLD_MS, KillSwitch } from '../../src/screens/console/KillSwitch';
 import { Roster, type RosterRow } from '../../src/screens/console/Roster';
 import {
   SHORTCUTS,
@@ -253,7 +253,7 @@ describe('HammerDialog', () => {
 });
 
 describe('KillSwitch', () => {
-  it('needs exact STOP, holds 1500 ms and sends once', () => {
+  it('needs exact STOP, holds the full time and sends once', () => {
     const onKill = vi.fn();
     render(<KillSwitch stopped={false} onKill={onKill} />);
     fireEvent.click(screen.getByRole('button', { name: t('kill.button') }));
@@ -269,7 +269,7 @@ describe('KillSwitch', () => {
     fireEvent.change(input, { target: { value: 'STOP' } });
     fireEvent.pointerDown(hold);
     act(() => {
-      vi.advanceTimersByTime(1499);
+      vi.advanceTimersByTime(KILL_HOLD_MS - 1);
     });
     expect(onKill).not.toHaveBeenCalled();
     act(() => {

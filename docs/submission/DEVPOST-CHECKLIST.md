@@ -105,9 +105,9 @@ Devpost's thumbnail limit is 5 MB, JPG, PNG or GIF. GIFs in the story should sta
 ## Honesty reminders for every field
 
 - Sandbox only. No real money moves and no live charge is shown or claimed. Say "held, not charged".
-- G3 is a real probe in progress (final reading about 12 Nov 06:17 UTC); G5 is partial and measured on synthetic audio; both are stated that way in every field until `docs/GATES.md` says otherwise.
+- G3 is a real probe in progress (final reading about 12 Nov 06:17 UTC); G5 is tested with synthetic voice clips (Deepgram 11 of 11, Groq 9 of 11, a confirm step on every voice bid), with no live-human or real-room test; both are stated that way in every field until `docs/GATES.md` says otherwise.
 - Latency: both targets are missed on the larger run (SETTLED p95 6927.43 ms against 6000 ms, CAPTURED p95 3766.67 ms against 2500 ms, n=49, INCOMPLETE). Do not write that a target is met.
 - A whole auction through the deployed server was not run. The server kill ran once on a CI runner, not on the deployed host. Crash recovery is otherwise shown on the fake PayPal plus one in-process crash on the sandbox.
-- APIMatic: the OpenAPI spec is ready and linted; SDK and portal generation is in progress. Add the APIMatic tag and the "SDK generated" wording only after the portal pull request has merged and the portal is live.
+- APIMatic: the OpenAPI spec is linted and the SDKs (TypeScript, Python, C#, `gavel-sdk` 0.0.5) were generated and published as the GitHub release `sdk-v0.0.5` (merged in #2564). The `apimatic` tag and "SDKs generated" wording are allowed. Always say "GitHub release": the SDKs are not on npm, PyPI or NuGet, and the developer portal is generated but not hosted, so never claim a portal.
 - Sponsor claims need a source: Render (write-up and `render.yaml`), Cloudflare (the live custom domains) and AG Grid (the `/ledger` page) are on main and visible on the live site.
 - Label every simulated or recorded screen as such, as the entry's real-versus-simulated table does.

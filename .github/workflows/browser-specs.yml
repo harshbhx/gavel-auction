@@ -44,6 +44,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
+      - uses: ./.github/actions/apt-resilient
       - uses: ./.github/actions/setup
       - name: Install the browser
         run: npx playwright install --with-deps "$PW_BROWSER"
@@ -82,6 +83,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
+      - uses: ./.github/actions/apt-resilient
       - name: Check for committed web baselines
         id: baselines
         run: |
