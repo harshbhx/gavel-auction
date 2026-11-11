@@ -156,6 +156,23 @@ describe('raising a limit from the bid screen (FEAT-61)', () => {
     expect(starts[0]).toMatchObject({ ceilingCents: 2_500_000 });
   });
 
+  it('gives a raise from $15,000 a usable slider range with no typing', () => {
+    const { port } = heldPort();
+    render(
+      <BidScreen
+        store={storeFor({ ceiling: 1_500_000, cap: 10_000_000 })}
+        onBid={() => undefined}
+        raise={raise(port)}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: t('raise.cta') }));
+    const slider = screen.getByRole('slider');
+    expect(slider.getAttribute('aria-valuemin')).toBe(String(minRaiseCents(1_500_000)));
+    expect(slider.getAttribute('aria-valuemax')).toBe('3000000');
+    fireEvent.keyDown(slider, { key: 'End' });
+    expect(slider.getAttribute('aria-valuenow')).toBe('3000000');
+  });
+
   it('keeps the typed limit when the bidder goes back from the approval (#2394)', async () => {
     const port: PaymentApprovalPort = {
       start: (_req, on) => {

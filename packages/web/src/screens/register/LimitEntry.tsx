@@ -51,7 +51,9 @@ export function sliderMax(
   presetsCents: readonly number[],
   typedCents: number | null,
 ): number {
-  const base = Math.max(minCents, DEFAULT_SLIDER_MAX_CENTS, ...presetsCents);
+  // A default range worth sliding: $10,000, or twice the minimum when that is higher (a raise
+  // starts just above the current limit), so the slider never collapses to a sliver.
+  const base = Math.max(niceCeil(minCents * 2), DEFAULT_SLIDER_MAX_CENTS, ...presetsCents);
   const want = typedCents === null || typedCents <= base ? base : niceCeil(typedCents);
   return Math.min(maxCents, want);
 }
