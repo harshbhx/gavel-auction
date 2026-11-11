@@ -181,7 +181,23 @@ test.describe('judge panel', () => {
     await shoot('try', 'code-not-found');
   });
 
+  test('phone bar shows only the run control before a room exists', async ({ page }) => {
+    test.skip((page.viewportSize()?.width ?? 1280) > 560, 'the bar is full width above 560 px');
+    await mockApi(page, () => caps(true, true));
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/try');
+    await expect(page.getByText(t('try.status.on'))).toBeVisible();
+    const bar = page.getByRole('navigation', { name: t('try.bar.label') });
+    await expect(
+      bar.getByRole('button', { name: new RegExp(`^${t('try.run.go')}`) }),
+    ).toBeVisible();
+    for (const key of ['try.bar.join', 'try.bar.console', 'try.bar.screen'] as const) {
+      await expect(bar.getByRole('button', { name: new RegExp(`^${t(key)}`) })).toHaveCount(0);
+    }
+  });
+
   test('console tab explains it opens inside a room', async ({ page, shoot }) => {
+    test.skip((page.viewportSize()?.width ?? 1280) <= 560, 'the button is hidden on phones');
     await mockApi(page, () => caps(true, true));
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/try');
@@ -195,6 +211,7 @@ test.describe('judge panel', () => {
   });
 
   test('proven tab lists what is not claimed', async ({ page, shoot }) => {
+    test.skip((page.viewportSize()?.width ?? 1280) <= 560, 'the button is hidden on phones');
     await mockApi(page, () => caps(true, true));
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/try');
