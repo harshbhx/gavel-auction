@@ -73,10 +73,11 @@ test.describe('audit entry', () => {
 
   test('room not found', async ({ page, shoot }) => {
     await mockApi(page, () => ({ status: 404, json: { error: 'not_found' } }));
-    await page.goto('/');
+    await page.goto(`/r/${ROOM}/audit`);
     await ready(page);
-    await page.getByRole('link', { name: t('home.link.ledger') }).click();
-    await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible();
+    const heading = page.getByRole('heading', { level: 1 }).first();
+    await expect(heading).toBeVisible();
+    expect((await heading.boundingBox())?.y ?? 9999).toBeLessThan(300);
     await shoot('audit', 'entry-not-found');
   });
 });

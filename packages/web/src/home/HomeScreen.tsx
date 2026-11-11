@@ -155,7 +155,7 @@ function RouteLink({
     onNavigate(to);
   };
   return (
-    <a className="gv-home__link" href={to} onClick={click}>
+    <a className="gv-homepage__link" href={to} onClick={click}>
       {children}
     </a>
   );
@@ -248,13 +248,13 @@ export function HomeScreen({
   const reachable = check === 'live';
 
   return (
-    <div className="gv-home">
+    <div className="gv-homepage">
       <header className="gv-home__bar">
         <a className="gv-home__brand" href="/" aria-label={t('home.logoLabel')} aria-current="page">
           <Logo variant="wordmark" height={22} decorative />
         </a>
         <nav aria-label={t('home.nav')}>
-          <a className="gv-home__link" href="/about">
+          <a className="gv-homepage__link" href="/about">
             {t('home.about')}
           </a>
         </nav>
@@ -312,7 +312,7 @@ export function HomeScreen({
             )}
             {check === 'unknown' && <p className="gv-home__note">{t('home.room.unknown')}</p>}
             {reachable && (
-              <ul className="gv-home__links">
+              <ul className="gv-homepage__links">
                 {result === 'open' && (
                   <li>
                     <RouteLink to={returnPath(last)} onNavigate={onNavigate}>

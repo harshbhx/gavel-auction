@@ -4,7 +4,9 @@
  * prefers-reduced-motion. Nothing here changes size after first paint: the price reserves the width
  * of its final figure and the room note reserves its line. */
 
-.gv-home {
+/* The page root is .gv-homepage, not .gv-home: nav/homeLink.css owns .gv-home (the header Home link),
+ * and this file stays loaded after the visitor leaves, so a shared name stretched every later page. */
+.gv-homepage {
   min-height: 100vh;
   background: var(--color-bg);
   color: var(--color-fg);
@@ -44,7 +46,7 @@
   color: var(--color-fg);
 }
 
-.gv-home__link {
+.gv-homepage__link {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
@@ -56,12 +58,12 @@
   text-decoration-thickness: 1px;
 }
 
-.gv-home__link:hover {
+.gv-homepage__link:hover {
   text-decoration-thickness: 2px;
 }
 
 .gv-home__brand:focus-visible,
-.gv-home__link:focus-visible,
+.gv-homepage__link:focus-visible,
 .gv-home__act:focus-visible,
 .gv-home__go:focus-visible,
 .gv-home__clear:focus-visible,
@@ -239,7 +241,7 @@
   line-height: 1.45;
 }
 
-.gv-home__links {
+.gv-homepage__links {
   display: flex;
   flex-wrap: wrap;
   gap: 0 var(--space-5);
