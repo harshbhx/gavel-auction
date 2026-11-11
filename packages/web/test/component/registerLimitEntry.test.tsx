@@ -85,8 +85,8 @@ describe('limit box and slider (UIX-44)', () => {
     expect(sliderMax(100, 10_000_000, [10_000], 1_250_000)).toBe(1_500_000);
     expect(sliderMax(100, 10_000_000, [10_000], 5_000)).toBe(1_000_000);
     // A raise from $15,000 starts with a usable range, no typing needed.
-    expect(sliderMax(1_500_100, 10_000_000, [], null)).toBe(3_000_000);
-    expect(sliderMax(1_500_100, 10_000_000, [], 1_600_000)).toBe(3_000_000);
+    expect(sliderMax(1_500_100, 10_000_000, [], null)).toBe(4_000_000);
+    expect(sliderMax(1_500_100, 10_000_000, [], 1_600_000)).toBe(4_000_000);
     expect(sliderMax(1_500_100, 10_000_000, [], 4_000_000)).toBe(4_000_000);
     expect(sliderMax(1_500_100, 1_760_000, [], null)).toBe(1_760_000);
     expect(sliderMax(100, 500_000, [10_000], 900_000)).toBe(500_000);
