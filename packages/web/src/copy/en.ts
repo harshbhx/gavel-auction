@@ -592,7 +592,7 @@ export const en = {
   'reg.sessionNotSaved':
     'Your browser blocked storage. Keep this tab open: reloading will end this session.',
   'reg.customHint': 'Type your own limit in whole dollars, from {min} to {max}.',
-  'reg.overCap': 'The most a limit can be in this room is {max}.',
+  'reg.overCap': 'This room takes limits up to {max}. Lower the amount to continue.',
   'reg.customRange': 'Enter a whole dollar amount from {min} to {max}.',
   'reg.heldNotCharged': 'Held, not charged.',
   'reg.heldExplain':

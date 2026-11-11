@@ -82,6 +82,8 @@ describe('limit box and slider (UIX-44)', () => {
     expect(sliderMax(100, 100_000, [10_000], null)).toBe(100_000);
     expect(sliderMax(100, 10_000_000, [10_000], null)).toBe(1_000_000);
     expect(sliderMax(100, 10_000_000, [10_000], 2_500_000)).toBe(2_500_000);
+    expect(sliderMax(100, 10_000_000, [10_000], 1_250_000)).toBe(1_500_000);
+    expect(sliderMax(100, 10_000_000, [10_000], 5_000)).toBe(1_000_000);
     expect(sliderMax(100, 500_000, [10_000], 900_000)).toBe(500_000);
   });
 });
@@ -160,7 +162,7 @@ describe('open limit above $1,000 (UIX-59)', () => {
     const { onApprove, box, slider } = toLimitStep(BIG);
     expect(slider.getAttribute('aria-valuemax')).toBe('1000000');
     fireEvent.change(box, { target: { value: '12500' } });
-    expect(slider.getAttribute('aria-valuemax')).toBe('1250000');
+    expect(slider.getAttribute('aria-valuemax')).toBe('1500000');
     confirmHold();
     expect(onApprove).toHaveBeenCalledWith({ name: 'Priya', ceilingCents: 1_250_000 });
   });
@@ -176,6 +178,24 @@ describe('open limit above $1,000 (UIX-59)', () => {
       2_000_000 - sliderStep(100, 2_000_000),
     );
     expect(sliderStep(100, 2_000_000)).toBeGreaterThan(sliderStep(100, 100_000));
+  });
+
+  it('shrinks the slider back when the typed limit is lowered', () => {
+    const { box, slider } = toLimitStep(BIG);
+    fireEvent.change(box, { target: { value: '70000' } });
+    expect(slider.getAttribute('aria-valuemax')).toBe('7500000');
+    fireEvent.change(box, { target: { value: '20000' } });
+    expect(slider.getAttribute('aria-valuemax')).toBe('2000000');
+    fireEvent.change(box, { target: { value: '300' } });
+    expect(slider.getAttribute('aria-valuemax')).toBe('1000000');
+  });
+
+  it('parks the slider at the cap and keeps the message while the limit is over it', () => {
+    const { box, slider } = toLimitStep(BIG);
+    fireEvent.change(box, { target: { value: '150000' } });
+    expect(slider.getAttribute('aria-valuemax')).toBe('10000000');
+    expect(slider.getAttribute('aria-valuenow')).toBe('10000000');
+    expect(screen.getByRole('alert').textContent).toContain('$100,000');
   });
 
   it('offers quick picks that are fractions of the typed limit', () => {

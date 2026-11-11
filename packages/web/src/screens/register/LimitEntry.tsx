@@ -30,7 +30,21 @@ export function formatDigits(digits: string): string {
   return digits === '' ? '' : Number(digits).toLocaleString('en-US');
 }
 
-/** The slider's top: its usual span, stretched to a typed limit, never past the server cap. */
+const NICE_MANTISSAS: readonly number[] = [1, 1.5, 2, 2.5, 3, 4, 5, 7.5, 10];
+
+/** The next clean amount at or above `cents` (1, 1.5, 2, 2.5, 3, 4, 5, 7.5 times a power of ten). */
+export function niceCeil(cents: number): number {
+  if (cents <= 1) return 1;
+  const pow = 10 ** Math.floor(Math.log10(cents));
+  const m = NICE_MANTISSAS.find((x) => x * pow >= cents - 1e-9) ?? 10;
+  return Math.round(m * pow);
+}
+
+/**
+ * The slider's top: its usual span, stretched to the typed limit and rounded up to a clean
+ * amount, never past the server cap. It follows the typed value both ways, so lowering the
+ * limit shrinks the range back down to the usual span.
+ */
 export function sliderMax(
   minCents: number,
   maxCents: number,
@@ -38,7 +52,8 @@ export function sliderMax(
   typedCents: number | null,
 ): number {
   const base = Math.max(minCents, DEFAULT_SLIDER_MAX_CENTS, ...presetsCents);
-  return Math.min(maxCents, Math.max(base, typedCents ?? 0));
+  const want = typedCents === null || typedCents <= base ? base : niceCeil(typedCents);
+  return Math.min(maxCents, want);
 }
 
 const SCALED_FRACTIONS: readonly number[] = [0.25, 0.5, 0.75];
@@ -157,7 +172,7 @@ export function useLimitEntry(opts: LimitEntryOptions): LimitEntryState {
     <>
       {allowCustom && (
         <CeilingSlider
-          value={ceilingCents ?? minCents}
+          value={ceilingCents ?? (overCap ? rangeMax : minCents)}
           min={minCents}
           max={rangeMax}
           step={sliderStep(minCents, rangeMax)}
