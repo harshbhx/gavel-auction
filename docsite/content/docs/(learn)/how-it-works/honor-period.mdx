@@ -2,7 +2,7 @@
 title: Honor period and reauthorization
 description: How long a hold can be captured, what GAVEL does about it, and exactly what gate G3 is testing on the real sandbox.
 icon: Hourglass
-status: in progress
+status: running
 full: true
 ---
 
@@ -14,7 +14,7 @@ GAVEL's demo creates holds minutes before the capture, so none of this matters t
 
 <NotVerified title="PayPal's real numbers are not verified">
 
-The 3 day honor period and the 29 day validity on this page are the assumptions of GAVEL's **<Term id="fake-paypal">fake PayPal</Term>** (assumptions A07 to A11, all marked unverified). Gate G3 is **IN PROGRESS**: day 0 was 7 Nov 2026 03:06 UTC and the final reading is about 12 Nov 2026 06:17 UTC. Until it finishes, nothing here claims what PayPal does.
+The 3 day honor period and the 29 day validity on this page are the assumptions of GAVEL's **<Term id="fake-paypal">fake PayPal</Term>** (assumptions A07 to A11, all marked as modelled, not yet read from the sandbox). Gate G3 is **running**: day 0 was 7 Nov 2026 03:06 UTC and the final reading is about 12 Nov 2026 06:17 UTC. Until it finishes, nothing here claims what PayPal does.
 
 </NotVerified>
 
@@ -100,7 +100,7 @@ That shows GAVEL behaves correctly **if** PayPal follows the model. It says noth
     { path: 'packages/server/src/runtime/auction-service.ts', note: 'reauthorizeDue: runs before the capture when the policy is on' },
     { path: 'packages/payments/src/holds/recover.ts', note: 'the stale flag' },
     { path: 'packages/payments/src/fake/core.ts', note: 'the model: honor period, validity, reauthorize' },
-    { path: 'packages/payments/src/fake/ASSUMPTIONS.md', note: 'A07 to A11, unverified' },
+    { path: 'packages/payments/src/fake/ASSUMPTIONS.md', note: 'A07 to A11, modelled, not yet read from the sandbox' },
     { path: 'packages/payments/gates/g3.ts', note: 'the real probe' },
     { path: 'packages/payments/gates/g3-timed.ts', note: 'checkpoints and decideG3' },
     { path: '.github/workflows/gate-g3.yml', note: 'day 0 and the scheduled checkpoints' },

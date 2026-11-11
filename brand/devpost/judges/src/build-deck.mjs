@@ -721,7 +721,7 @@ function rings(s, cx, cy, fades) {
     [
       'The auctioneer can speak a bid into the console microphone.',
       'Audio goes to Deepgram nova-3, with Groq whisper-large-v3-turbo as failover. A rule-based parser turns the transcript into a structured bid and a deterministic validator checks it against the auction rules. Every spoken bid waits for a confirm: "Did you mean 350 for paddle 12?"',
-      'Honest scope: gate G5 is PARTIAL. Accuracy is measured on synthetic clips only; on a held-out noisy set of 120 synthetic clips, wrong accept was 0.058 (Groq) and 0.092 (Deepgram) against a 0.05 limit, which is why the confirm step stays. The microphone works when the server has a speech provider; a judge can also bid by tap, QR or typed entry.',
+      'Honest scope: gate G5 was tested with synthetic voice clips, with a confirm step on every voice bid. Accuracy is measured on synthetic clips only; on a held-out noisy set of 120 synthetic clips, wrong accept was 0.058 (Groq) and 0.092 (Deepgram) against a 0.05 limit, which is why the confirm step stays. The microphone works when the server has a speech provider; a judge can also bid by tap, QR or typed entry.',
     ].join('\n\n'),
   );
 }
@@ -1063,8 +1063,8 @@ function rings(s, cx, cy, fades) {
     ['G1 PASS', 1.12, true],
     ['G2 PASS', 1.12, true],
     ['G4 PASS', 1.12, true],
-    ['G3 IN PROGRESS', 2.05, false],
-    ['G5 PARTIAL', 1.45, false],
+    ['G3 RUNNING', 1.5, false],
+    ['G5 TESTED, SYNTHETIC', 2.4, false],
   ];
   let cx = 2.55;
   chips.forEach(([t, w, pass], i) => {
@@ -1113,7 +1113,7 @@ function rings(s, cx, cy, fades) {
       'Kill test: a real server process was killed after the capture request and before the response. On restart with the same data folder it settled with one capture of 12500 cents, equal to the hammer price, two losers voided, a journal equal to PayPal and a ledger of 19 entries that verifies (Actions run 42558021614; it ran on a CI runner, not on the deployed host).',
       'Voice: both providers answered 24 of 24 synthetic clips through the live audio socket, and no bid was accepted without a confirm (run 42575018866).',
       'Judge flow: 17 of 17 steps on the live domains (run 42584326641). More than 4,500 test cases run in CI, and all eight P0 security items pass.',
-      'Gates: G0, G1, G2 and G4 PASS on the real PayPal sandbox. G3 (how long a hold lasts) is a timed probe in progress, reading out about 12 Nov 06:17 UTC. G5 (voice accuracy) is PARTIAL. Latency: hammer to settled p95 6927.43 ms against a 6000 ms target, and hammer to captured p95 3766.67 ms against 2500 ms; both are missed.',
+      'Gates: G0, G1, G2 and G4 PASS on the real PayPal sandbox. G3 (how long a hold lasts) is a timed probe that is running, final reading about 12 Nov 06:17 UTC. G5 (voice accuracy) was tested with synthetic voice clips, with a confirm step on every voice bid. Latency: hammer to settled p95 6927.43 ms against a 6000 ms target, and hammer to captured p95 3766.67 ms against 2500 ms; both are missed.',
       'Source: docs/GATES.md and README "What is proven".',
     ].join('\n\n'),
   );

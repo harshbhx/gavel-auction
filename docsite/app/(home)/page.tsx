@@ -84,7 +84,7 @@ const faq = [
   },
   {
     q: 'Does voice bidding work?',
-    a: 'Yes. Voice bids were tested with synthetic speech clips: the speech accuracy gate (G5) is PARTIAL, with wrong accepts at 0.000 on 24 synthetic clips (fixes chosen on those same clips) and a live socket run that answered 24 of 24. The confirm prompt protects every voice bid: a spoken bid waits for a confirmation.',
+    a: 'Yes. Voice bids were tested with synthetic speech clips: the speech accuracy gate (G5) was tested with synthetic voice clips, with wrong accepts at 0.000 on 24 synthetic clips (fixes chosen on those same clips) and a live socket run that answered 24 of 24. The confirm prompt protects every voice bid: a spoken bid waits for a confirmation.',
   },
   {
     q: 'Is there a hosted demo?',
@@ -196,7 +196,7 @@ export default function HomePage() {
 
       <Section id="gates" labelledBy="gates-title" className="border-t border-[var(--hl-hairline)] bg-fd-card/40">
         <SectionHeading id="gates-title" eyebrow="Proof" title="Six gates: four passed on the PayPal sandbox.">
-          Source of truth: <code>docs/GATES.md</code>. G0, G1, G2 and G4 ran against the PayPal sandbox and passed. G3 is a timed probe on the sandbox that is still running. G5 is a speech-to-text evaluation on synthetic audio and never calls PayPal (PARTIAL). A gate closes only with a recorded result.
+          Source of truth: <code>docs/GATES.md</code>. G0, G1, G2 and G4 ran against the PayPal sandbox and passed. G3 is a timed probe on the sandbox that is still running. G5 is a speech-to-text evaluation on synthetic audio and never calls PayPal (tested with synthetic voice clips). A gate closes only with a recorded result.
         </SectionHeading>
         <GatesTable />
         <p className="text-sm text-fd-muted-foreground">

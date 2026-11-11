@@ -169,7 +169,7 @@ Registering the webhook is a manual step in the PayPal developer dashboard. The 
 
 <NotVerified title="What the sandbox has and has not shown">
 
-Rejecting a tampered event is covered against the fake PayPal only; gate G4 did not send a tampered event. Whether a PayPal retry keeps its original transmission id and time is UNVERIFIED, because only first deliveries were recorded; until a run records a retry, an old transmission time within seven days is sent to PayPal rather than refused. The shapes of `PAYMENT.CAPTURE.DENIED` and `PENDING` events and PayPal's retry schedule are UNVERIFIED as well. Parking and ordering are shown by the simulated scenario S7, not by the sandbox.
+Rejecting a tampered event is covered against the fake PayPal only; gate G4 did not send a tampered event. Whether a PayPal retry keeps its original transmission id and time is not yet recorded, because only first deliveries were recorded; until a run records a retry, an old transmission time within seven days is sent to PayPal rather than refused. The shapes of `PAYMENT.CAPTURE.DENIED` and `PENDING` events and PayPal's retry schedule are not yet recorded as well. Parking and ordering are shown by the simulated scenario S7, not by the sandbox.
 
 </NotVerified>
 

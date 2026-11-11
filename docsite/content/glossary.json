@@ -77,8 +77,8 @@
     {
       "id": "gate",
       "term": "Gate",
-      "short": "A run that answers one question about the real PayPal sandbox or the speech pipeline, numbered G0 to G5. A gate is closed only on PASS or FAIL with a recorded decision; PARTIAL stays open.",
-      "long": "Each gate reads PASS, PARTIAL, FAIL or NOT RUN in docs/GATES.md, which is the record. The docs read the status from that file when the site is built.",
+      "short": "A run that answers one question about the real PayPal sandbox or the speech pipeline, numbered G0 to G5. A gate is closed only on PASS or FAIL with a recorded decision; a gate tested only with synthetic data stays open.",
+      "long": "docs/GATES.md is the record of each gate's status. The docs read it when the site is built and show the same facts in plain words, for example running with a final reading date, or tested with synthetic clips.",
       "page": "/docs/proof/gates",
       "see": ["gate-g0", "gate-g1", "gate-g2", "gate-g3", "gate-g4", "gate-g5"]
     },

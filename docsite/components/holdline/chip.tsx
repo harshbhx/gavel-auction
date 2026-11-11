@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
-import { gateById } from '@/lib/repo-data';
+import { gateById, gateLabel } from '@/lib/repo-data';
 
 const base =
   'inline-block rounded-[2px] px-1.5 py-px align-middle font-mono text-[0.68rem] font-bold uppercase leading-5 tracking-wide';
@@ -28,7 +28,7 @@ export function Chip({
 export function GateBadge({ id }: { id: string }) {
   const g = gateById(id);
   const inProgress = g.id === 'G3' && g.status === 'NOT RUN';
-  const label = inProgress ? 'IN PROGRESS' : g.status;
+  const label = gateLabel(g);
   const kind = g.status === 'PASS' ? 'solid' : g.status === 'FAIL' ? 'stop' : inProgress || g.status === 'PARTIAL' ? 'hatched' : 'hollow';
   return <Chip kind={kind}>{`${g.id} ${label}`}</Chip>;
 }

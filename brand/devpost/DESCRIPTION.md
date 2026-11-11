@@ -76,11 +76,11 @@ _One bid, four hops through the stack._
 We kept a gate file (`docs/GATES.md`) and let nothing count until a real run backed it. Status today:
 
 - **G0, G1, G2 and G4 pass** on the real PayPal sandbox: app and buyers, partial capture with final_capture, wallet and guest-card holds, and six real webhooks verified.
-- **G3 is a timed probe in progress.** It started 7 Nov 2026 03:06 UTC and reads out at about 12 Nov 06:17 UTC.
-- **G5 is PARTIAL.** Voice bids were tested with synthetic speech clips (Deepgram 11 of 11 and Groq 9 of 11 scripted bids parsed exactly), and the confirm prompt protects every voice bid.
+- **G3 is running: final reading 12 Nov.** It started 7 Nov 2026 03:06 UTC and reads out at about 12 Nov 06:17 UTC.
+- **G5: tested with synthetic voice clips, with a confirm step on every voice bid.** Voice bids were tested with synthetic speech clips (Deepgram 11 of 11 and Groq 9 of 11 scripted bids parsed exactly), and the confirm prompt protects every voice bid.
 - The 30-day settlement run on a fake clock is labelled simulated.
 
-![Animated slide: open datasets and gate status, G0, G1, G2 and G4 pass, G3 in progress, G5 partial.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/09-open-data-and-gates.png)
+![Animated slide: open datasets and gate status, G0, G1, G2 and G4 pass, G3 running, G5 tested with synthetic clips.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/09-open-data-and-gates.png)
 
 _Open data and the gate status._
 

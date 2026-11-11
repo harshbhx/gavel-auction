@@ -84,7 +84,7 @@ The settlement logic is built and tested against the fake PayPal; the nightly sa
 | PayPal calls                             | Sandbox holds in judge rooms are live. G0, G1, G2 and G4 are PASS (G1 and G2 caveats in `docs/GATES.md`; G3 timed probe runs to about 12 Nov); after a final capture the authorization closes as CAPTURED for PayPal-account buyers (guest card: only a 1.00 partial capture seen, in the early G3 probe); otherwise the fake PayPal, shown as such in the room label |
 | Scripted demo                            | Recorded events, no PayPal calls, labelled on screen                                                                                                                                                                                                                                                                                                                  |
 | Voice                                    | Replay uses recorded audio; live speech to text runs only with `VOICE_STT=groq` and a key, and no live speech run is recorded                                                                                                                                                                                                                                         |
-| Speech accuracy numbers                  | Gate G5 PARTIAL. Synthetic, noise-free speech, 24 clips in two sets: Deepgram nova-3 and Groq whisper-large-v3-turbo wrong-accept 0.000 against a 0.05 limit, after fixes chosen on the same clips; the confirm prompt protects every spoken bid; tested with synthetic speech clips                                                                                  |
+| Speech accuracy numbers                  | Gate G5: tested with synthetic voice clips, confirm step on every bid. Synthetic, noise-free speech, 24 clips in two sets: Deepgram nova-3 and Groq whisper-large-v3-turbo wrong-accept 0.000 against a 0.05 limit, after fixes chosen on the same clips; the confirm prompt protects every spoken bid; tested with synthetic speech clips                                                                                  |
 
 ## 7. Audit trail
 
@@ -93,10 +93,10 @@ Open `/r/<roomId>/audit` from the launcher (it needs the auctioneer or reviewer 
 ## 8. Next steps
 
 - Keep the hosted API on one instance: the web app and API are hosted in sandbox mode (https://gavel.dualmindlab.tech, https://api.gavel.dualmindlab.tech), and the file stores sit on one persistent disk owned by a single process.
-- Sandbox latency: both targets are missed on the latest run (42563147792, 49 of 50 completed, INCOMPLETE): hammer to SETTLED p95 6.93 s against 6 s and hammer to CAPTURED p95 3.77 s against 2.5 s (PARTIAL). The earlier n=20 run had SETTLED p95 5591.30 ms. Every call is above its 1 s per-call budget at p95 (void 1.25 s, capture 2.72 s) (`docs/GATES.md`).
+- Sandbox latency: both targets are missed on the latest run (42563147792, 49 of 50 completed, INCOMPLETE): hammer to SETTLED p95 6.93 s against 6 s and hammer to CAPTURED p95 3.77 s against 2.5 s (measured; targets not met). The earlier n=20 run had SETTLED p95 5591.30 ms. Every call is above its 1 s per-call budget at p95 (void 1.25 s, capture 2.72 s) (`docs/GATES.md`).
 - A recorded judge click-through on the hosted app, served at https://gavel.dualmindlab.tech. A live room screen without a stored room token shows the placeholder screen.
-- A recorded live voice run through the `/audio` socket into a room (G5 is PARTIAL, measured on synthetic speech; voice bids always use the confirm prompt).
-- The real-sandbox G3 result (timed probe in progress, final about 12 Nov 06:17 UTC) and the G5 status (see `docs/GATES.md`); G0, G1, G2 and G4 are PASS (a guest card `final_capture` and void are the next additions).
+- A recorded live voice run through the `/audio` socket into a room (G5 is tested with synthetic speech clips; voice bids always use the confirm prompt).
+- The real-sandbox G3 result (timed probe running, final reading about 12 Nov 06:17 UTC) and the G5 status (see `docs/GATES.md`); G0, G1, G2 and G4 are PASS (a guest card `final_capture` and void are the next additions).
 - Live voice with real speech providers.
 - Recorded demo auctions for replay.
 - Card and guest checkout in a live room: G2 PASS proves the SDK authorize flow only, and no live-room checkout run is recorded.
