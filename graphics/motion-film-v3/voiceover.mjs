@@ -302,12 +302,20 @@ const parts = clips.map((c, i) => {
   const fadeOut = Math.max(0, c.len - 0.09);
   return `[0:a]atrim=${c.from}:${c.to},asetpts=PTS-STARTPTS,afade=t=in:d=0.025,afade=t=out:st=${fadeOut.toFixed(3)}:d=0.09,adelay=${Math.round(c.abs * 1000)}:all=1[c${i}]`;
 });
-const mix = `${clips.map((_, i) => `[c${i}]`).join('')}amix=inputs=${clips.length}:normalize=0:dropout_transition=0,apad=whole_dur=${total},atrim=0:${total},volume=3dB,alimiter=limit=0.89:level=disabled,aresample=44100[out]`;
+// A silent bed from 0 s is the first input of the mix: without it the mix would start at the first clip and the
+// whole track would sit early by that clip's delay.
+const mix = `[1:a]${clips.map((_, i) => `[c${i}]`).join('')}amix=inputs=${clips.length + 1}:normalize=0:dropout_transition=0,apad=whole_dur=${total},atrim=0:${total},volume=3dB,alimiter=limit=0.89:level=disabled,aresample=44100[out]`;
 const out = path.join(here, 'audio/voiceover.mp3');
 run([
   '-y',
   '-i',
   TAKE,
+  '-f',
+  'lavfi',
+  '-t',
+  String(total),
+  '-i',
+  'anullsrc=r=44100:cl=mono',
   '-filter_complex',
   [...parts, mix].join(';'),
   '-map',

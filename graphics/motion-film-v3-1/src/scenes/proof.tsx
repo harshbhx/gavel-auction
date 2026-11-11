@@ -698,7 +698,7 @@ export function BuiltWith({ t, frame, fps, sponsorLogos }: SceneCtx) {
               left: 90 + i * (PW + 20),
               top: 390,
               width: PW,
-              height: 470,
+              height: 420,
               transform: `rotateY(${((i < 2 ? 14 : -14) * (1 - s)).toFixed(1)}deg) translateY(${((1 - s) * 60).toFixed(1)}px)`,
               opacity: cl(s * 2),
             }}
@@ -757,7 +757,7 @@ export function BuiltWith({ t, frame, fps, sponsorLogos }: SceneCtx) {
               <div
                 style={{
                   fontFamily: BODY,
-                  fontSize: 18,
+                  fontSize: 21,
                   color: MUTE,
                   marginTop: 12,
                   lineHeight: 1.5,
