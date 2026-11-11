@@ -86,3 +86,79 @@ main[tabindex='-1']:focus {
 h1[tabindex='-1']:focus {
   outline: none;
 }
+
+/* Operations page: a card per area, the log in a scrolling block. */
+.gv-ops-page > h1 {
+  margin: 0;
+  font-size: var(--font-size-6);
+}
+
+.gv-ops-page {
+  max-width: 64rem;
+  margin-inline: auto;
+}
+
+.gv-ops__help {
+  margin: 0;
+  color: var(--color-fg-muted);
+  font-size: var(--font-size-3);
+}
+
+.gv-ops__input {
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-fg);
+}
+
+.gv-ops {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.gv-ops__card {
+  padding: var(--space-4);
+  border: var(--border-width-strong) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-1);
+}
+
+.gv-ops__card > h2 {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-size-4);
+}
+
+.gv-ops__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-mono);
+}
+
+.gv-ops__chips {
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+
+.gv-ops__chips > li {
+  padding: var(--space-1) var(--space-3);
+  border: var(--border-width) solid var(--color-rule);
+  border-radius: var(--radius-md);
+}
+
+.gv-ops__log {
+  max-height: 24rem;
+  margin: 0;
+  padding: var(--space-3);
+  overflow: auto;
+  border: var(--border-width) solid var(--color-rule);
+  background: var(--color-bg);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

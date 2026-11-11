@@ -149,12 +149,16 @@ export function ConsoleScreen({
         className="gv-console-panel gv-console-panel--floor"
         aria-label={t('console.manual')}
       >
+        <h2 className="ui-kicker">{t('console.manual.heading')}</h2>
         {floor}
       </section>
     );
   const biddersPanel =
     bidders === undefined ? null : (
-      <div className="gv-console-panel gv-console-panel--bidders">{bidders}</div>
+      <div className="gv-console-panel gv-console-panel--bidders">
+        <h2 className="ui-kicker">{t('console.biddersHeading')}</h2>
+        {bidders}
+      </div>
     );
   const dangerZone =
     danger === undefined ? null : (

@@ -34,7 +34,7 @@ describe('PriceHeader', () => {
     );
     const price = document.querySelector('[data-field="price"]') as HTMLElement;
     const countdown = document.querySelector('[data-field="countdown"]') as HTMLElement;
-    expect(price.textContent).toBe('$350.00');
+    expect(price.textContent).toBe(t('console.board.price') + '$350.00');
     expect(price.style.fontVariantNumeric).toBe('tabular-nums');
     expect(countdown.textContent).toContain('1:00');
     nowMs = BASE_TIME + 30_000;

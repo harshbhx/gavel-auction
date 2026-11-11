@@ -64,6 +64,7 @@ export function PriceHeader({
         style={{ ...NUMERIC, minWidth: '10ch', margin: 0 }}
         data-field="price"
       >
+        <span className="gv-console-board__label">{t('console.board.price')}</span>
         <PriceRoll cents={priceCents ?? reserveCents} />
       </p>
       <p
@@ -75,6 +76,7 @@ export function PriceHeader({
         {leaderName === null ? null : <span> {leaderName}</span>}
       </p>
       <p className="gv-console-board__stat" style={{ ...NUMERIC, margin: 0 }} data-field="count">
+        <span className="gv-console-board__label">{t('console.board.count')}</span>
         {bidCount}
       </p>
       <p
@@ -92,7 +94,8 @@ export function PriceHeader({
         </span>
       </p>
       <p className="gv-console-board__stat" style={{ ...NUMERIC, margin: 0 }} data-field="next">
-        {t('bid.quick', { amount: formatUsd(nextMinCents) })}
+        <span className="gv-console-board__label">{t('console.board.next')}</span>
+        {formatUsd(nextMinCents)}
       </p>
     </header>
   );

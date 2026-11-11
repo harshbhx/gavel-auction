@@ -33,7 +33,7 @@ export const en = {
   'mk.nav.how': 'How it works',
   'mk.nav.trust': 'Trust',
   'mk.nav.docs': 'Docs',
-  'mk.cta.try': 'Try the demo',
+  'mk.cta.try': 'Watch the recorded demo',
   'mk.hero.kicker': 'Auctions on PayPal holds',
   'mk.hero.sub':
     'Set a limit once, bid by voice or tap, and the winner is charged only if the hammer falls.',
@@ -482,7 +482,7 @@ export const en = {
   'hub.previewLabel': 'Preview of the projection screen',
   'hub.qrLabel': 'QR code for a bidder on a phone',
   'hub.step3': 'Auctioneer console',
-  'hub.step3Hint': 'Start the lot, watch bids, hold the hammer 3 seconds.',
+  'hub.step3Hint': 'Start the lot, watch bids, press and hold the hammer 3 seconds.',
   'hub.step3Open': 'Open console',
   'hub.step4': 'Bidder',
   'hub.step4Hint': 'A second tab to bid as another person.',
@@ -564,7 +564,7 @@ export const en = {
     'Priya hold is picked as the winning hold. The holds of Sam and Ana start to be released.',
   'scriptedDemo.b8.label': 'Settling',
   'scriptedDemo.b8.body':
-    'Only $350 is taken from the $500 hold of Priya. The rest of the hold is not taken.',
+    'Only $350 is taken from the $500 hold of Priya. The rest of the hold is released.',
   'scriptedDemo.b9.label': 'Receipt',
   'scriptedDemo.b9.body':
     'Settled: $350 taken, $150 of her hold released. The holds of Sam and Ana are released in full. The receipt is recorded.',
@@ -637,6 +637,8 @@ export const en = {
   'watch.lead':
     'You have not joined as a bidder yet. Join to register a sandbox hold and place bids.',
   'watch.openJoin': 'See the join page and code',
+  'watch.receiptNote':
+    'No receipt yet. A receipt appears here after the hammer, for people who bid.',
   'watch.lot': 'Lot: {title}',
   'watch.closed':
     'Registration is closed for this room, so joining as a bidder is off. You can keep watching the price here.',
@@ -794,6 +796,15 @@ export const en = {
   'console.confirmQueue': 'Confirm queue',
   'console.noConfirm': 'Nothing to confirm',
   'console.manual': 'Manual entry',
+  'console.manual.heading': 'Enter a bid',
+  'console.manual.closed': 'The lot is closed. Bids can no longer be entered.',
+  'console.board.price': 'Current bid',
+  'console.board.count': 'Bid count',
+  'console.board.next': 'Next bid at least',
+  'console.biddersHeading': 'Bidders',
+  'console.voice.privacySummary': 'Voice privacy',
+  'console.shortcutsHint': 'Shortcuts (?)',
+  'console.shortcut.armed': 'Press {key} again within 3 seconds to {action}.',
   'console.manual.paddle': 'Paddle number',
   'console.manual.amount': 'Amount in dollars',
   'console.manual.submit': 'Send bid',
@@ -1033,6 +1044,8 @@ export const en = {
   'shortcuts.help': 'Show this list',
   'shortcuts.extend': 'Extend the lot',
   'shortcuts.close': 'Close',
+  'shortcuts.confirmTwice':
+    'Open, pause, resume and extend run when you press the key twice within 3 seconds.',
   'shortcuts.noSingleKey': 'Hammer and stop have no single-key shortcut. Use their buttons.',
   'screen.lobby': 'Starting soon',
   'screen.opening': 'Opening bid {amount}',
@@ -1077,10 +1090,11 @@ export const en = {
   'chain.broken.bad_version': 'Entry {n} is not in the export format this check understands.',
   'chain.broken.truncated':
     'The file ends after entry {n}, but the ledger recorded more entries than that.',
-  'chain.none': 'Chain not checked',
+  'chain.none': 'Ledger not checked',
   'chain.none.detail': 'No ledger came with this view, so nothing here has been verified.',
-  'chain.invalid': 'Chain not checked',
-  'chain.invalid.detail': 'This file is not a ledger export, so it could not be read.',
+  'chain.invalid': 'Ledger not checked',
+  'chain.invalid.detail':
+    'This is not a ledger export, so it could not be read. Paste the whole export, which starts with a curly bracket.',
   'chain.head': 'Closing fingerprint:',
   'chain.explain.summary': 'What a hash chain proves, and what it does not',
   'chain.explain.proves':
@@ -1090,7 +1104,7 @@ export const en = {
   'chain.file.label': 'Check a ledger file',
   'chain.file.hint': 'Choose a replay bundle (JSON). It is read in this browser and not uploaded.',
   'verify.page.title': 'Verify a ledger',
-  'verify.title': 'Verify a ledger',
+  'verify.title': 'Check this ledger',
   'verify.lead':
     'Check that a ledger export has not been changed. The check runs in this browser and nothing is uploaded.',
   'verify.room.button': 'Check my room',
@@ -1104,8 +1118,9 @@ export const en = {
   'verify.audit': 'Open the read-only audit trail',
   'verify.paste.label': 'Paste a ledger export',
   'verify.paste.hint': 'A replay bundle in JSON, as downloaded from a room or a recording.',
-  'verify.check': 'Check the chain',
-  'verify.file': 'Or pick a file',
+  'verify.check': 'Check this ledger',
+  'verify.check.disabled': 'Paste a ledger export above to turn this on.',
+  'verify.file': 'Or choose a file',
   'verify.file.failed': 'That file could not be read.',
   'verify.back': 'Back to the judge page',
   'ops.title': 'Operations',
@@ -1115,6 +1130,8 @@ export const en = {
   'ops.paypal': 'PayPal outcomes',
   'ops.logs': 'Recent logs',
   'ops.keyLabel': 'Operator key',
+  'ops.keyHelp':
+    'The key is the ADMIN_KEY of the server. It stays in this tab and is never stored.',
   'ops.load': 'Load',
   'ops.failed': 'Could not load operations data.',
   'audit.export.csv': 'Export CSV',
@@ -1162,6 +1179,7 @@ export const en = {
   'audit.sum.winning': 'Winning bid',
   'audit.sum.leading': 'Leading bid',
   'audit.sum.noBid': 'No bids yet',
+  'audit.sum.untitled': 'Untitled lot',
   'audit.sum.status': 'Status',
   'audit.sum.bidders': 'Bidders',
   'audit.sum.bids': 'Bids',
@@ -1328,9 +1346,10 @@ export const en = {
   'receipt.shared.invalid': 'This receipt link has expired or is not valid.',
   'replay.readonly': 'Replay is read-only',
   'replay.about':
-    'A replay plays back a recorded auction. It is read-only: nothing here can be changed. Recordings are not hosted on this site yet.',
+    'A replay plays back a recorded auction. It is read-only: nothing here can be changed.',
   'replay.captionsOnly': 'Audio could not load. Showing captions only.',
-  'replay.invalid': 'This recording could not be read.',
+  'replay.invalid': 'No recording was found for this link.',
+  'replay.invalid.room': 'Looking for a room? Open its audit trail.',
   'replay.speed': 'Speed {x}',
   'replay.chapter.reg': 'Registrations',
   'replay.chapter.bid': 'First bid',
