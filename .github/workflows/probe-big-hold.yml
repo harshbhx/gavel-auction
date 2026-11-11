@@ -3,6 +3,9 @@ name: probe-big-hold
 # (buyer A, headless browser), authorizes and then voids a hold for each test amount. Sandbox only.
 on:
   workflow_dispatch:
+  # Also runs on pushes to its own branch, because a new workflow cannot be dispatched before it is on main.
+  push:
+    branches: [chore/QA-11-probe-big-hold]
 
 permissions:
   contents: read
