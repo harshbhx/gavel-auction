@@ -40,8 +40,13 @@ jobs:
           python-version: '3.12'
       - name: Install LibreOffice, fonts and the build tools
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq --no-install-recommends libreoffice-impress fonts-liberation poppler-utils imagemagick libraqm0 >/dev/null
+          # The runner mirrors are sometimes slow: bound each try and retry.
+          APT='-o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30'
+          for try in 1 2 3; do
+            sudo timeout 300 apt-get $APT update -qq || true
+            sudo timeout 420 apt-get $APT install -y -qq --no-install-recommends libreoffice-impress fonts-liberation poppler-utils imagemagick libraqm0 >/dev/null && break
+            [ "$try" = 3 ] && exit 1
+          done
           python -m pip install --quiet pillow==12.0.0 python-pptx==1.0.2
           mkdir -p "$RUNNER_TEMP/deps" && cd "$RUNNER_TEMP/deps"
           npm init -y >/dev/null && npm install --no-audit --no-fund pptxgenjs@3.12.0 >/dev/null
