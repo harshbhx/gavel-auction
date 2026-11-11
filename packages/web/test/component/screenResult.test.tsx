@@ -159,3 +159,21 @@ describe('public screen when settlement needs review', () => {
     expect(screen.queryByTestId('settle-summary')).toBeNull();
   });
 });
+
+describe('public screen side panel (UIX-73)', () => {
+  it('puts the QR code above a focusable, labelled latest list', async () => {
+    const store = new RoomStore();
+    store.dispatch({ kind: 'wire', msg: stateMsg(5, openSnapshot(roster([7, 'Eve']))) });
+    const { container } = view(store);
+    const list = container.querySelector('.gv-screen__ticker-list');
+    expect(list?.getAttribute('tabindex')).toBe('0');
+    expect(list?.getAttribute('aria-label')).toBeTruthy();
+    const order = Array.from(container.querySelectorAll('.gv-screen__side > *')).map(
+      (el) => el.className,
+    );
+    const join = order.indexOf('gv-screen__join');
+    expect(join).toBeGreaterThanOrEqual(0);
+    expect(order.indexOf('gv-screen__ticker')).toBeGreaterThan(join);
+    expect(await screen.findByText('Scan to join')).toBeTruthy();
+  });
+});

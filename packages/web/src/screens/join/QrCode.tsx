@@ -366,9 +366,21 @@ export interface QrCodeProps {
   url: string;
   /** Rendered width and height in CSS pixels, quiet zone included. */
   size: number;
+  /**
+   * Whole pixels per module: `size` becomes a ceiling and the symbol is drawn at the nearest whole
+   * multiple of its module count, so edges stay sharp. `snapMin` is a floor in pixels.
+   */
+  snapMin?: number;
 }
 
-export function QrCode({ url, size }: QrCodeProps): JSX.Element {
+/** Whole-pixel width for `span` modules inside [min, max] when possible, else the nearest floor. */
+export function snapSize(span: number, max: number, min: number): number {
+  const down = Math.max(1, Math.floor(max / span));
+  const px = down * span >= min ? down : Math.ceil(min / span);
+  return px * span;
+}
+
+export function QrCode({ url, size, snapMin }: QrCodeProps): JSX.Element {
   const rows = useMemo(() => encodeQr(url), [url]);
   const path = useMemo(() => {
     const parts: string[] = [];
@@ -380,12 +392,13 @@ export function QrCode({ url, size }: QrCodeProps): JSX.Element {
     return parts.join('');
   }, [rows]);
   const span = rows.length + QUIET * 2;
+  const px = snapMin === undefined ? size : snapSize(span, size, snapMin);
   return (
     <svg
       role="img"
       aria-label={url}
-      width={size}
-      height={size}
+      width={px}
+      height={px}
       viewBox={`0 0 ${span} ${span}`}
       shapeRendering="crispEdges"
     >

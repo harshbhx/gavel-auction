@@ -34,8 +34,20 @@ describe('projection screen layout (UIX-55)', () => {
   it('sizes the price from its card and the QR code from the screen height', () => {
     expect(rule(css, '.gv-screen__board')).toContain('container-type: inline-size');
     expect(css).toMatch(/gv-screen__price\s*{[^}]*14cqw/);
-    expect(rule(css, '.gv-screen__join svg')).toContain('clamp(');
+    expect(rule(css, '.gv-screen__join svg')).toContain('max-width: 100%');
     expect(rule(css, '.gv-screen__head')).toContain('flex-wrap: nowrap');
+  });
+
+  it('puts the QR code above a scrolling latest list that fills the panel (UIX-73)', () => {
+    const side = rule(css, '.gv-screen__side');
+    expect(side).toContain('flex-direction: column');
+    expect(side).toContain('min-height: 0');
+    const list = rule(css, '.gv-screen__ticker-list');
+    expect(list).toContain('overflow-y: auto');
+    expect(list).toContain('position: absolute');
+    expect(list).toContain('scrollbar-width: thin');
+    expect(list).toContain('scroll-snap-type');
+    expect(rule(css, '.gv-screen__ticker')).toContain('flex: 1 1 0');
   });
 
   it('keeps the hub preview a fixed 1920 x 1080 projector grid', () => {
