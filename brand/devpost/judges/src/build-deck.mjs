@@ -8,7 +8,6 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const repo = resolve(here, '../../../..');
 const out = resolve(process.argv[2] ?? join(here, '../.build'));
 const require = createRequire(join(process.env.DECK_DEPS ?? here, 'package.json'));
 const PptxGenJS = require('pptxgenjs');
