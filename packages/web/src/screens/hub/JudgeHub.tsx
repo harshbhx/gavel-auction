@@ -360,16 +360,6 @@ export function JudgeHub({
               </>
             )}
           </div>
-          <section className="gv-hub__test" aria-labelledby="gv-hub-test" tabIndex={0}>
-            <h3 id="gv-hub-test">{t('hub.testTitle')}</h3>
-            <ol>
-              <li>{t('hub.test1')}</li>
-              <li>{t('hub.test2')}</li>
-              <li>{t('hub.test3')}</li>
-              <li>{t('hub.test4')}</li>
-              <li>{t('hub.test5')}</li>
-            </ol>
-          </section>
         </section>
 
         <section className="gv-hub__ticket" aria-labelledby="gv-hub-step-2" data-step={2}>
@@ -386,7 +376,7 @@ export function JudgeHub({
                 <p className="gv-hub__pending">{t('hub.joinClosed')}</p>
               ) : (
                 <ChunkBoundary>
-                  <QrCode url={qrTarget} size={196} />
+                  <QrCode url={qrTarget} size={156} />
                 </ChunkBoundary>
               )}
             </div>
@@ -513,6 +503,16 @@ export function JudgeHub({
           </div>
         </div>
       </div>
+      <section className="gv-hub__test" aria-labelledby="gv-hub-test" tabIndex={0}>
+        <h2 id="gv-hub-test">{t('hub.testTitle')}</h2>
+        <ol>
+          <li>{t('hub.test1')}</li>
+          <li>{t('hub.test2')}</li>
+          <li>{t('hub.test3')}</li>
+          <li>{t('hub.test4')}</li>
+          <li>{t('hub.test5')}</li>
+        </ol>
+      </section>
       <Dialog
         open={closing.step !== 'idle'}
         onClose={cancelClose}
