@@ -5,7 +5,13 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { serverSchemas } from '@gavel/shared';
 import { startStack } from '../runner/stack';
-import { buildRecording, hostingProblems, summarizeRecording, type Frame } from './judge-recording';
+import {
+  buildRecording,
+  hostingProblems,
+  ledgerProblems,
+  summarizeRecording,
+  type Frame,
+} from './judge-recording';
 
 /**
  * Records a judge-room auction as a replay bundle (inventory row 41). Boots the real server with
@@ -13,7 +19,10 @@ import { buildRecording, hostingProblems, summarizeRecording, type Frame } from 
  * bidders by room code, gives each a simulated hold, places bids over the room socket two seconds
  * apart so the replay reads slowly, hammers the lot, and records every frame a public screen
  * receives. Writes `<out>/recordings/<id>/events.json` (the path the web app's /replay/:id route
- * fetches) and `<out>/summary.json`. The bundle says its holds are simulated.
+ * fetches) and `<out>/summary.json`. The bundle says its holds are simulated. It also carries the
+ * room's hash-chained ledger export (GET /admin/replay-bundle), read after the last frame, so the
+ * replay page can verify the chain and compare the hammer price; a recording whose ledger is
+ * missing or does not verify gets a FAIL verdict.
  *
  * Run: vite-node src/replay/record-judge-room-cli.ts --out <dir> [--id <recording id>]
  */
@@ -98,6 +107,7 @@ async function main(): Promise<number> {
   const stack = await startStack({ env: { JUDGE_ROOMS: 'true', JUDGE_SIM_HOLDS: '1' } });
   const frames: Frame[] = [];
   const sockets: Sock[] = [];
+  let ledger: unknown;
   try {
     const base = stack.serverUrl;
     const origin = new URL(base).origin;
@@ -225,6 +235,13 @@ async function main(): Promise<number> {
         quietSince = now();
       }
     }
+    // The ledger export the replay page verifies. A failed read leaves it out; the verdict says so.
+    const exported = await fetch(
+      `${base}/admin/replay-bundle?auctionId=${encodeURIComponent(auctionId)}`,
+      { headers: { 'x-admin-key': stack.adminKey } },
+    );
+    if (exported.ok) ledger = (await exported.json()) as unknown;
+    else process.stderr.write(`ledger export answered ${exported.status}\n`);
   } finally {
     for (const s of sockets) s.close();
     await stack.stop();
@@ -235,15 +252,16 @@ async function main(): Promise<number> {
     recordedAt: new Date().toISOString(),
     frames,
     decode,
+    ledger,
   });
   const summary = summarizeRecording(bundle);
-  const problems = hostingProblems(summary);
+  const problems = [...hostingProblems(summary), ...ledgerProblems(bundle)];
   const dir = join(resolve(out), 'recordings', id);
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, 'events.json'), `${JSON.stringify(bundle)}\n`);
   writeFileSync(
     join(resolve(out), 'summary.json'),
-    `${JSON.stringify({ id, simulatedHolds: true, droppedFrames: dropped, ...summary, hostingProblems: problems }, null, 2)}\n`,
+    `${JSON.stringify({ id, simulatedHolds: true, droppedFrames: dropped, ledgerEntries: bundle.ledger?.count ?? 0, ...summary, hostingProblems: problems }, null, 2)}\n`,
   );
   process.stdout.write(
     `recorded ${summary.events} frames over ${summary.durationMs} ms (${summary.leadChanges} lead changes, hammer ${summary.hammered ? 'yes' : 'no'}, ${dropped} frames dropped)\n`,
