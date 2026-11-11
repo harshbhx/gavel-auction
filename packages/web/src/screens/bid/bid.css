@@ -658,3 +658,11 @@
   align-items: center;
   min-block-size: 44px;
 }
+
+/* The hide-amount control sits on the left of the hold card, away from the floating help button
+   that rides the bottom right corner of a phone. */
+.bid .ui-holdcard__top {
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
