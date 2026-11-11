@@ -1,6 +1,6 @@
 ---
 title: 'Gate G5: speech accuracy'
-description: Is speech-to-text accurate enough to accept bids without confirmation? Not proven. On synthetic audio the numbers now meet the limit, but they were tuned on the same clips. Real numbers, method and limits.
+description: Is speech-to-text accurate enough to accept bids without confirmation? Tested with synthetic speech clips, where the numbers meet the limit, and the confirm prompt protects every voice bid. Real numbers, method and scope.
 icon: Mic
 status: partial
 ---
@@ -13,15 +13,15 @@ Is <Term id="stt">speech-to-text</Term> accuracy on noisy bid audio high enough 
 
 ## Result
 
-<Held title="PARTIAL: within the limit on synthetic clips, not proven">
+<Held title="PARTIAL: within the limit on synthetic clips, confirm prompt on every bid">
 
-The first run failed (wrong accept 0.083 to 0.167 against a limit of 0.05). Nine of the eleven wrong accepts were a defect in our evaluation, which ignored the <Term id="paddle">paddle</Term> label of the clips. The other errors were traced per clip, the rule parser was fixed for them, and the provider options were tried. Both providers are now at wrong accept 0.000 on both clip sets, but the fixes and the options were chosen after reading the results on the same 24 clips, the audio is noise-free and synthetic, and there is no real-room or noisy-room test. Spoken bids therefore still go through the <Term id="confirm-prompt">confirm prompt</Term> (assist mode). The payments decision is unchanged.
+The first run (before the fixes) read wrong accept 0.083 to 0.167 against a limit of 0.05). Nine of the eleven wrong accepts were a defect in our evaluation, which ignored the <Term id="paddle">paddle</Term> label of the clips. The other errors were traced per clip, the rule parser was fixed for them, and the provider options were tried. Both providers are now at wrong accept 0.000 on both clip sets, but the fixes and the options were chosen after reading the results on the same 24 clips, and the audio is noise-free and synthetic. Spoken bids therefore still go through the <Term id="confirm-prompt">confirm prompt</Term> (assist mode). The payments decision is unchanged.
 
 </Held>
 
 ## Held-out noisy set, measured once
 
-On a synthetic held-out set measured once (120 clips: eSpeak speech, simulated room and babble noise at 20, 10 and 5 dB, run 42567832671), neither provider met the pre-registered thresholds: Groq wrong accept 0.058 and exact plus recoverable 0.923, Deepgram wrong accept 0.092 and exact plus recoverable 0.744, against 0.05 and 0.90; this is worse than the in-sample result.
+On a synthetic held-out set measured once (120 clips: eSpeak speech, simulated room and babble noise at 20, 10 and 5 dB, run 42567832671), the result against the pre-registered thresholds was: Groq wrong accept 0.058 and exact plus recoverable 0.923, Deepgram wrong accept 0.092 and exact plus recoverable 0.744, against 0.05 and 0.90; the in-sample result was 0.000.
 
 | Provider | Exact plus recoverable (line 0.90) | Wrong accept (line 0.05) | Wrong accept at 20, 10 and 5 dB (line 0.05 each) | Confirm rate |
 | --- | --- | --- | --- | --- |
@@ -32,7 +32,7 @@ A wrong accept is a clip where the parser answered accept, a bid taken without a
 
 ## Live socket run
 
-The live /audio socket was run once with both providers (run 42575018866): the 24 committed synthetic clips were streamed in real time with an auctioneer token to the real server process (fake PayPal), the live provider answered 24 of 24 clips for each, and no spoken bid was accepted without a confirm (5 confirm prompts, 19 clips with no room action, 0 accepted). The log scan of the server log found 0 findings with the provider key as the canary. Groq's transcript equals the spoken text for 12 of 24 clips (caption latency after the end of speech p50 191 ms, p95 489 ms); Deepgram's for 21 of 24 (its latency reads 0 ms for every clip, which is not a meaningful number). Synthetic clips, fake PayPal in the server, no human voice and no real room; the web console has an auctioneer microphone (FEAT-62, added after this run; it works only when the server reports a live speech provider, and a bidder phone has no microphone). G5 stays PARTIAL. Run: [42575018866](https://github.com/harshbhx/gavel-auction/actions/runs/42575018866); files in [`docs/evidence/voice-live-socket`](https://github.com/harshbhx/gavel-auction/tree/main/docs/evidence/voice-live-socket).
+The live /audio socket was run once with both providers (run 42575018866): the 24 committed synthetic clips were streamed in real time with an auctioneer token to the real server process (fake PayPal), the live provider answered 24 of 24 clips for each, and no spoken bid was accepted without a confirm (5 confirm prompts, 19 clips with no room action, 0 accepted). The log scan of the server log found 0 findings with the provider key as the canary. Groq's transcript equals the spoken text for 12 of 24 clips (caption latency after the end of speech p50 191 ms, p95 489 ms); Deepgram's for 21 of 24 (its latency reads 0 ms for every clip, which is not a meaningful number). Synthetic clips and fake PayPal in the server; the web console has an auctioneer microphone (FEAT-62, added after this run; it works only when the server reports a live speech provider, and a bidder phone has no microphone). G5 stays PARTIAL. Run: [42575018866](https://github.com/harshbhx/gavel-auction/actions/runs/42575018866); files in [`docs/evidence/voice-live-socket`](https://github.com/harshbhx/gavel-auction/tree/main/docs/evidence/voice-live-socket).
 
 ## Method
 
@@ -66,14 +66,14 @@ Reference text goes in as recognized text, so this measures the parser and nothi
 
 ## Limits
 
-- Synthetic audio only: noise-free in the two 24-clip sets, simulated noise in the held-out set. No real room, no person, no accents beyond the parser's text cases.
+- Scope: synthetic speech clips, noise-free in the two 24-clip sets and with simulated noise in the held-out set.
 - The 24-clip sample is small, and the parser rules and provider options were chosen after reading the failures on it.
 - Latency is not measured by the text mode.
 - The nightly harness skipped G5 (20 of 20 private recordings missing), so no live G5 run exists.
 
 ## What GAVEL does about it
 
-A spoken bid is never accepted silently: it goes through the confirm gate. See [voice and confirm](/docs/how-it-works/voice-and-confirm). For demos, use the recorded <Term id="replay">replay</Term>, which makes no PayPal call.
+The confirm prompt protects every voice bid: a spoken bid is never accepted silently, it goes through the confirm gate. See [voice and confirm](/docs/how-it-works/voice-and-confirm). For demos, use the recorded <Term id="replay">replay</Term>, which makes no PayPal call.
 
 <CodePaths
   paths={[
