@@ -8,13 +8,12 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const repo = resolve(here, '../../../..');
 const out = resolve(process.argv[2] ?? join(here, '../.build'));
 const require = createRequire(join(process.env.DECK_DEPS ?? here, 'package.json'));
 const PptxGenJS = require('pptxgenjs');
 
 const A = JSON.parse(readFileSync(join(out, 'manifest.json'), 'utf8'));
-const GIF = (name) => join(repo, 'brand/archive/see-it-run', name);
+const GIF = (name) => join(here, 'screens', name);
 
 // Brand tokens (packages/web/src/design/tokens.css): ink, paper, orange.
 const K = {
@@ -565,14 +564,14 @@ function rings(s, cx, cy, fades) {
   disp(s, 'feel_h', 0.6, 1.1, 'feel-h');
   const shots = [
     [
-      'see-it-run-2-hold.gif',
-      'Recording of the live app: choose a ceiling, press and hold to approve the PayPal hold, then the hold is in place',
+      'deck-hold.gif',
+      'Screens of the live app: choose a limit on the slider, press and hold to approve the PayPal hold, then the hold is in place',
       '01   HOLD',
-      'Press and hold to approve the PayPal hold. Held, not charged.',
+      'Choose a limit, press and hold to approve. Held, not charged.',
     ],
     [
-      'see-it-run-3-bids.gif',
-      'Recording of the live app: the bidder phone bids, turns green while leading and red when outbid',
+      'deck-bids.gif',
+      'Screens of the live app: the bid screen turns green with LEADING while you lead and red with OUTBID when you are outbid',
       '02   BID',
       'One tap per bid. Green while you lead, red when you are outbid.',
     ],
@@ -605,7 +604,7 @@ function rings(s, cx, cy, fades) {
   label(
     s,
     'feel-note',
-    'SCREEN RECORDINGS OF THE LIVE APP',
+    'SCREENS OF THE LIVE APP',
     { x: 7.2, y: 6.98, w: 5.53, h: 0.26 },
     {
       fontSize: 9,
@@ -621,8 +620,8 @@ function rings(s, cx, cy, fades) {
   fx('feel-note', 'fade', { dur: 400 });
   s.slide.addNotes(
     [
-      'This is the bidder side, recorded from the live app in a sandbox demo room.',
-      'Left: the bidder picks a ceiling and presses and holds for three seconds to approve the PayPal hold. Held, not charged.',
+      'This is the bidder side, taken from the live app in a sandbox room with fake payments.',
+      'Left: the bidder chooses a limit on the slider and presses and holds for three seconds to approve the PayPal hold. Held, not charged.',
       'Right: the bid screen. One tap per bid; the screen turns green while you lead and red when you are outbid, and a bid above your ceiling is refused.',
     ].join('\n\n'),
   );
@@ -751,13 +750,13 @@ function rings(s, cx, cy, fades) {
   cornerMark(s);
   disp(s, 'ham_h', 0.6, 1.1, 'ham-h');
   s.slide.addImage({
-    path: GIF('see-it-run-4-hammer.gif'),
+    path: GIF('deck-hammer.gif'),
     x: 0.6,
     y: 2.15,
     w: 6.4,
     h: 4.0,
     altText:
-      'Recording of the live app console: open the lot, take bids, then confirm the hammer by holding the button',
+      'Screens of the live app console: a live lot with bids, the hold-to-close confirm, then the lot sold',
     objectName: 'ham-shot',
   });
   const cx = 10.15;
@@ -786,7 +785,7 @@ function rings(s, cx, cy, fades) {
   label(
     s,
     'ham-note',
-    'SCREEN RECORDING OF THE LIVE CONSOLE',
+    'SCREENS OF THE LIVE CONSOLE',
     { x: 0.6, y: 6.3, w: 6.4, h: 0.26 },
     {
       fontSize: 9,
@@ -806,7 +805,7 @@ function rings(s, cx, cy, fades) {
     [
       'The auctioneer closes the lot by pressing and holding the hammer for three seconds, so a stray tap cannot sell a lot.',
       'At the hammer GAVEL captures only the winning price from the winner hold, with final_capture, and voids every other hold. The settlement saga writes a journal: if the process dies mid-settlement it asks PayPal what is true and continues instead of repeating, and an unknown answer stops for review.',
-      'The left side is a screen recording of the live console in a sandbox demo room.',
+      'The left side shows the live console in a sandbox room: a live lot, the press-and-hold block, the confirm dialog, then the sold lot.',
     ].join('\n\n'),
   );
 }
