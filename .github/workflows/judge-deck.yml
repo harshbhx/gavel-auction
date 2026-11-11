@@ -56,6 +56,14 @@ jobs:
         run: |
           python -m pip install --quiet weasyprint brotli
           python brand/devpost/judges/build.py --out "$OUT/GAVEL-judge-guide.pdf" --png "$OUT/guide-png"
+      - name: Test the credentials fill with dummy values
+        run: |
+          printf '%s' '{"JUDGE_KEY":"DUMMY-KEY","BUYER_A_EMAIL":"a@dummy.test","BUYER_A_PASSWORD":"DUMMY-PW","BUYER_B_EMAIL":"b@dummy.test","BUYER_B_PASSWORD":"DUMMY-PW","BUYER_C_EMAIL":"c@dummy.test","BUYER_C_PASSWORD":"DUMMY-PW","BUYER_D_EMAIL":"d@dummy.test","BUYER_D_PASSWORD":"DUMMY-PW"}' > "$RUNNER_TEMP/dummy-fill.json"
+          python brand/devpost/judges/build.py --fill "$RUNNER_TEMP/dummy-fill.json" --out "$RUNNER_TEMP/dummy.pdf"
+          pdftotext -layout "$RUNNER_TEMP/dummy.pdf" - | grep -c 'DUMMY-KEY'
+          pdftotext -layout "$RUNNER_TEMP/dummy.pdf" - | grep -E 'DUMMY-PW|a@dummy.test' | head -3
+          # a fill file must be refused when the output is inside the repository
+          ! python brand/devpost/judges/build.py --fill "$RUNNER_TEMP/dummy-fill.json" --out brand/devpost/judges/x.pdf
       - name: Check the rebuilt deck structure and the guide text
         run: |
           python - <<'PY' | tee "$OUT/motion-report.txt"
@@ -86,6 +94,7 @@ jobs:
               bad = re.findall(r'\[[A-Z][A-Z0-9 ]+:[^\]]*\]|Harsh pastes|PLACEHOLDER|OWNER', txt)
               assert not bad, bad
               assert 'bhanushaliharsh434@gmail.com' in txt
+              assert 'Devpost Testing instructions' in txt and 'DUMMY' not in txt
               print('guide text: no brackets or placeholders;', len(txt), 'chars')
           deck_txt = ' '.join(sh.text_frame.text for s in deck.slides for sh in s.shapes if sh.has_text_frame)
           deck_txt += ' '.join(s.notes_slide.notes_text_frame.text for s in deck.slides)

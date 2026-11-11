@@ -52,7 +52,9 @@ python3 brand/devpost/judges/src/finalize.py brand/devpost/judges/.build brand/d
 
 `GAVEL-judge-guide.pdf` is the confidential guide uploaded for the judges in the Devpost judge panel. It is the hands-on and technical companion to the judge deck: the deck tells the story, this guide covers the five-minute test path, the architecture, security and ledger verification, the evidence, the APIMatic SDKs, the known limits and the contact.
 
-The guide has **no placeholders** and no secrets. The shared judge key and the sandbox buyer logins are only in the Devpost Testing instructions, which judges alone can see; the guide says so in plain words and the curl examples read the key from the `$JUDGE_KEY` environment variable. The contact email, the SDK release link and the G3 wording are written into the guide as final text.
+The committed and CI-built guide has **no placeholders** and no secrets. It has a dedicated **Credentials** page that, as committed, says the judge key and the sandbox buyer logins are in the Devpost Testing instructions. The curl examples read the key from the `$JUDGE_KEY` environment variable. The contact email, the SDK release link and the G3 wording are written in as final text.
+
+The final copy that goes privately to judges can have the Credentials page filled by a person at the last moment (see "Fill the Credentials page"). Nothing in the repository or in CI ever holds a real key or password.
 
 | File                    | What it is                                                         |
 | ----------------------- | ------------------------------------------------------------------ |
@@ -69,4 +71,8 @@ python3 brand/devpost/judges/build.py                  # writes GAVEL-judge-guid
 python3 brand/devpost/judges/build.py --png /tmp/pages  # plus one PNG per page (needs pdftoppm)
 ```
 
-The fonts are the brand variable fonts in `packages/web/src/design/fonts`; `build.py` cuts static instances of the weights it needs into a temporary folder for each build. The earlier fill step (`--fill` and a private JSON file) is gone, because there is nothing left to fill. Never add a key, a password or a sandbox login to this folder.
+The fonts are the brand variable fonts in `packages/web/src/design/fonts`; `build.py` cuts static instances of the weights it needs into a temporary folder for each build. Never add a key, a password or a sandbox login to this folder.
+
+### Fill the Credentials page
+
+`build.py --fill FILE.json --out FILE.pdf` replaces the text between the `CREDENTIALS` markers on the Credentials page with the judge key and a Role / Email / Password table (JSON keys `JUDGE_KEY`, `BUYER_A_EMAIL`, `BUYER_A_PASSWORD`, and the same for B, C and D). It refuses to write the PDF inside the repository. The `judge-deck` workflow runs it with dummy values to prove the fill works. On the VM a person runs `~/scripts/fill-judge-guide.sh`, which keeps the values out of the repository and out of the shell history, and writes `~/judge-guide-FINAL.pdf` with mode 600. Never commit that file.
