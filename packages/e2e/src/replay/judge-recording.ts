@@ -4,7 +4,15 @@
  * of the recording, played back by /replay/:recordingId through the real reducer. Only frames a
  * public screen may see are recorded. The bundle says in three places that its holds are
  * simulated: the title, `simulatedHolds: true` and `note`.
+ *
+ * The frames alone are plain JSON that anyone could edit. The bundle therefore also carries the
+ * room's hash-chained ledger export (`ledger`, the shared ReplayBundle from
+ * GET /admin/replay-bundle). The replay page verifies that chain in the browser and compares the
+ * hammer price it shows with the sealed one; `ledgerProblems` runs the same checks here so a
+ * recording without a verified ledger is not hosted.
  */
+
+import { isReplayBundle, verifyPublicChain, type ReplayBundle } from '@gavel/shared';
 
 export const BUNDLE_VERSION = 1;
 
@@ -22,6 +30,8 @@ export interface RecordingBundle {
   note: string;
   recordedAt: string;
   events: Array<{ t: number; msg: Frame['msg'] }>;
+  /** The room's hash-chained ledger export; the replay page verifies it in the browser. */
+  ledger?: ReplayBundle;
 }
 
 export const SIMULATED_NOTE =
@@ -46,6 +56,8 @@ export function buildRecording(input: {
   recordedAt: string;
   frames: readonly Frame[];
   decode: Decode;
+  /** The parsed answer of GET /admin/replay-bundle for the recorded room, when it was read. */
+  ledger?: unknown;
 }): BuildResult {
   const kept: Array<{ atMs: number; msg: Frame['msg'] }> = [];
   let dropped = 0;
@@ -71,6 +83,7 @@ export function buildRecording(input: {
       note: SIMULATED_NOTE,
       recordedAt: input.recordedAt,
       events: shifted,
+      ...(isReplayBundle(input.ledger) ? { ledger: input.ledger } : {}),
     },
     dropped,
   };
@@ -115,4 +128,38 @@ export function hostingProblems(s: RecordingSummary): string[] {
     problems.push(`only ${s.leadChanges} bid(s) took the lead, need at least 2`);
   if (!s.hammered) problems.push('no hammer frame was recorded');
   return problems;
+}
+
+/**
+ * Ties the recorded frames to the hash-chained ledger (INTEGRATION-RT-22). Returns the reasons
+ * the recording must not be hosted, or an empty list: the bundle carries a ledger, every hash
+ * and link of its public chain verifies up to the head it claims, and each hammer frame shows
+ * the price of the matching LOT_HAMMERED entry, in order. Never throws.
+ */
+export function ledgerProblems(b: RecordingBundle): string[] {
+  const ledger: unknown = b.ledger;
+  if (ledger === undefined) return ['the recording carries no ledger export'];
+  if (!isReplayBundle(ledger) || ledger.headHash === null) {
+    return ['the ledger export is not a replay bundle with a head hash'];
+  }
+  let verdict: ReturnType<typeof verifyPublicChain>;
+  try {
+    verdict = verifyPublicChain(ledger.events, { seq: ledger.count, hash: ledger.headHash });
+  } catch {
+    return ['the ledger export could not be verified'];
+  }
+  if (!verdict.ok) {
+    return [`the ledger chain is broken at index ${verdict.firstBadIndex} (${verdict.reason})`];
+  }
+  const sealed: unknown[] = ledger.events
+    .filter((e) => e.type === 'LOT_HAMMERED')
+    .map((e) => e.payload['priceCents']);
+  const shown: unknown[] = b.events.filter((e) => e.msg.t === 'hammer').map((e) => e.msg['price']);
+  const count = Math.max(sealed.length, shown.length);
+  for (let i = 0; i < count; i += 1) {
+    if (typeof shown[i] !== 'number' || shown[i] !== sealed[i]) {
+      return [`hammer ${i + 1} in the frames does not match the ledger`];
+    }
+  }
+  return [];
 }
