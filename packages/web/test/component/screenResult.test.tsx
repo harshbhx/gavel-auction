@@ -39,13 +39,29 @@ describe('public screen after the hammer (reload or late join)', () => {
 
   it('shows the price with an unknown paddle label when the winner is not on the roster', () => {
     view(closedStore({ leader: 7, inRoster: false }));
-    expect(screen.queryByText('Passed')).toBeNull();
+    expect(screen.queryByText('No sale')).toBeNull();
     expect(screen.getByText(/\$250\.00/)).toBeTruthy();
   });
 
   it('says passed only when nobody led', () => {
     view(closedStore({ leader: null, inRoster: true }));
-    expect(screen.getByText('Passed')).toBeTruthy();
+    expect(screen.getByText('No sale')).toBeTruthy();
+  });
+});
+
+describe('public screen after a hammer with no bids', () => {
+  it('shows one centred no-sale result, with no stopped chip and no ladder', () => {
+    const store = new RoomStore();
+    const snap = {
+      ...openSnapshot(roster([7, 'Eve']), undefined, 'DONE'),
+      stopped: true,
+    };
+    store.dispatch({ kind: 'wire', msg: stateMsg(5, snap) });
+    view(store);
+    expect(screen.getByText('No sale')).toBeTruthy();
+    expect(screen.getByText('Closed with no bids.')).toBeTruthy();
+    expect(screen.queryByText('Auction stopped')).toBeNull();
+    expect(screen.queryByTestId('settlement-panel')).toBeNull();
   });
 });
 

@@ -98,6 +98,8 @@ export function ConsoleScreen({
   const stopped = useRoom(selectors.stopped, store) || stoppedHere;
   const hammer = useRoom((s) => s.hammer, store);
   const closed = status === 'CLOSING' || status === 'SETTLING' || status === 'DONE';
+  // Hammered with no bid: one state, "No sale". A stop pressed on this desk stays "Stopped".
+  const noSale = closed && stopped && !stoppedHere && stream.length === 0;
   const auctionId = useRoom((s) => s.snapshot?.auctionId ?? null, store);
   const roster = useRoom((s) => s.snapshot?.roster, store);
   const winnerPaddle = useRoom(
@@ -146,14 +148,14 @@ export function ConsoleScreen({
         {...(auctionId === null ? {} : { roomId: auctionId })}
         current={consoleStep({ status, ended: stopped || status === 'DONE' })}
       />
-      <ConsoleGuide status={status} stopped={stopped} roomId={auctionId} />
+      <ConsoleGuide status={status} stopped={stopped} noSale={noSale} roomId={auctionId} />
       {closed && hammer !== null && hammer.winnerId !== null && winnerPaddle !== null && (
         <p className="gv-console-result" role="status" data-field="result">
           {t('console.result.sold', { n: winnerPaddle, amount: formatUsd(hammer.price) })}
         </p>
       )}
       <PriceHeader
-        stopped={stopped}
+        stopped={stopped && !noSale}
         closed={closed}
         priceCents={price?.currentCents ?? null}
         reserveCents={reserve}

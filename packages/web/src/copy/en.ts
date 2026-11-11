@@ -471,7 +471,7 @@ export const en = {
   'hub.copyCode': 'Copy code',
   'hub.copyInvite': 'Copy join link',
   'hub.joinLinkLabel': 'Join link',
-  'hub.joinHere': 'Join as a bidder',
+  'hub.joinHere': 'Join with the room code',
   'hub.joinHereOpen': 'Open join page',
   'hub.ticket': 'Join ticket',
   'hub.ticketAdmit': 'Admit one bidder',
@@ -485,9 +485,8 @@ export const en = {
   'hub.step3Hint': 'Start the lot, watch bids, press and hold the hammer 3 seconds.',
   'hub.step3Open': 'Open console',
   'hub.step4': 'Bidder',
-  'hub.step4Hint': 'A second tab to bid as another person.',
-  'hub.step4Open': 'Open bidder',
-  'hub.newInvite': 'New bidder invite',
+  'hub.step4Hint': 'A second tab to bid as another person. Use the code, or a seat that skips it.',
+  'hub.step4Open': 'Open a one-use bidder seat',
   'hub.inviteBusy': 'Making an invite',
   'hub.inviteFailed': 'We could not make a bidder invite. Try again.',
   'hub.noToken':
@@ -991,6 +990,7 @@ export const en = {
   'console.guide.state.settling': 'Settling holds',
   'console.guide.state.done': 'Done',
   'console.guide.state.stopped': 'Stopped, no winner',
+  'console.guide.state.noSale': 'No sale. Closed with no bids.',
   'console.guide.next.scheduled': 'Next: press Open lot to start taking bids.',
   'console.guide.next.open':
     'Next: bids arrive by voice, QR or manual entry. When you are ready, hold the hammer to close at the current price.',
@@ -999,6 +999,7 @@ export const en = {
   'console.guide.next.settling':
     'Next: the winning hold is taken and every other hold is released. This takes a few seconds.',
   'console.guide.next.done': 'Next: open the receipt to see what was settled.',
+  'console.guide.next.noSale': 'The lot was hammered with no bids. No hold was taken.',
   'console.guide.next.stopped': 'The auction was stopped by the auctioneer. No hold was taken.',
   'console.guide.audit': 'Every action on this desk is written to the audit trail.',
   'console.guide.auditLink': 'View the audit trail',
@@ -1062,7 +1063,8 @@ export const en = {
   'screen.latest': 'Latest',
   'screen.sold': 'SOLD to paddle {n} for {amount}',
   'screen.soldUnknown': 'SOLD for {amount}',
-  'screen.passed': 'Passed',
+  'screen.passed': 'No sale',
+  'screen.passedNoBids': 'Closed with no bids.',
   'screen.join': 'Join: {code}',
   'screen.settleSummary': '{c} charged, {r} released',
   'screen.wonReview': 'Paddle {n} won at {amount}',
@@ -1454,6 +1456,7 @@ export const en = {
   'help.title': 'Help',
   'help.close': 'Close',
   'help.open.hold': 'What is a hold?',
+  'help.quick': 'Quick answers',
   'help.hold.title': 'What is a hold?',
   'help.hold.intro':
     'A hold sets money aside, up to your limit, while you bid. It does not take the money.',
@@ -1677,6 +1680,9 @@ export const en = {
   'home.footer.sandbox': 'Sandbox. No real money moves.',
   'home.footer.local': 'Your history stays in this browser.',
   'home.footer.clear': 'Clear my history',
+  'end.join': 'Join room',
+  'end.home': 'Go home',
+  'end.announce': 'You won the lot at {amount}. Choose join room, go home, or view the receipt.',
 } as const;
 
 export type CopyKey = keyof typeof en;
