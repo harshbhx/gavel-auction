@@ -1,0 +1,51 @@
+name: film-v3-2-trim
+# GFX-20 launch film v3.2: trims the still pauses out of the v3.1 renders (184 s) so the film is under 3:00, with
+# no speed change and no re-record. Downloads the finished film-v3-1 artifact, cuts video and audio together with
+# 0.2 s crossfades (graphics/film-v3-2-trim/trim.py), re-times the SRT, writes a contact sheet of every cut and a
+# sync report. Artifact film-v3-2. No secrets.
+on:
+  push:
+    branches: [feat/GFX-20-film-v3-2-trim]
+    paths:
+      - 'graphics/film-v3-2-trim/**'
+      - '.github/workflows/film-v3-2-trim.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: film-v3-2-trim-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  trim:
+    if: ${{ github.repository == 'harshbhx/gavel-auction' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Fetch the v3.1 film
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download 42960952397 --repo "$GITHUB_REPOSITORY" --name film-v3-1 --dir src
+      - name: Cut
+        run: |
+          sudo apt-get install -y -qq ffmpeg python3-numpy >/dev/null
+          python3 graphics/film-v3-2-trim/trim.py src out
+      - name: Check the files
+        run: |
+          cd out
+          for f in *.mp4; do
+            echo "== $f"
+            ffprobe -v error -show_entries format=duration,size:stream=codec_name,width,height,r_frame_rate -of default=nw=1 "$f"
+          done
+          cat report.txt >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: film-v3-2
+          path: out
+          retention-days: 30
+          compression-level: 0
