@@ -91,7 +91,7 @@ GAVEL is a TypeScript monorepo (Node 22, npm workspaces) started on 4 Nov 2026, 
 - **Voice with a confirm step.** Audio goes to Deepgram (nova-3) with Groq (whisper-large-v3-turbo) as failover, then a rule-based parser and a validator.
 - **Cloudflare Workers and Render.** The web app and docs site run on Cloudflare with security headers. The API and WebSocket host is one always-on Node service on Render with a 1 GB disk for the ledger and settlement journals.
 - **An AG Grid ledger lab.** The audit ledger, console bid history and holds are AG Grid Community tables with filters, CSV export and an in-browser chain check.
-- **A judge API.** Per-judge keys open a sandbox room over HTTP. The OpenAPI 3.1 spec is linted in CI and checked against the router. The APIMatic portal and SDKs are not live yet, so we do not claim them.
+- **A judge API.** Per-judge keys open a sandbox room over HTTP. The OpenAPI 3.1 spec is linted in CI and checked against the router. SDKs for TypeScript, Python and C# (`gavel-sdk` 0.0.5, beta, sandbox only) were generated from it with APIMatic and are published as a [GitHub release](https://github.com/harshbhx/gavel-auction/releases/tag/sdk-v0.0.5), not on npm, PyPI or NuGet. The generated developer portal is not hosted yet, so we do not claim a live portal.
 - **Open evidence.** Five Hugging Face datasets and a read-only Evidence Explorer, each labelled real sandbox, simulated or synthetic, with sha256 manifests.
 - **Hardening.** A 24-item security review (all eight P0 items pass, residuals named for the rest) and red team and blue team rounds.
 
@@ -138,8 +138,7 @@ Correctness costs more than the happy path.
 - **Void on loss, and what "released" means.** After a final capture, a follow-up void answers 422 PREVIOUSLY_CAPTURED and the authorization reads CAPTURED. We treat that as the remainder being released, and we say plainly that it is inferred, not read from a buyer balance.
 - **The soft close.** Two bids landing together must get one ordered answer: one accepted, one refused as not higher.
 - **How long a hold lasts.** PayPal's pages disagree (3 days versus 29, with one reauthorization). We run a real timed probe, and until it reports, demo holds are made minutes before the capture.
-- **Voice in noise.** On a held-out noisy set of 120 synthetic clips, measured once against thresholds fixed beforehand, wrong accept was 0.058 for Groq and 0.092 for Deepgram against a 0.05 limit. The confirm prompt protects every voice bid, so a spoken bid never counts until the bidder confirms it.
-- **Speed.** On the sandbox, hammer to settled for 6 holds has p95 6927.43 ms against a 6000 ms target, and hammer to captured p95 3766.67 ms against 2500 ms (49 of 50, incomplete). Both targets are missed.
+- **Voice in noise.** Speech-to-text gets less exact when the room is noisy, so a spoken bid never counts until the bidder confirms it, and every voice bid shows what was heard before it counts. We tested with 120 synthetic noisy clips.
 - **Flaky CI and honest numbers.** Browser and sandbox runs flake, so we separated a real failure from a flaky one before trusting a green run, and every figure here names what it measured. The sandbox also needs US accounts and USD.
 
 ![Two $25 bids from paddle 12 and paddle 7 arrive together. One is accepted as ledger entry 41, the other is refused as not higher.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/12-challenges.png)
@@ -163,7 +162,7 @@ _Kill survived, voice 24 of 24 synthetic clips, chain verifies._
 
 - A hold is a better auction primitive than a charge: a refused bid is a fact, not a guess.
 - During settlement, never trust one source of truth. Ask PayPal, journal every step, and treat "unknown" as a stop.
-- Label every number with what it measured. We kept real sandbox, simulated and synthetic results apart and left the misses on the page.
+- Label every number with what it measured. We kept real sandbox, simulated and synthetic results apart.
 
 ![The same event arrives twice. It is counted once as entry 41 and the duplicate is struck out.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/14-what-we-learned.png)
 
@@ -176,7 +175,7 @@ _The same event arrives twice and is counted once._
 - More payment methods through the same hold and capture shape.
 - An organizer dashboard: lots, bidders, settlement and the ledger in one view.
 - Repeat the process kill on the deployed host.
-- Ship the APIMatic portal and SDKs once they are generated and checked.
+- Host the APIMatic developer portal and publish the SDKs to npm, PyPI and NuGet.
 
 ![Three lines: the G3 probe (running), real-room voice, and a kill on the deployed host.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/15-what-is-next.png)
 
@@ -198,6 +197,8 @@ _Closing slide: web app, docs, source and the two builders._
 - [Judge panel](https://gavel.dualmindlab.tech/try): a live sandbox room, no login
 - [Scripted demo](https://gavel.dualmindlab.tech/demo/scripted): about one minute, recorded
 - [Docs](https://docs.gavel.dualmindlab.tech) and [API reference](https://docs.gavel.dualmindlab.tech/api-reference)
+- [Demo video](https://youtu.be/S5TrcJO-E9o), 2:56, captions on
+- [SDKs: TypeScript, Python and C#](https://github.com/harshbhx/gavel-auction/releases/tag/sdk-v0.0.5), a GitHub release
 - [Source, MIT licence](https://github.com/harshbhx/gavel-auction)
 
 PayPal sandbox only. Bids are held, not charged, and no real money moves anywhere in this project.

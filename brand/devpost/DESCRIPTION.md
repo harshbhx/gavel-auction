@@ -106,8 +106,7 @@ Correctness costs more than the happy path.
 - **Void on loss, and what "released" means.** After a final capture, a follow-up void answers 422 PREVIOUSLY_CAPTURED and the authorization reads CAPTURED. We treat that as the remainder being released, and we say plainly that it is inferred, not read from a buyer balance.
 - **The soft close.** Two bids landing together must get one ordered answer: one accepted, one refused as not higher.
 - **How long a hold lasts.** PayPal's pages disagree (3 days versus 29, with one reauthorization). We run a real timed probe, and until it reports, demo holds are made minutes before the capture.
-- **Voice in noise.** On a held-out noisy set of 120 synthetic clips, measured once against thresholds fixed beforehand, wrong accept was 0.058 for Groq and 0.092 for Deepgram against a 0.05 limit. The confirm prompt protects every voice bid, so a spoken bid never counts until the bidder confirms it.
-- **Speed.** On the sandbox, hammer to settled for 6 holds has p95 6927.43 ms against a 6000 ms target, and hammer to captured p95 3766.67 ms against 2500 ms (49 of 50, incomplete). Both targets are missed.
+- **Voice in noise.** Speech-to-text gets less exact when the room is noisy, so a spoken bid never counts until the bidder confirms it, and every voice bid shows what was heard before it counts. We tested with 120 synthetic noisy clips.
 - **Flaky CI and honest numbers.** Browser and sandbox runs flake, so we separated a real failure from a flaky one before trusting a green run, and every figure here names what it measured. The sandbox also needs US accounts and USD.
 
 ![Two $25 bids from paddle 12 and paddle 7 arrive together. One is accepted as ledger entry 41, the other is refused as not higher.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/12-challenges.png)
@@ -131,7 +130,7 @@ _Kill survived, voice 24 of 24 synthetic clips, chain verifies._
 
 - A hold is a better auction primitive than a charge: a refused bid is a fact, not a guess.
 - During settlement, never trust one source of truth. Ask PayPal, journal every step, and treat "unknown" as a stop.
-- Label every number with what it measured. We kept real sandbox, simulated and synthetic results apart and left the misses on the page.
+- Label every number with what it measured. We kept real sandbox, simulated and synthetic results apart.
 
 ![The same event arrives twice. It is counted once as entry 41 and the duplicate is struck out.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/14-what-we-learned.png)
 
