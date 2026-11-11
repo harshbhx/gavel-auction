@@ -296,11 +296,6 @@ export function BidScreen({
             {leader !== null && <p className="bid__leader">{leader}</p>}
           </section>
 
-          <section className="bid__lot">
-            <LotBlock title={lotTitle ?? lotTitleFallback} />
-            {price === null && <p className="bid__wait">{t('bid.waitingLot')}</p>}
-          </section>
-
           {ceilingHold !== null && (
             <section aria-label={t('bid.position.title')} className="bid__position">
               <HoldCard
@@ -332,6 +327,11 @@ export function BidScreen({
               </Button>
             </section>
           )}
+
+          <section className="bid__lot">
+            <LotBlock title={lotTitle ?? lotTitleFallback} />
+            {price === null && <p className="bid__wait">{t('bid.waitingLot')}</p>}
+          </section>
         </div>
 
         <div className="bid__col bid__col--act">
