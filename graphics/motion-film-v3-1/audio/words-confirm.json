@@ -1,0 +1,11 @@
+{
+  "words": [
+    { "text": "Did", "type": "word", "start": 0.14, "end": 0.26 },
+    { "text": "you", "type": "word", "start": 0.32, "end": 0.36 },
+    { "text": "mean", "type": "word", "start": 0.42, "end": 0.62 },
+    { "text": "$350", "type": "word", "start": 0.78, "end": 1.84 },
+    { "text": "for", "type": "word", "start": 2.32, "end": 2.4 },
+    { "text": "paddle", "type": "word", "start": 2.52, "end": 2.78 },
+    { "text": "12?", "type": "word", "start": 2.88, "end": 3.36 }
+  ]
+}
