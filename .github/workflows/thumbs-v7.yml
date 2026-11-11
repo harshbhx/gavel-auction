@@ -22,6 +22,7 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/pw" && cd "$RUNNER_TEMP/pw"
           npm init -y >/dev/null && npm install --no-audit --no-fund playwright@1.49.1
+          npx playwright install chromium
           cd "$GITHUB_WORKSPACE"
           PW_DIR="$RUNNER_TEMP/pw" node brand/thumbnails/v7/render.mjs "$PWD/out"
           which convert || which magick
