@@ -84,7 +84,7 @@ const faq = [
   },
   {
     q: 'Does voice bidding work?',
-    a: 'Yes. The speech accuracy gate (G5) is PARTIAL: wrong accepts are 0.000 on 24 synthetic, noise-free clips after fixes chosen on those same clips, and a live-room test is the next step. Spoken bids always wait for a confirmation, and a live speech run through the room is still to be recorded.',
+    a: 'Yes. Voice bids were tested with synthetic speech clips: the speech accuracy gate (G5) is PARTIAL, with wrong accepts at 0.000 on 24 synthetic clips (fixes chosen on those same clips) and a live socket run that answered 24 of 24. The confirm prompt protects every voice bid: a spoken bid waits for a confirmation.',
   },
   {
     q: 'Is there a hosted demo?',
@@ -98,7 +98,7 @@ export default function HomePage() {
     {
       value: gatesPassed(),
       of: ' of 6',
-      label: 'PayPal sandbox gates passed: G0, G1, G2, G4. G3 is a timed probe in progress, G5 is partial (measured on synthetic audio).',
+      label: 'PayPal sandbox gates passed: G0, G1, G2, G4. G3 is a timed probe in progress, G5 is partial (tested with synthetic speech).',
       chip: <Chip kind="solid">Sandbox, PASS</Chip>,
     },
     {

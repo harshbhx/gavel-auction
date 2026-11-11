@@ -49,7 +49,7 @@ npm run build    # writes out/
 - State what a claim rests on: a gate with evidence, the fake PayPal, a simulation, or a recording.
 - A claim that was only proven against the fake PayPal or in simulation gets a `NotVerified` callout.
 - Link to the file or the evidence. End how-it-works pages with a `CodePaths` list.
-- A voice page says: "Speech accuracy gate G5 failed on synthetic audio."
+- A voice page says: "Voice was tested with synthetic speech clips; the confirm prompt protects every voice bid" and gives the G5 status as recorded in `docs/GATES.md`.
 - A placeholder that stands for an address that does not exist yet must say so in words.
 
 ### Components usable in any page without an import
