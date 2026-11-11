@@ -42,17 +42,17 @@ describe('limit box and slider (UIX-44)', () => {
   it('moves the box when the slider moves', () => {
     const { box, slider } = toLimitStep();
     fireEvent.keyDown(slider, { key: 'End' });
-    expect(box.value).toBe('1,000');
-    expect(slider.getAttribute('aria-valuenow')).toBe('100000');
+    expect(box.value).toBe('5,000');
+    expect(slider.getAttribute('aria-valuenow')).toBe('500000');
   });
 
   it('stretches the slider range to a typed limit, up to the cap', () => {
     const { box, slider } = toLimitStep();
-    expect(slider.getAttribute('aria-valuemax')).toBe('100000');
+    expect(slider.getAttribute('aria-valuemax')).toBe('500000');
     fireEvent.change(box, { target: { value: '3000' } });
-    expect(slider.getAttribute('aria-valuemax')).toBe('300000');
+    expect(slider.getAttribute('aria-valuemax')).toBe('500000');
     fireEvent.keyDown(slider, { key: 'ArrowLeft' });
-    expect(slider.getAttribute('aria-valuemax')).toBe('300000');
+    expect(slider.getAttribute('aria-valuemax')).toBe('500000');
     fireEvent.change(box, { target: { value: '9000' } });
     expect(slider.getAttribute('aria-valuemax')).toBe('500000');
   });
@@ -80,7 +80,10 @@ describe('limit box and slider (UIX-44)', () => {
 
   it('computes the slider top', () => {
     expect(sliderMax(100, 100_000, [10_000], null)).toBe(100_000);
-    expect(sliderMax(100, 500_000, [10_000], 250_000)).toBe(250_000);
+    expect(sliderMax(100, 500_000, [10_000], 250_000)).toBe(500_000);
+    // The slider's usual span is $10,000 (UIX-52), as far as the cap allows.
+    expect(sliderMax(100, 10_000_000, [10_000], null)).toBe(1_000_000);
+    expect(sliderMax(100, 10_000_000, [10_000], 2_500_000)).toBe(2_500_000);
     expect(sliderMax(100, 500_000, [10_000], 900_000)).toBe(500_000);
   });
 });
@@ -125,7 +128,7 @@ describe('slider ladder and live bounds (#2393, #2395)', () => {
       />,
     );
     expect(slider.getAttribute('aria-valuemin')).toBe('150000');
-    expect(slider.getAttribute('aria-valuemax')).toBe('300000');
+    expect(slider.getAttribute('aria-valuemax')).toBe('500000');
   });
 });
 

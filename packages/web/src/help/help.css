@@ -105,3 +105,40 @@ html:has(.help-layer) {
 body:has(.help-layer) {
   --help-reserve: calc(48px + var(--space-4) * 2);
 }
+
+/* Quick answers in the help menu: native disclosure rows, one short answer each */
+.help-menu__sub {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-1);
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+}
+
+.help-quick {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: var(--border-width) solid var(--color-fg);
+}
+
+.help-quick li {
+  border-bottom: var(--border-width) solid var(--color-rule);
+}
+
+.help-quick summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.help-quick summary:focus-visible {
+  outline: var(--border-width-strong) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.help-quick p {
+  margin: 0 0 var(--space-3);
+}

@@ -179,6 +179,7 @@ export function JudgeHub({
   const [tick, setTick] = useState(() => now());
   const asked = useRef(false);
   const minting = useRef(false);
+  const renew = useRef<ReturnType<typeof setTimeout> | null>(null);
   const newTab = ` (${t('hub.opensNewTab')})`;
   const base = `${origin}/r/${encodeURIComponent(roomId)}`;
   const screenLink = keys.screen === null ? null : `${base}/screen#token=${keys.screen}`;
@@ -445,30 +446,34 @@ export function JudgeHub({
                 <span className="gv-visually-hidden">{newTab}</span>
               </a>
             )}
-            {keys.auctioneer === null ? null : (
+            {keys.auctioneer === null || ended ? null : bidderLink !== null ? (
+              <a
+                className="gv-flow__action"
+                href={bidderLink}
+                target="_blank"
+                rel="noopener"
+                // A seat opens once, so a fresh one is made for the next click.
+                onClick={() => {
+                  if (renew.current !== null) clearTimeout(renew.current);
+                  renew.current = setTimeout(makeInvite, 400);
+                }}
+              >
+                {t('hub.step4Open')}
+                <span className="gv-visually-hidden">{newTab}</span>
+              </a>
+            ) : invite.kind === 'failed' ? (
               <>
-                {ended ? null : bidderLink !== null ? (
-                  <a className="gv-flow__action" href={bidderLink} target="_blank" rel="noopener">
-                    {t('hub.step4Open')}
-                    <span className="gv-visually-hidden">{newTab}</span>
-                  </a>
-                ) : invite.kind === 'failed' ? (
-                  <p className="gv-hub__missing" role="alert">
-                    {t('hub.inviteFailed')}
-                  </p>
-                ) : (
-                  <p className="gv-hub__pending" role="status">
-                    {t('hub.inviteBusy')}
-                  </p>
-                )}
-                <Button
-                  variant="outline"
-                  disabled={invite.kind === 'busy' || ended}
-                  onClick={makeInvite}
-                >
-                  {t('hub.newInvite')}
+                <p className="gv-hub__missing" role="alert">
+                  {t('hub.inviteFailed')}
+                </p>
+                <Button variant="outline" onClick={makeInvite}>
+                  {t('generic.retry')}
                 </Button>
               </>
+            ) : (
+              <p className="gv-hub__pending" role="status">
+                {t('hub.inviteBusy')}
+              </p>
             )}
           </Shortcut>
 
