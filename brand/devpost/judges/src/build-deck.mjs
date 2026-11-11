@@ -131,8 +131,14 @@ function fx(name, effect, opts = {}) {
 // headlines wipe in from the left, big numbers and chips pop with a small overshoot, everything
 // else keeps its effect. Times sit between 0.4 and 0.8 s; wheels and paths keep their own length.
 function polish(a) {
-  if (/-h$/.test(a.name) && a.fx === 'float') Object.assign(a, { fx: 'wipe', dir: 'left', dur: 600 });
-  if (a.fx === 'zoom' && !a.rotate && (a.from ?? 0.5) < 1 && /(num|100|chip|stop|^hook-\d)/.test(a.name)) {
+  if (/-h$/.test(a.name) && a.fx === 'float')
+    Object.assign(a, { fx: 'wipe', dir: 'left', dur: 600 });
+  if (
+    a.fx === 'zoom' &&
+    !a.rotate &&
+    (a.from ?? 0.5) < 1 &&
+    /(num|100|chip|stop|^hook-\d)/.test(a.name)
+  ) {
     a.fx = 'pop';
   }
   if (!['wheel', 'path'].includes(a.fx)) a.dur = Math.min(800, Math.max(400, a.dur));
@@ -1120,7 +1126,11 @@ function rings(s, cx, cy, fades) {
     fx(`proof-chip${i + 1}`, 'zoom', { from: 0.6, dur: 300, start: 'with', delay: 120 + i * 110 }),
   );
   tiles.forEach((_, i) =>
-    fx(`proof-num${i + 1}`, 'pulse', { dur: 600, start: i === 0 ? 'after' : 'with', delay: i * 150 }),
+    fx(`proof-num${i + 1}`, 'pulse', {
+      dur: 600,
+      start: i === 0 ? 'after' : 'with',
+      delay: i * 150,
+    }),
   );
   fx('proof-note', 'fade', { dur: 500, delay: 100 });
   s.slide.addNotes(
