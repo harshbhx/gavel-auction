@@ -44,10 +44,10 @@
 }
 
 .gv-scripted-frame > .gv-scripted-bar > p {
-  flex: 0 1 auto;
+  flex: 1 1 14rem;
   min-width: 0;
-  font-size: var(--font-size-2);
-  line-height: 1.35;
+  font-size: var(--font-size-1);
+  line-height: 1.2;
   text-wrap: pretty;
 }
 
@@ -57,7 +57,7 @@
 }
 
 .gv-scripted-frame > .gv-scripted-bar .gv-scripted-bar__links .ui-link {
-  min-height: 36px;
+  min-height: 32px;
   padding: 0 var(--space-3);
   border: var(--border-width) solid var(--color-fg);
   border-radius: var(--radius-md);
