@@ -707,3 +707,275 @@
   margin: 0;
   font-size: var(--font-size-3);
 }
+
+/* Desk layout (WEB-97). Everything below refines the rules above: numbers that stay inside
+ * their box, one clean control bar, tidy voice and hold blocks, and no stretched empty panels. */
+
+/* Wide: two columns that each stack to their own height. The lot runs down the left with the
+ * voice panel under it; the floor bid, the stream and the bidders run down the right. Only the
+ * middle row flexes, so no panel is stretched to match a taller neighbour. */
+.gv-console-grid {
+  grid-template-areas: none;
+  grid-template-rows: auto 1fr auto auto;
+}
+
+.gv-console-grid > .gv-console-panel--lot {
+  grid-area: 1 / 1 / 3 / 2;
+}
+
+.gv-console-grid > .gv-console-stack {
+  grid-area: 1 / 2 / 2 / 3;
+}
+
+.gv-console-grid > .gv-console-panel--voice {
+  grid-area: 3 / 1 / 4 / 2;
+}
+
+.gv-console-grid > .gv-console-panel--bidders {
+  grid-area: 2 / 2 / 4 / 3;
+}
+
+.gv-console-grid > .gv-console-panel--danger {
+  grid-area: 4 / 1 / 5 / 3;
+}
+
+/* Lot header: price on top, the leader under it, then three equal figures. */
+.gv-console-board {
+  container-type: inline-size;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+  align-items: stretch;
+}
+
+.gv-console-board > * {
+  min-width: 0;
+}
+
+/* The price shrinks with its own length (set by PriceHeader) so it never leaves the panel. */
+.gv-console-board__price,
+[data-layout='stacked'] .gv-console-board__price {
+  max-width: 100%;
+  font-size: min(var(--font-size-8), calc(230cqi / var(--gv-price-chars, 7)));
+}
+
+[data-layout='stacked'] .gv-console-board__price {
+  font-size: min(var(--font-size-7), calc(230cqi / var(--gv-price-chars, 7)));
+}
+
+.gv-console-board__leader {
+  grid-column: 1 / -1;
+  overflow-wrap: anywhere;
+}
+
+.gv-console-board__stat {
+  order: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-rule, var(--color-border));
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-size: var(--font-size-3);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--color-fg);
+  overflow-wrap: anywhere;
+}
+
+.gv-console-board__stat .gv-console-board__label {
+  font-size: var(--font-size-1);
+}
+
+/* The clock comes first of the three and keeps to its box at any length. */
+.gv-console-board__stat[data-field='countdown'] {
+  order: 1;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-2);
+  font-size: min(var(--font-size-5), 5.2cqi);
+  line-height: 1.1;
+}
+
+.gv-console-board__stat[data-field='countdown'] > svg {
+  flex: none;
+}
+
+.gv-console-board__stat[data-field='countdown'] > span {
+  min-width: 0;
+}
+
+/* Narrow lot panel: the clock takes its own row, the two figures share the next one. */
+@container (max-width: 30rem) {
+  .gv-console-board__stat[data-field='countdown'] {
+    grid-column: 1 / -1;
+    font-size: min(var(--font-size-5), 11cqi);
+  }
+
+  .gv-console-board__stat[data-field='next'] {
+    grid-column: span 2;
+  }
+}
+
+/* Control bar: five equal slots in one row when there is room, else two per row with the
+ * hammer on its own full row. The order of the slots never changes. */
+.gv-console-controls {
+  container-type: inline-size;
+}
+
+.gv-console-controls__item > .gv-btn {
+  min-height: 48px;
+}
+
+@media (max-width: 639px) {
+  .gv-console-controls__item[data-control='hammer'] {
+    grid-column: 1 / -1;
+  }
+}
+
+@container (max-width: 34rem) {
+  .gv-console-controls__bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .gv-console-controls__item[data-control='hammer'] {
+    grid-column: 1 / -1;
+  }
+}
+
+/* The outcome line keeps one line of room, not two. */
+.gv-console-controls__result {
+  min-height: 1.25em;
+}
+
+/* Hold to close: one compact block, the fallback note right under the button. */
+.gv-console-hammer {
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-width: 1px;
+  border-radius: var(--radius-md);
+}
+
+.gv-console-hammer .ui-hold {
+  gap: var(--space-1);
+}
+
+.gv-console-hammer .ui-hold__label,
+.gv-console-kill .ui-hold__label {
+  overflow-wrap: anywhere;
+}
+
+.gv-console-hammer__alt {
+  font-size: var(--font-size-2);
+  line-height: 1.4;
+}
+
+/* Floor bid: the closed note spans the form instead of wrapping in the first column. */
+.gv-manual__closed {
+  grid-column: 1 / -1;
+}
+
+/* Voice feed: mode, button, microphone state and transcripts as evenly spaced blocks. */
+.gv-voice-control {
+  gap: var(--space-3);
+  align-content: start;
+}
+
+.gv-voice-control__mode {
+  gap: var(--space-1) var(--space-4);
+}
+
+.gv-voice-control__mode legend {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-1);
+  font-weight: 600;
+}
+
+.gv-voice-control__mode label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 2.75rem;
+}
+
+.gv-voice-control__replay {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.gv-voice-control__hint,
+.gv-voice-control__privacy {
+  font-size: var(--font-size-2);
+  line-height: 1.4;
+}
+
+.gv-voice {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.gv-voice > p {
+  margin: 0;
+  color: var(--color-fg-muted);
+}
+
+.gv-voice > p[role='status'] {
+  color: var(--color-fg);
+}
+
+.gv-voice > p[role='status'],
+.gv-voice__mic {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-rule, var(--color-border));
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.gv-voice__mic > svg {
+  flex: none;
+}
+
+.gv-voice__list {
+  border-block-start: 1px solid var(--color-rule, var(--color-border));
+}
+
+.gv-voice__entry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-2) 0;
+  border-block-end: 1px solid var(--color-rule, var(--color-border));
+}
+
+.gv-voice__kind {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-1);
+  font-weight: 600;
+  color: var(--color-fg-muted);
+}
+
+.gv-voice__text {
+  flex: 1 1 12rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.gv-voice-control__privacy-box > summary {
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+  color: var(--color-fg-muted);
+}
+
+.gv-confirm p {
+  margin: 0;
+  color: var(--color-fg-muted);
+}
+
+.gv-confirm__list + p {
+  margin-top: var(--space-2);
+  font-size: var(--font-size-2);
+}

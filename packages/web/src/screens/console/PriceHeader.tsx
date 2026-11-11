@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 
 import { t } from '../../copy/t';
 import { Icon } from '../../design/icons';
@@ -57,15 +57,20 @@ export function PriceHeader({
     return () => clearInterval(id);
   }, [endTs, now, tickMs, frozenMs, stopped]);
 
+  const shownCents = priceCents ?? reserveCents;
+  // The price sizes itself from its own length, so a long amount shrinks instead of leaving its box.
+  const priceStyle = {
+    ...NUMERIC,
+    minWidth: 'min(10ch, 100%)',
+    margin: 0,
+    '--gv-price-chars': formatUsd(shownCents).length,
+  } as CSSProperties;
+
   return (
     <header className="gv-console-board" aria-label={t('bid.price')}>
-      <p
-        className="gv-console-board__price"
-        style={{ ...NUMERIC, minWidth: '10ch', margin: 0 }}
-        data-field="price"
-      >
+      <p className="gv-console-board__price" style={priceStyle} data-field="price">
         <span className="gv-console-board__label">{t('console.board.price')}</span>
-        <PriceRoll cents={priceCents ?? reserveCents} />
+        <PriceRoll cents={shownCents} />
       </p>
       <p
         className="gv-console-board__leader"
@@ -81,7 +86,7 @@ export function PriceHeader({
       </p>
       <p
         className="gv-console-board__stat"
-        style={{ ...NUMERIC, minWidth: '6ch', margin: 0 }}
+        style={{ ...NUMERIC, minWidth: 'min(6ch, 100%)', margin: 0 }}
         data-field="countdown"
       >
         <Icon name="clock" />
