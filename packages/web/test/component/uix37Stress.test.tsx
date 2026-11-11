@@ -122,14 +122,18 @@ describe('double submit guards', () => {
     });
   });
 
-  it('mints one invite however fast the button is clicked', async () => {
+  it('makes one fresh seat however fast the seat link is clicked', async () => {
     const posts: string[] = [];
     vi.stubGlobal(
       'fetch',
       vi.fn((url: string, init?: RequestInit) => {
         if (init?.method === 'POST') {
           posts.push(url);
-          return new Promise<Response>(() => undefined);
+          return Promise.resolve(
+            reply(200, {
+              invites: [{ link: `http://web.test/join/room-1#invite=abc${posts.length}` }],
+            }),
+          );
         }
         return Promise.resolve(reply(404, {}));
       }),
@@ -142,12 +146,14 @@ describe('double submit guards', () => {
         origin="http://web.test"
       />,
     );
-    await waitFor(() => expect(posts).toHaveLength(1));
-    const button = screen.getByRole('button', { name: t('hub.newInvite') });
-    fireEvent.click(button);
-    fireEvent.click(button);
-    fireEvent.click(button);
+    const seat = await screen.findByRole('link', { name: new RegExp(t('hub.step4Open')) });
     expect(posts).toHaveLength(1);
+    fireEvent.click(seat);
+    fireEvent.click(seat);
+    fireEvent.click(seat);
+    await waitFor(() => expect(posts).toHaveLength(2));
+    await new Promise((done) => setTimeout(done, 600));
+    expect(posts).toHaveLength(2);
   });
 });
 

@@ -471,7 +471,7 @@ export const en = {
   'hub.copyCode': 'Copy code',
   'hub.copyInvite': 'Copy join link',
   'hub.joinLinkLabel': 'Join link',
-  'hub.joinHere': 'Join as a bidder',
+  'hub.joinHere': 'Join with the room code',
   'hub.joinHereOpen': 'Open join page',
   'hub.ticket': 'Join ticket',
   'hub.ticketAdmit': 'Admit one bidder',
@@ -485,9 +485,8 @@ export const en = {
   'hub.step3Hint': 'Start the lot, watch bids, press and hold the hammer 3 seconds.',
   'hub.step3Open': 'Open console',
   'hub.step4': 'Bidder',
-  'hub.step4Hint': 'A second tab to bid as another person.',
-  'hub.step4Open': 'Open bidder',
-  'hub.newInvite': 'New bidder invite',
+  'hub.step4Hint': 'A second tab to bid as another person. Use the code, or a seat that skips it.',
+  'hub.step4Open': 'Open a one-use bidder seat',
   'hub.inviteBusy': 'Making an invite',
   'hub.inviteFailed': 'We could not make a bidder invite. Try again.',
   'hub.noToken':
@@ -1451,6 +1450,7 @@ export const en = {
   'help.title': 'Help',
   'help.close': 'Close',
   'help.open.hold': 'What is a hold?',
+  'help.quick': 'Quick answers',
   'help.hold.title': 'What is a hold?',
   'help.hold.intro':
     'A hold sets money aside, up to your limit, while you bid. It does not take the money.',
