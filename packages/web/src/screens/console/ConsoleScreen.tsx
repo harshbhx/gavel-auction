@@ -14,6 +14,7 @@ import { formatUsd } from '../../util/money';
 import { rowsFromAudit } from './BidStream';
 import { BidHistory } from './BidHistory';
 import { ConfirmQueue } from './ConfirmQueue';
+import { ConsoleEndDialog, type ConsoleEnd } from './ConsoleEndDialog';
 import { Instructor, consoleStep } from '../../help';
 import { ConsoleGuide } from './ConsoleGuide';
 import { PriceHeader } from './PriceHeader';
@@ -22,6 +23,9 @@ import './console.css';
 
 /** Desktop layout from this width up (R-WEB-063). */
 export const WIDE_MIN_PX = 1000;
+
+/** How long the lot must be seen live here before its end counts as watched, in ms. */
+export const END_WATCH_MS = 1000;
 
 function noAnswer(): void {
   // No sender is wired: the queue lists requests and cannot answer them.
@@ -99,6 +103,30 @@ export function ConsoleScreen({
   const winnerPaddle = useRoom(
     (s) => s.snapshot?.roster.find((r) => r.bidderId === s.hammer?.winnerId)?.paddle ?? null,
     store,
+  );
+  // The end pop-up shows once, when this console watches the lot close, be won or be stopped.
+  // A console opened on a lot that had already ended, or one that is only catching up on the
+  // room history after joining, shows the result without it.
+  const ended = closed || stopped;
+  const live = auctionId !== null && !ended;
+  const [wasLive, setWasLive] = useState(false);
+  const [endDismissed, setEndDismissed] = useState(false);
+  useEffect(() => {
+    if (!live) return undefined;
+    const id = setTimeout(() => setWasLive(true), END_WATCH_MS);
+    return () => clearTimeout(id);
+  }, [live]);
+  const end: ConsoleEnd = stopped
+    ? { kind: 'stopped' }
+    : hammer !== null && hammer.winnerId !== null && winnerPaddle !== null
+      ? { kind: 'sold', paddle: winnerPaddle, priceCents: hammer.price }
+      : { kind: 'noSale' };
+  const endDialog = (
+    <ConsoleEndDialog
+      open={ended && wasLive && !endDismissed}
+      end={end}
+      onClose={() => setEndDismissed(true)}
+    />
   );
   const now = useServerNow(store);
   const skewMs = useSkew(store);
@@ -225,6 +253,7 @@ export function ConsoleScreen({
           {dangerZone}
         </div>
         {strip}
+        {endDialog}
       </main>
     );
   }
@@ -243,6 +272,7 @@ export function ConsoleScreen({
         {dangerZone}
       </div>
       {strip}
+      {endDialog}
     </main>
   );
 }

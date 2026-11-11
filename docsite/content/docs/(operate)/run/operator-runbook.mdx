@@ -2,7 +2,7 @@
 title: Operator runbook
 description: Deploy, set secrets by name, check the result, and what to do when something goes wrong. Names only, never values.
 icon: ClipboardList
-status: unverified
+status: described
 ---
 
 This page is for the person who runs the server. It is built from [docs/DEPLOY.md](https://github.com/harshbhx/gavel-auction/blob/main/docs/DEPLOY.md), [docs/RUNBOOK-GATES.md](https://github.com/harshbhx/gavel-auction/blob/main/docs/RUNBOOK-GATES.md), [docs/RUNBOOK-BACKUP.md](https://github.com/harshbhx/gavel-auction/blob/main/docs/RUNBOOK-BACKUP.md) and `infra/`. Everything points at the PayPal <Term id="sandbox">sandbox</Term>.
@@ -115,7 +115,7 @@ The `uptime` workflow probes the health routes plus the web and docs hosts on Gi
 2. Confirm `PAYPAL_WEBHOOK_ID` on Render is the id of that webhook. A mismatch makes every verification fail.
 3. An unsigned post must answer 400. A real event that fails verification is rejected, so a missing id shows up as rejected deliveries.
 4. Event ids are deduplicated, so a redelivery is safe. How the server treats events: [webhooks](/docs/safety/webhooks).
-5. The retry behaviour of PayPal is UNVERIFIED ([G4](/docs/proof/gate-g4)).
+5. The retry behaviour of PayPal is not yet recorded ([G4](/docs/proof/gate-g4)).
 
 </Accordion>
 <Accordion title="A settlement is in review (FAILED_NEEDS_REVIEW)">

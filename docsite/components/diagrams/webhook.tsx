@@ -156,7 +156,7 @@ export function WebhookDiagram() {
           <code>packages/payments/src/webhooks/handler.ts</code>, <code>verify.ts</code> and{' '}
           <code>packages/server/src/runtime/webhook-intake.ts</code>. Gate G4 verified six real deliveries through
           PayPal&apos;s endpoint; rejecting a tampered event is covered against the fake PayPal only, and whether a PayPal
-          retry keeps its original transmission headers is UNVERIFIED. The late-event parking is shown by the simulated
+          retry keeps its original transmission headers is not yet recorded. The late-event parking is shown by the simulated
           scenario S7.
         </>
       }
