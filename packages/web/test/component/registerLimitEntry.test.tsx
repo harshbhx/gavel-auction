@@ -50,9 +50,9 @@ describe('limit box and slider (UIX-44)', () => {
     const { box, slider } = toLimitStep();
     expect(slider.getAttribute('aria-valuemax')).toBe('100000');
     fireEvent.change(box, { target: { value: '3000' } });
-    expect(slider.getAttribute('aria-valuemax')).toBe('300000');
+    expect(slider.getAttribute('aria-valuemax')).toBe('500000');
     fireEvent.keyDown(slider, { key: 'ArrowLeft' });
-    expect(slider.getAttribute('aria-valuemax')).toBe('300000');
+    expect(slider.getAttribute('aria-valuemax')).toBe('500000');
     fireEvent.change(box, { target: { value: '9000' } });
     expect(slider.getAttribute('aria-valuemax')).toBe('500000');
   });
@@ -80,7 +80,10 @@ describe('limit box and slider (UIX-44)', () => {
 
   it('computes the slider top', () => {
     expect(sliderMax(100, 100_000, [10_000], null)).toBe(100_000);
-    expect(sliderMax(100, 500_000, [10_000], 250_000)).toBe(250_000);
+    expect(sliderMax(100, 500_000, [10_000], 250_000)).toBe(500_000);
+    // The slider's usual span is $10,000 (UIX-52), as far as the cap allows.
+    expect(sliderMax(100, 10_000_000, [10_000], null)).toBe(1_000_000);
+    expect(sliderMax(100, 10_000_000, [10_000], 2_500_000)).toBe(2_500_000);
     expect(sliderMax(100, 500_000, [10_000], 900_000)).toBe(500_000);
   });
 });
@@ -125,7 +128,7 @@ describe('slider ladder and live bounds (#2393, #2395)', () => {
       />,
     );
     expect(slider.getAttribute('aria-valuemin')).toBe('150000');
-    expect(slider.getAttribute('aria-valuemax')).toBe('300000');
+    expect(slider.getAttribute('aria-valuemax')).toBe('500000');
   });
 });
 

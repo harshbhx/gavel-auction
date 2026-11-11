@@ -38,3 +38,13 @@ describe('HelpLayer', () => {
     expect(result.violations).toEqual([]);
   });
 });
+
+describe('HelpLayer quick answers (UIX-52)', () => {
+  it('lists short answers next to the hold explainer', () => {
+    render(<HelpLayer />);
+    fireEvent.click(screen.getByRole('button', { name: 'Help' }));
+    expect(screen.getByText('Is real money moved?')).toBeTruthy();
+    expect(screen.getByText('How does voice work?')).toBeTruthy();
+    expect(screen.getByText('What if my phone dies?')).toBeTruthy();
+  });
+});

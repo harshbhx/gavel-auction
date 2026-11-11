@@ -1439,6 +1439,15 @@ html:has(.gv-judge) {
   }
 }
 
+/* The simulated run follows the reader past the three moves, so no empty column is left beside
+ * them (UIX-52). Only where it fits the window, so none of it is cut off. */
+@media (min-width: 1040px) and (min-height: 1000px) {
+  .gv-judge__right {
+    position: sticky;
+    top: var(--space-4);
+  }
+}
+
 @media (min-width: 1440px) {
   .gv-judge__page {
     padding-inline: var(--space-7);
