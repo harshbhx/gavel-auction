@@ -48,7 +48,7 @@ defaults:
 jobs:
   film:
     if: ${{ github.repository == 'harshbhx/gavel-auction' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
       WEB_PORT: '4180'
