@@ -15,10 +15,10 @@ import { AuctioneerView, BidderView, PublicView, ScriptedView } from '../src/pag
 test('start a demo auction and see the role links', async ({ page, stack }) => {
   await page.goto(stack.webUrl);
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-  await page.getByRole('button', { name: /start a demo auction/i }).click();
+  await page.getByRole('button', { name: /start a live demo room/i }).click();
   await expect(page).toHaveURL(/\/demo$/, { timeout: 20_000 });
   await expect(
-    page.getByRole('heading', { level: 1, name: /start a demo auction/i }),
+    page.getByRole('heading', { level: 1, name: /start a live demo room/i }),
   ).toBeVisible();
 });
 

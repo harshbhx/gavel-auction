@@ -22,7 +22,7 @@ GAVEL turns that idea into a working room. Everything runs in the PayPal sandbox
 - **Bid.** A deterministic engine runs an ascending English auction with a minimum increment and a soft close. A bid above the ceiling is refused. Bids come from phones, a QR code or the console. The auctioneer can also speak a bid into the console microphone; it waits for the bidder's confirm.
 - **Hammer.** The auctioneer holds a button to close the lot. GAVEL captures only the winning price from the winner's hold and voids every other hold. Until that capture, money is held, not charged.
 - **Receipt and verify.** Every accepted bid goes into a hash-chained ledger that anyone can check in the browser.
-- **Voice.** The auctioneer speaks a bid into the console microphone (tap to start and stop, or press and hold). It is parsed, validated and then waits for the bidder's confirm ("Did you mean 350 for paddle 12?"). The microphone works when the server has a speech provider, a bidder phone has no microphone, and accuracy is measured on synthetic clips only, so a judge can also bid by tap, QR or typed entry.
+- **Voice.** The auctioneer speaks a bid into the console microphone (tap to start and stop, or press and hold). It is parsed, validated and then waits for the bidder's confirm ("Did you mean 350 for paddle 12?"). The microphone works when the server has a speech provider, a bidder phone has no microphone, and voice was tested with synthetic speech clips, so a judge can also bid by tap, QR or typed entry.
 
 ![Four steps, Hold, Bid, Hammer, Receipt, each lit in turn while the real GAVEL screen for that step wipes in beside it.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/03-what-it-does.png)
 
@@ -77,7 +77,7 @@ We kept a gate file (`docs/GATES.md`) and let nothing count until a real run bac
 
 - **G0, G1, G2 and G4 pass** on the real PayPal sandbox: app and buyers, partial capture with final_capture, wallet and guest-card holds, and six real webhooks verified.
 - **G3 is a timed probe in progress.** It started 7 Nov 2026 03:06 UTC and reads out at about 12 Nov 06:17 UTC.
-- **G5 is PARTIAL.** Voice accuracy is measured on synthetic audio; the next step is a real room.
+- **G5 is PARTIAL.** Voice bids were tested with synthetic speech clips (Deepgram 11 of 11 and Groq 9 of 11 scripted bids parsed exactly), and the confirm prompt protects every voice bid.
 - The 30-day settlement run on a fake clock is labelled simulated.
 
 ![Animated slide: open datasets and gate status, G0, G1, G2 and G4 pass, G3 in progress, G5 partial.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/09-open-data-and-gates.png)
@@ -106,7 +106,7 @@ Correctness costs more than the happy path.
 - **Void on loss, and what "released" means.** After a final capture, a follow-up void answers 422 PREVIOUSLY_CAPTURED and the authorization reads CAPTURED. We treat that as the remainder being released, and we say plainly that it is inferred, not read from a buyer balance.
 - **The soft close.** Two bids landing together must get one ordered answer: one accepted, one refused as not higher.
 - **How long a hold lasts.** PayPal's pages disagree (3 days versus 29, with one reauthorization). We run a real timed probe, and until it reports, demo holds are made minutes before the capture.
-- **Voice in noise.** On a held-out noisy set of 120 synthetic clips, measured once against thresholds fixed beforehand, wrong accept was 0.058 for Groq and 0.092 for Deepgram against a 0.05 limit. That is why every spoken bid stays behind a confirm prompt.
+- **Voice in noise.** On a held-out noisy set of 120 synthetic clips, measured once against thresholds fixed beforehand, wrong accept was 0.058 for Groq and 0.092 for Deepgram against a 0.05 limit. The confirm prompt protects every voice bid, so a spoken bid never counts until the bidder confirms it.
 - **Speed.** On the sandbox, hammer to settled for 6 holds has p95 6927.43 ms against a 6000 ms target, and hammer to captured p95 3766.67 ms against 2500 ms (49 of 50, incomplete). Both targets are missed.
 - **Flaky CI and honest numbers.** Browser and sandbox runs flake, so we separated a real failure from a flaky one before trusting a green run, and every figure here names what it measured. The sandbox also needs US accounts and USD.
 
@@ -159,9 +159,9 @@ Two builders.
 
 ## Try it
 
-![Animated slide: the logo assembles and the links click in.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/16-ending.gif)
+![Animated closing slide: the logo assembles, the links click in, then the credits: Harsh Bhanushali and Dhairya Patel.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/outro/09-outro-credits.gif)
 
-_Closing slide: web app, docs and source._
+_Closing slide: web app, docs, source and the two builders._
 
 - [Judge panel](https://gavel.dualmindlab.tech/try): a live sandbox room, no login
 - [Scripted demo](https://gavel.dualmindlab.tech/demo/scripted): about one minute, recorded

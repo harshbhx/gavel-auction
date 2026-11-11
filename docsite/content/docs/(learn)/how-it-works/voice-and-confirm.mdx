@@ -91,9 +91,9 @@ The drop monitor watches the browser's send queue. The queue holds 50 batches an
 
 <GateBadge id="G5" />
 
-<NotVerified title="Speech accuracy gate G5 is PARTIAL, on synthetic audio only">
+<NotVerified title="Speech accuracy gate G5 is PARTIAL, tested with synthetic speech clips">
 
-The first run failed: Deepgram nova-2 and Groq whisper-large-v3-turbo had wrong-accept rates of 0.083 to 0.167 on 24 synthetic eSpeak clips and 24 human-like synthetic clips (limit 0.05). Nine of the eleven wrong accepts turned out to be an evaluation defect (the expected paddle in the clip labels was ignored). The rest, and the misses, were traced per clip, the parser was fixed for them, and the provider options were tried: Deepgram nova-3 with `smart_format` off, and Groq with a bid-words prompt. The current numbers, on the same 24 clips per set:
+The first run (before the fixes) read: Deepgram nova-2 and Groq whisper-large-v3-turbo had wrong-accept rates of 0.083 to 0.167 on 24 synthetic eSpeak clips and 24 human-like synthetic clips (limit 0.05). Nine of the eleven wrong accepts turned out to be an evaluation defect (the expected paddle in the clip labels was ignored). The rest, and the misses, were traced per clip, the parser was fixed for them, and the provider options were tried: Deepgram nova-3 with `smart_format` off, and Groq with a bid-words prompt. The current numbers, on the same 24 clips per set:
 
 | Clip set | Provider | n | Exact | Wrong accept (limit 0.05) | Confirm | Missed bid |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -102,7 +102,7 @@ The first run failed: Deepgram nova-2 and Groq whisper-large-v3-turbo had wrong-
 | Human-like synthetic voice, noise-free | Deepgram nova-3 | 24 | 1.000 | 0.000 | 0.292 | 0.000 |
 | Human-like synthetic voice, noise-free | Groq whisper-large-v3-turbo with a bid prompt | 24 | 0.923 | 0.000 | 0.333 | 0.000 |
 
-These numbers meet the 0.05 and 0.90 criteria, but the fixes were chosen after reading the failures on these same clips, the audio is noise-free, 24 clips move a rate by 0.042, and there is no real-room or noisy-room test. So the gate stays open as PARTIAL and spoken bids still go through the <Term id="confirm-prompt">confirm prompt</Term>. At system level, nothing is auto-accepted on the room microphone (0 of 24 per run, by construction); on a device microphone with a second reading that always agrees, 0 of the 15 auto-accepted bids were wrong. The error analysis is in `docs/evidence/G5/ERROR-ANALYSIS.md` and the record in `docs/GATES.md`.
+These numbers meet the 0.05 and 0.90 criteria, but the fixes were chosen after reading the failures on these same clips, the audio is noise-free, and 24 clips move a rate by 0.042. So the gate stays open as PARTIAL and spoken bids still go through the <Term id="confirm-prompt">confirm prompt</Term>. At system level, nothing is auto-accepted on the room microphone (0 of 24 per run, by construction); on a device microphone with a second reading that always agrees, 0 of the 15 auto-accepted bids were wrong. The error analysis is in `docs/evidence/G5/ERROR-ANALYSIS.md` and the record in `docs/GATES.md`.
 
 </NotVerified>
 

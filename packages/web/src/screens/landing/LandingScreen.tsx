@@ -71,7 +71,12 @@ export function LandingScreen({
   const submit = (e: FormEvent<HTMLFormElement>): void => {
     e.preventDefault();
     const trimmed = code.trim();
-    if (trimmed === '' || checking) return;
+    if (checking) return;
+    if (trimmed === '') {
+      setProblem(t('try.a2.typeCode', { n: CODE_LENGTH }));
+      setInvalid(true);
+      return;
+    }
     setChecking(true);
     onJoin(trimmed)
       .then((found) => {
@@ -156,7 +161,7 @@ export function LandingScreen({
                   setProblem(null);
                 }}
               />
-              <Button type="submit" variant="outline" disabled={checking || code.trim() === ''}>
+              <Button type="submit" variant="outline" disabled={checking}>
                 {t('landing.join')}
               </Button>
             </form>

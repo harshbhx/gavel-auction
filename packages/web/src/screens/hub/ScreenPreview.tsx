@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { t } from '../../copy/t';
 import { startLiveRoom } from '../../net/liveRoom';
-import { RoomStore } from '../../store/roomStore';
+import { RoomStore, useRoom } from '../../store/roomStore';
+import { selectors } from '../../store/selectors';
 import { ScreenView } from '../screen/ScreenView';
 
 /** The projection screen is laid out for this many CSS pixels and scaled to fit the tile. */
@@ -36,6 +37,8 @@ export function ScreenPreview({
 }: ScreenPreviewProps) {
   const [ownStore] = useState(() => new RoomStore(roomId));
   const store = sharedStore ?? ownStore;
+  const status = useRoom(selectors.auctionStatus, store);
+  const waiting = status === null || status === 'SCHEDULED';
   const frame = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.3);
 
@@ -67,10 +70,10 @@ export function ScreenPreview({
 
   return (
     <div className="gv-hub__preview" role="group" aria-label={t('hub.previewLabel')}>
-      <span className="gv-hub__live">
+      <p className="gv-hub__live">
         <i aria-hidden="true" />
         {t('hub.live')}
-      </span>
+      </p>
       <div
         ref={frame}
         className="gv-hub__preview-frame"
@@ -87,6 +90,7 @@ export function ScreenPreview({
             preview
           />
         </div>
+        {waiting && <p className="gv-hub__preview-wait">{t('hub.previewWaiting')}</p>}
       </div>
     </div>
   );

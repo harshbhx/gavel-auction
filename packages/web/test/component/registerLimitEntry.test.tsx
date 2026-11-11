@@ -61,7 +61,7 @@ describe('limit box and slider (UIX-44)', () => {
     const { onApprove, box } = toLimitStep();
     fireEvent.change(box, { target: { value: '5001' } });
     expect(screen.getByRole('alert').textContent).toContain(t('reg.overCap', { max: '$5,000' }));
-    expect(screen.queryByTestId('held-block')).toBeNull();
+    expect(screen.getByTestId('held-block').textContent).not.toContain('The rest is released');
     expect(onApprove).not.toHaveBeenCalled();
   });
 

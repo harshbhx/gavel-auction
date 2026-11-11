@@ -318,6 +318,15 @@ export function JudgeHub({
         </p>
       </header>
 
+      {(screenLink === null || consoleLink === null) && (
+        <div className="gv-hub__nokeys" role="status" data-testid="hub-no-keys">
+          <p>{t('hub.noToken')}</p>
+          <a className="gv-flow__action" href="/demo">
+            {t('hub.newDemo')}
+          </a>
+        </div>
+      )}
+
       <Instructor screen="hub" judge current={hubStep({ status: roomStatus, ended })} />
 
       {ended && (
@@ -339,9 +348,7 @@ export function JudgeHub({
             store={screenToken === null ? undefined : store}
           />
           <div className="gv-hub__row">
-            {screenLink === null ? (
-              <p className="gv-hub__missing">{t('hub.noToken')}</p>
-            ) : (
+            {screenLink === null ? null : (
               <>
                 <a className="gv-flow__action" href={screenLink} target="_blank" rel="noopener">
                   {t('hub.step1Open')}
@@ -405,21 +412,21 @@ export function JudgeHub({
         </section>
 
         <div className="gv-hub__side" role="group" aria-label={t('hub.sideLabel')} tabIndex={0}>
-          <Shortcut n={3} title={t('hub.step3')} hint={t('hub.step3Hint')}>
-            {consoleLink === null ? (
-              <p className="gv-hub__missing">{t('hub.noToken')}</p>
-            ) : (
-              <>
-                <a className="gv-flow__action" href={consoleLink} target="_blank" rel="noopener">
-                  {t('hub.step3Open')}
-                  <span className="gv-visually-hidden">{newTab}</span>
-                </a>
-                <Button variant="outline" onClick={() => copy('console', consoleLink)}>
-                  {copied === 'console' ? t('generic.copied') : t('generic.copy')}
-                </Button>
-              </>
-            )}
-          </Shortcut>
+          {consoleLink !== null && (
+            <Shortcut n={3} title={t('hub.step3')} hint={t('hub.step3Hint')}>
+              {
+                <>
+                  <a className="gv-flow__action" href={consoleLink} target="_blank" rel="noopener">
+                    {t('hub.step3Open')}
+                    <span className="gv-visually-hidden">{newTab}</span>
+                  </a>
+                  <Button variant="outline" onClick={() => copy('console', consoleLink)}>
+                    {copied === 'console' ? t('generic.copied') : t('generic.copy')}
+                  </Button>
+                </>
+              }
+            </Shortcut>
+          )}
 
           <Shortcut n={4} title={t('hub.step4')} hint={t('hub.step4Hint')}>
             {ended ? (
@@ -438,9 +445,7 @@ export function JudgeHub({
                 <span className="gv-visually-hidden">{newTab}</span>
               </a>
             )}
-            {keys.auctioneer === null ? (
-              <p className="gv-hub__note">{t('hub.watcherNote')}</p>
-            ) : (
+            {keys.auctioneer === null ? null : (
               <>
                 {ended ? null : bidderLink !== null ? (
                   <a className="gv-flow__action" href={bidderLink} target="_blank" rel="noopener">

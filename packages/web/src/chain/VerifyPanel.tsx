@@ -162,6 +162,9 @@ export function VerifyPanel({
           <Button onClick={check} disabled={text.trim() === ''}>
             {t('verify.check')}
           </Button>
+          {text.trim() === '' && (
+            <span className="gv-verify__why">{t('verify.check.disabled')}</span>
+          )}
           <label className="gv-verify__file">
             <span>{t('verify.file')}</span>
             <input

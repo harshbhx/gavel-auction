@@ -13,7 +13,7 @@ export function AuditSummary({ summary }: { summary: TrailSummary }) {
       <dl>
         <div data-tile="lot">
           <dt>{t('audit.sum.lot')}</dt>
-          <dd>{summary.lotTitle ?? t('receipt.untitled')}</dd>
+          <dd>{summary.lotTitle ?? t('audit.sum.untitled')}</dd>
         </div>
         <div data-tile="price" data-sold={sold ? 'true' : 'false'}>
           <dt>{sold ? t('audit.sum.winning') : t('audit.sum.leading')}</dt>

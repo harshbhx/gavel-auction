@@ -208,7 +208,7 @@
   margin: 0;
   min-height: 1.5em;
   line-height: 1.5;
-  font-size: var(--font-size-1);
+  font-size: var(--font-size-3);
 }
 
 .gv-console-controls__reason {
@@ -334,7 +334,7 @@
 
 .gv-console-hammer__alt {
   margin: 0;
-  font-size: var(--font-size-1);
+  font-size: var(--font-size-3);
   color: var(--color-fg-muted);
 }
 
@@ -387,7 +387,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  font-size: var(--font-size-1);
+  font-size: var(--font-size-3);
   color: var(--color-fg-muted);
 }
 
@@ -667,4 +667,43 @@
 
 .gv-voice__level::-moz-meter-bar {
   background: var(--color-accent);
+}
+
+.gv-console-board__label {
+  display: block;
+  font-family: var(--font-body, inherit);
+  font-size: var(--font-size-2);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--color-fg-muted);
+}
+
+.gv-console-board__price .gv-console-board__label {
+  margin-bottom: var(--space-1);
+}
+
+.gv-linkbutton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-fg);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.gv-manual__closed {
+  margin: 0;
+  font-size: var(--font-size-3);
+  color: var(--color-fg-muted);
+}
+
+.gv-voice-control__privacy-box > summary {
+  cursor: pointer;
+  font-size: var(--font-size-2);
+}
+
+.gv-console-controls__shortcuts {
+  margin: 0;
+  font-size: var(--font-size-3);
 }

@@ -17,6 +17,8 @@ export interface ManualEntryProps {
   rejection: string | null;
   /** The socket is down: the form keeps what was typed and says nothing was sent. */
   offline?: boolean;
+  /** The lot is closed or stopped: nothing can be entered and the form says why. */
+  closed?: boolean;
   /** Outcome of the latest manual bid, or null before one was sent. */
   status?: PendingStatus | null;
   /** Sends the latest manual bid again under its original id. */
@@ -46,6 +48,7 @@ export function ManualEntry({
   onSubmit,
   rejection,
   offline = false,
+  closed = false,
   status = null,
   onRetry,
 }: ManualEntryProps) {
@@ -86,6 +89,7 @@ export function ManualEntry({
       ? t(SEND_PROBLEM_COPY[problem])
       : null;
 
+  const blocked = offline || closed;
   const warn = <Icon name="warning" size={14} />;
   return (
     <form className="gv-manual" aria-label={t('console.manual')} onSubmit={submit} noValidate>
@@ -94,6 +98,7 @@ export function ManualEntry({
         inputMode="numeric"
         autoComplete="off"
         value={paddle}
+        disabled={closed}
         onChange={(e) => setPaddle(e.target.value)}
         {...(problem === 'paddle' ? { error: t('console.manual.badPaddle'), errorIcon: warn } : {})}
       />
@@ -103,6 +108,7 @@ export function ManualEntry({
         inputMode="decimal"
         autoComplete="off"
         value={amount}
+        disabled={closed}
         onChange={(e) => {
           justSent.current = false;
           setAmount(e.target.value);
@@ -117,9 +123,14 @@ export function ManualEntry({
                 ? { error: rejectionText(rejection), errorIcon: warn }
                 : {})}
       />
-      <Button type="submit" disabled={offline} className="gv-manual__send">
+      <Button type="submit" disabled={blocked} className="gv-manual__send">
         {t('console.manual.submit')}
       </Button>
+      {closed && (
+        <p role="status" className="gv-manual__closed">
+          {t('console.manual.closed')}
+        </p>
+      )}
       <div className="gv-manual__foot">
         <p role="status" className="gv-manual__status">
           {status !== null && status !== 'rejected' ? t(STATUS_COPY[status]) : ''}

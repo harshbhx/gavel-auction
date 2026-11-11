@@ -25,7 +25,7 @@ const LADDER = [
   [64, 90],
   [48, 130],
 ];
-const slides = [A.hero, A.how, A.arch, A.judge, B.audit, B.partners, B.data, B.ending];
+const slides = [A.hero, A.how, A.arch, A.judge, B.audit, B.partners, B.data, B.ending, B.outro];
 const report = [];
 const browser = await openBrowser();
 const size = (f) => statSync(f).size;

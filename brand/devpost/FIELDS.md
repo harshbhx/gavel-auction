@@ -75,9 +75,25 @@ All files are in `brand/devpost/gallery/` (1200x800, 3:2, largest 1.4 MB). Thumb
 | 7   | 07-open-data-and-gates.png | static PNG   | The evidence is open: five small datasets, each with a sha256 manifest and labelled for what it is. Gates G0, G1, G2 and G4 passed on the PayPal sandbox, G3 is a real probe in progress and G5 is partial on synthetic audio. |
 | 8   | 08-ending.png              | static PNG   | Try it. Verify it. No login. Web app, docs and source links.                                                                                                                                                                   |
 
-Slot reserved: the outro GIF with credits (being built by the 3D logo task). It is a GIF, so it goes in the description (under "Try it", next to the closing slide), not in the gallery. Add its file to `brand/devpost/outro/` and one image line in `DESCRIPTION.md` when it lands; it then replaces `description/16-ending.gif`, which stays as the fallback. Pending, owned by agent gfx-outro.
+The credits outro GIF (`brand/devpost/outro/09-outro-credits.gif`, 1200x800, 0.8 MB, 7 s loop) goes in the description under "Try it", not in the gallery (the gallery takes one GIF, the hero). The older `16-ending.gif` is kept in `brand/archive/devpost-description/` as the fallback.
 
-Devpost limits checked on 9 Nov: gallery files must be JPG, PNG or GIF, at most 5 MB each, ratio 3:2. All 8 gallery files are 1200x800 (3:2); the largest is `01-hero.gif` at 1.3 MB. The description images are not subject to the gallery limit; the largest, `16-ending.gif`, is 0.8 MB.
+### Where each GIF goes
+
+`brand/` is the single source: every file below is under `brand/devpost/`, raw URLs are in `DESCRIPTION.md`. Full used and unused list: [`INDEX.md`](INDEX.md).
+
+| Place on the page          | GIF                                   | Role                                 |
+| -------------------------- | ------------------------------------- | ------------------------------------ |
+| Gallery slot 1             | `gallery/01-hero.gif`                 | Intro (the only gallery GIF)         |
+| Description, first line    | `description/01-banner.gif`           | Intro banner                         |
+| What it does               | `description/04-how-it-works.gif`     | Hold, bid, hammer, receipt           |
+| How we built it            | `description/05-architecture.gif`     | Architecture: one bid, four hops     |
+| Ledger verify (judge flow) | `description/07-audit-and-verify.gif` | Do not trust, verify                 |
+| Accomplishments            | `description/13-results.gif`          | Kill survived, voice 24 of 24, chain |
+| Try it (last image)        | `outro/09-outro-credits.gif`          | Outro with credits                   |
+
+Compulsory three: intro (`01-banner`, `01-hero`), architecture (`05-architecture`), outro (`09-outro-credits`). Everything else in the description and gallery is a static PNG.
+
+Devpost limits checked on 9 Nov: gallery files must be JPG, PNG or GIF, at most 5 MB each, ratio 3:2. All 8 gallery files are 1200x800 (3:2); the largest is `01-hero.gif` at 1.3 MB. The description images are not subject to the gallery limit; the largest, `outro/09-outro-credits.gif`, is 0.8 MB.
 
 ## Team members (Devpost field)
 
@@ -103,13 +119,13 @@ Open items for the submitter:
 
 Reference table for answering questions about what is real. It is not part of the paste text (Devpost may not render tables).
 
-| Part                          | Real                                                                                                                                                      | Simulated or recorded                                                                                       |
-| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Authorize, capture, remainder | Authorization reads CAPTURED after a 350 of 500 final capture on the sandbox for two PayPal-account buyers (G1); the release of the remainder is inferred | Saga tests against the project's fake PayPal                                                                |
-| Card and guest holds          | Wallet and guest card AUTHORIZE in SDK v6 on the sandbox (G2)                                                                                             | n/a                                                                                                         |
-| Webhooks                      | Six real sandbox events verified through PayPal's endpoint (G4)                                                                                           | Tampered-event rejection and the retry schedule are tested against the fake only                            |
-| Honor period                  | A real probe is running (G3, final reading about 12 Nov 06:17 UTC)                                                                                        | 30 days of auctions on a fake clock ([SIM-MULTIDAY](../evidence/SIM/SIM-MULTIDAY.md)); not a sandbox result |
-| Settlement and crash          | 20 and 49 settlements of 6 holds measured on the sandbox; in-process crash resume in the nightly runs; one real process kill on a CI runner               | Many crash points and kills run against the fake PayPal; the kill was not on the deployed host              |
-| Speech                        | Live socket run with real providers on synthetic clips (24 of 24 answered)                                                                                | All audio is synthetic; the text parser is measured on 169 transcripts; no real room yet (G5 PARTIAL)       |
-| Hosted demo                   | Web at gavel.dualmindlab.tech and API at api.gavel.dualmindlab.tech, sandbox mode, one Render service with a 1 GB disk                                    | Demo holds can be simulated, and `/demo/scripted` is a recorded room in the browser                         |
-| Money                         | No real money moves anywhere; all PayPal calls are sandbox                                                                                                |                                                                                                             |
+| Part                          | Real                                                                                                                                                      | Simulated or recorded                                                                                            |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Authorize, capture, remainder | Authorization reads CAPTURED after a 350 of 500 final capture on the sandbox for two PayPal-account buyers (G1); the release of the remainder is inferred | Saga tests against the project's fake PayPal                                                                     |
+| Card and guest holds          | Wallet and guest card AUTHORIZE in SDK v6 on the sandbox (G2)                                                                                             | n/a                                                                                                              |
+| Webhooks                      | Six real sandbox events verified through PayPal's endpoint (G4)                                                                                           | Tampered-event rejection and the retry schedule are tested against the fake only                                 |
+| Honor period                  | A real probe is running (G3, final reading about 12 Nov 06:17 UTC)                                                                                        | 30 days of auctions on a fake clock ([SIM-MULTIDAY](../evidence/SIM/SIM-MULTIDAY.md)); not a sandbox result      |
+| Settlement and crash          | 20 and 49 settlements of 6 holds measured on the sandbox; in-process crash resume in the nightly runs; one real process kill on a CI runner               | Many crash points and kills run against the fake PayPal; the kill was not on the deployed host                   |
+| Speech                        | Live socket run with real providers on synthetic clips (24 of 24 answered)                                                                                | All audio is synthetic; the text parser is measured on 169 transcripts; confirm prompt on every bid (G5 PARTIAL) |
+| Hosted demo                   | Web at gavel.dualmindlab.tech and API at api.gavel.dualmindlab.tech, sandbox mode, one Render service with a 1 GB disk                                    | Demo holds can be simulated, and `/demo/scripted` is a recorded room in the browser                              |
+| Money                         | No real money moves anywhere; all PayPal calls are sandbox                                                                                                |                                                                                                                  |

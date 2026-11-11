@@ -26,6 +26,8 @@ export interface HoldButtonProps {
   holdMs?: number;
   /** Exposed as aria-disabled; the control stays focusable. */
   disabled?: boolean;
+  /** Shown as a line under the button while it is disabled, so it never fails silently. */
+  disabledReason?: string;
   /** Offers two taps for people who cannot hold. Default true. */
   confirmAlternative?: boolean;
   /** Red variant for destructive confirms such as stopping the auction. Same hold, same keys. */
@@ -44,6 +46,7 @@ export function HoldButton({
   hint,
   holdMs = HOLD_MS,
   disabled = false,
+  disabledReason,
   confirmAlternative = true,
   tone = 'default',
   id,
@@ -190,13 +193,18 @@ export function HoldButton({
           {hint !== undefined && <small>{hint}</small>}
         </span>
       </button>
+      {disabled && disabledReason !== undefined && (
+        <span className="ui-hold__reason" role="status">
+          {disabledReason}
+        </span>
+      )}
       <span className="ui-hold__note" id={noteId}>
         {t('ui.hold.note', { seconds })}
       </span>
       {confirmAlternative && (
         <button
           type="button"
-          className="ui-link"
+          className="ui-hold__alt"
           aria-disabled={disabled ? true : undefined}
           onClick={confirmByTaps}
         >

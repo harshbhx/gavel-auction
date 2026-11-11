@@ -15,6 +15,8 @@ export interface HoldCardProps {
   caption?: string;
   /** Overrides the region name when several cards share a page. */
   ariaLabel?: string;
+  /** Show the Hatched/Solid/Hollow legend. The bid screen leaves it to the help sheet. */
+  legend?: boolean;
 }
 
 function tagFor(state: HoldState): string {
@@ -46,6 +48,7 @@ export function HoldCard({
   chargedCents = 0,
   caption,
   ariaLabel,
+  legend = true,
 }: HoldCardProps) {
   const [hidden, setHidden] = useState(false);
   const charged = Math.min(Math.max(0, chargedCents), ceilingCents);
@@ -92,20 +95,22 @@ export function HoldCard({
         )}
         {state === 'released' && <i className="ui-holdbar__released ui-holdbar__released--full" />}
       </div>
-      <ul className="ui-legend" aria-label={t('ui.hold.legend')}>
-        <li>
-          <i className="ui-legend__held" />
-          {t('ui.hold.legendHeld')}
-        </li>
-        <li>
-          <i className="ui-legend__charged" />
-          {t('ui.hold.legendCharged')}
-        </li>
-        <li>
-          <i className="ui-legend__released" />
-          {t('ui.hold.legendReleased')}
-        </li>
-      </ul>
+      {legend && (
+        <ul className="ui-legend" aria-label={t('ui.hold.legend')}>
+          <li>
+            <i className="ui-legend__held" />
+            {t('ui.hold.legendHeld')}
+          </li>
+          <li>
+            <i className="ui-legend__charged" />
+            {t('ui.hold.legendCharged')}
+          </li>
+          <li>
+            <i className="ui-legend__released" />
+            {t('ui.hold.legendReleased')}
+          </li>
+        </ul>
+      )}
     </section>
   );
 }

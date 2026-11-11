@@ -74,7 +74,7 @@ describe('join screen (T-WEB-032)', () => {
     expect(screen.getByText(t('join.ended'))).toBeTruthy();
   });
 
-  it('shows the three steps with the first marked current', () => {
+  it('shows the two steps still ahead, starting at step 2', () => {
     render(
       <JoinScreen
         roomId="room1"
@@ -87,8 +87,9 @@ describe('join screen (T-WEB-032)', () => {
       />,
     );
     const steps = screen.getAllByRole('listitem');
-    expect(steps).toHaveLength(3);
+    expect(steps).toHaveLength(2);
     expect(steps[0]?.getAttribute('aria-current')).toBe('step');
+    expect(steps[0]?.textContent).toBe(t('join.step2'));
     expect(screen.getByText(t('join.sandboxNote'))).toBeTruthy();
   });
 

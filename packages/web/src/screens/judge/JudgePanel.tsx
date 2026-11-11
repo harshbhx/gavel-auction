@@ -147,6 +147,7 @@ export function JudgePanel({
   // The key lives in this tab's sessionStorage and in this state, never in a URL or a link.
   const [heldKey, setHeldKey] = useState<string | null>(() => (keyOffered ? readJudgeKey() : null));
   const [keyInput, setKeyInput] = useState('');
+  const [keyEmpty, setKeyEmpty] = useState(false);
   const [keyState, setKeyState] = useState<'idle' | 'checking' | JudgeKeyResult>('idle');
   const unlocked = keyOffered && heldKey !== null;
   const [ownRoom] = useState<LiveRoom | null>(() => liveRoomFrom(latestHubRoom()));
@@ -187,7 +188,12 @@ export function JudgePanel({
   const unlock = (e: FormEvent<HTMLFormElement>): void => {
     e.preventDefault();
     const typed = keyInput.trim();
-    if (typed === '' || keyState === 'checking' || checkKey === undefined) return;
+    if (keyState === 'checking' || checkKey === undefined) return;
+    if (typed === '') {
+      setKeyEmpty(true);
+      return;
+    }
+    setKeyEmpty(false);
     setKeyState('checking');
     checkKey(typed).then(
       (result) => {
@@ -203,13 +209,15 @@ export function JudgePanel({
   };
 
   const lock = (): void => {
+    setKeyEmpty(false);
     forgetJudgeKey();
     setHeldKey(null);
     setKeyState('idle');
   };
 
-  const keyMessage =
-    keyState === 'wrong'
+  const keyMessage = keyEmpty
+    ? t('try.key.typeKey')
+    : keyState === 'wrong'
       ? t('try.key.wrong')
       : keyState === 'locked'
         ? t('try.key.locked')
@@ -220,7 +228,12 @@ export function JudgePanel({
   const find = (e: FormEvent<HTMLFormElement>): void => {
     e.preventDefault();
     const trimmed = code.trim();
-    if (trimmed === '' || looking) return;
+    if (looking) return;
+    if (trimmed === '') {
+      setProblem(t('try.a2.typeCode', { n: CODE_LENGTH }));
+      setMissing(true);
+      return;
+    }
     // Without a server the join page is the only place that can answer, so go straight there.
     if (rooms === 'noServer') {
       openRoom(`/join/${encodeURIComponent(trimmed)}`);
@@ -255,6 +268,9 @@ export function JudgePanel({
     );
   };
 
+  // Join, Console and Screen need a room: until one exists they read as waiting, not as live.
+  const roomWait = room === null ? 'gv-judge__wait' : '';
+
   const scriptPrimary = !startable && rooms !== 'checking';
 
   const scriptLink = (
@@ -271,6 +287,7 @@ export function JudgePanel({
       key="start"
       size="bid"
       variant={scriptPrimary ? 'outline' : 'solid'}
+      className={scriptPrimary ? '' : 'gv-btn--main'}
       disabled={phase === 'busy' || !startable || !goalOk}
       onClick={start}
     >
@@ -340,6 +357,11 @@ export function JudgePanel({
               <div className="gv-judge__stack">
                 {scriptPrimary ? [scriptLink, startButton] : [startButton, scriptLink]}
               </div>
+              {startable && !goalOk && phase !== 'busy' && (
+                <p className="gv-judge__note" role="status">
+                  {t('try.a1.goalFirst')}
+                </p>
+              )}
               {(phase === 'failed' || (!startable && rooms !== 'checking')) && (
                 <div className="gv-flow__error" role="alert">
                   <p>
@@ -378,6 +400,7 @@ export function JudgePanel({
                             value={keyInput}
                             onChange={(e) => {
                               setKeyInput(e.target.value);
+                              setKeyEmpty(false);
                               if (keyState !== 'checking') setKeyState('idle');
                             }}
                             {...(keyMessage === null ? {} : { error: keyMessage })}
@@ -385,7 +408,7 @@ export function JudgePanel({
                           <Button
                             type="submit"
                             variant="outline"
-                            disabled={keyState === 'checking' || keyInput.trim() === ''}
+                            disabled={keyState === 'checking'}
                           >
                             {keyState === 'checking' ? t('try.key.checking') : t('try.key.unlock')}
                           </Button>
@@ -422,7 +445,7 @@ export function JudgePanel({
                       setProblem(null);
                     }}
                   />
-                  <Button type="submit" variant="outline" disabled={looking || code.trim() === ''}>
+                  <Button type="submit" variant="outline" disabled={looking}>
                     {looking ? t('try.a2.checking') : t('try.a2.go')}
                   </Button>
                 </form>
@@ -492,13 +515,7 @@ export function JudgePanel({
       </footer>
 
       <nav ref={bar} className="gv-judge__bar" aria-label={t('try.bar.label')}>
-        <Button
-          size="bid"
-          variant="outline"
-          className="gv-judge__go"
-          disabled={running}
-          onClick={script.run}
-        >
+        <Button size="bid" variant="outline" className="gv-judge__go" onClick={script.run}>
           <span>
             {running
               ? t('try.run.running')
@@ -508,17 +525,27 @@ export function JudgePanel({
           </span>
           <small>{t('try.run.sub')}</small>
         </Button>
-        <Button size="bid" variant="outline" onClick={() => setDialog('join')}>
+        <Button size="bid" variant="outline" className={roomWait} onClick={() => setDialog('join')}>
           <span>{t('try.bar.join')}</span>
-          <small>{t('try.bar.joinSub')}</small>
+          <small>{room === null ? t('try.bar.needsRoom') : t('try.bar.joinSub')}</small>
         </Button>
-        <Button size="bid" variant="outline" onClick={() => setDialog('console')}>
+        <Button
+          size="bid"
+          variant="outline"
+          className={roomWait}
+          onClick={() => setDialog('console')}
+        >
           <span>{t('try.bar.console')}</span>
-          <small>{t('try.bar.consoleSub')}</small>
+          <small>{room === null ? t('try.bar.needsRoom') : t('try.bar.consoleSub')}</small>
         </Button>
-        <Button size="bid" variant="outline" onClick={() => setDialog('screen')}>
+        <Button
+          size="bid"
+          variant="outline"
+          className={roomWait}
+          onClick={() => setDialog('screen')}
+        >
           <span>{t('try.bar.screen')}</span>
-          <small>{t('try.bar.screenSub')}</small>
+          <small>{room === null ? t('try.bar.needsRoom') : t('try.bar.screenSub')}</small>
         </Button>
       </nav>
 
