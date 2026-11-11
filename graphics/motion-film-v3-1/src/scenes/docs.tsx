@@ -355,7 +355,7 @@ export function Docs({ t, frame, fps }: SceneCtx) {
               <Display t={t} at={REFERENCE + 0.3} text="API reference" size={88} color={INK} />
             </div>
             <div
-              style={{ fontFamily: BODY, fontSize: 22, color: MUTE, marginTop: 6, maxWidth: 560 }}
+              style={{ fontFamily: BODY, fontSize: 22, color: MUTE, marginTop: 6, maxWidth: 480 }}
             >
               The HTTP API of the host as an OpenAPI 3.1 document, with authentication, errors and
               rate limits.
