@@ -2,15 +2,17 @@ import { cn } from './cn';
 
 // Sidebar badge for the `status` frontmatter field (see statusBadgesPlugin in lib/source.ts).
 // The badge says the state in words and carries the Holdline fill, so colour is never the
-// only signal: solid = verified, hatched = in progress or unverified, hollow = not done.
+// only signal: solid = verified, hatched = running, measured, tested on synthetic data or described only, hollow = not done.
 const styles: Record<string, string> = {
   verified: 'hl-solid-chip',
   'code-checked': 'hl-checked-chip',
   pass: 'hl-solid-chip',
   simulated: 'hl-hatch-chip',
-  'in progress': 'hl-hatch-chip',
-  unverified: 'hl-hatch-chip',
-  partial: 'hl-hatch-chip',
+  running: 'hl-hatch-chip',
+  ongoing: 'hl-hatch-chip',
+  described: 'hl-hatch-chip',
+  measured: 'hl-hatch-chip',
+  tested: 'hl-hatch-chip',
   fail: 'hl-stop-chip',
   planned: 'hl-hollow-chip',
   new: 'hl-solid-chip',

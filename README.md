@@ -102,10 +102,10 @@ Numbers are as recorded in [docs/GATES.md](docs/GATES.md). Every run link below 
 | Settlement speed on the sandbox                                          | Hammer to SETTLED p95 6927.43 ms against 6000 ms and hammer to CAPTURED p95 3766.67 ms against 2500 ms (50 settlements, 49 completed of 6 holds, run INCOMPLETE: 1 timeout, 3 failed capture calls). An earlier n=20 run read 5591.30 ms and 3010.04 ms | [run 42563147792](https://github.com/harshbhx/gavel-auction/actions/runs/42563147792), [latency](docs/evidence/latency)                                                          |
 | Tested                                                                   | More than 4,500 test cases run in CI; all eight P0 items of the security review PASS                                                                                                                                                                    | [docs/SECURITY-REVIEW.md](docs/SECURITY-REVIEW.md)                                                                                                                               |
 
-Open and in progress, stated as of 9 Nov 2026:
+Still open, stated as of 9 Nov 2026:
 
 - **G3, honor period and reauthorize: a real sandbox probe is running.** Day 0 was recorded on 7 Nov 2026 at 03:06 UTC and the final reading is about 12 Nov 06:17 UTC. Early readings on older authorizations at 3.24 and 3.5075 days accepted a partial capture of 1.00 (HTTP 201) ([evidence](docs/evidence/G3-early)). The 30-day auction run is a simulation on a fake clock ([SIM-MULTIDAY](docs/evidence/SIM/SIM-MULTIDAY.md)), not a sandbox result.
-- **G5, voice accuracy: PARTIAL, and the confirm prompt protects every voice bid.** Voice bids were tested with synthetic speech clips. On two sets of 24 clips, Deepgram nova-3 and Groq whisper-large-v3-turbo score wrong accept 0.000 (tuned on those clips), and on a live run of 20 clips Deepgram parsed 11 of 11 scripted bids and Groq 9 of 11. A held-out noisy set of 120 synthetic clips, measured once against thresholds fixed beforehand, read wrong accept 0.058 for Groq and 0.092 for Deepgram against 0.05 ([result](docs/evidence/G5/HELDOUT-NOISY.md)). A spoken bid never counts until the bidder confirms it.
+- **G5, voice accuracy: tested with synthetic voice clips, with a confirm step on every voice bid.** Voice bids were tested with synthetic speech clips. On two sets of 24 clips, Deepgram nova-3 and Groq whisper-large-v3-turbo score wrong accept 0.000 (tuned on those clips), and on a live run of 20 clips Deepgram parsed 11 of 11 scripted bids and Groq 9 of 11. A held-out noisy set of 120 synthetic clips, measured once against thresholds fixed beforehand, read wrong accept 0.058 for Groq and 0.092 for Deepgram against 0.05 ([result](docs/evidence/G5/HELDOUT-NOISY.md)). A spoken bid never counts until the bidder confirms it.
 - **Latency targets:** both are missed on the larger run; keeping them, raising them with a reason or reducing latency is an owner decision that is still open.
 - **Scope:** PayPal sandbox only. The server kill ran on a CI runner, not the deployed host. The live socket run used the fake PayPal and synthetic clips, and the web console microphone has been tested with a fake microphone and socket. A `final_capture` and a void on a guest-card authorization are not run, and the release of the remainder is inferred, not read from a buyer balance.
 
@@ -265,9 +265,9 @@ A gate is a question answered by a recorded run. G0 to G4 ran against the real P
 | G0   | Sandbox app and buyer accounts work           | ![PASS](https://img.shields.io/badge/-PASS-2ea44f?style=flat-square)                 | Token, scopes and an AUTHORIZE order; re-run on 9 Nov ([G0](docs/evidence/G0))                                                                                                                                                               |
 | G1   | Partial capture and release of the remainder  | ![PASS](https://img.shields.io/badge/-PASS-2ea44f?style=flat-square)                 | Authorize 500.00, capture 350.00 with `final_capture`: the authorization reads CAPTURED for two PayPal-account buyers, and a later void answers 422 `PREVIOUSLY_CAPTURED`. The release of the remainder is inferred, not read from a balance |
 | G2   | Card and guest AUTHORIZE                      | ![PASS](https://img.shields.io/badge/-PASS-2ea44f?style=flat-square)                 | Wallet and guest card both authorized in PayPal JS SDK v6                                                                                                                                                                                    |
-| G3   | Honor period, validity and reauthorize        | ![IN PROGRESS](https://img.shields.io/badge/-IN%20PROGRESS-0969da?style=flat-square) | A real probe running since 7 Nov 03:06 UTC; final reading about 12 Nov 06:17 UTC. GATES.md reads NOT RUN until that reading is recorded                                                                                                      |
+| G3   | Honor period, validity and reauthorize        | ![RUNNING](https://img.shields.io/badge/-RUNNING-0969da?style=flat-square)           | A real probe running since 7 Nov 03:06 UTC; final reading about 12 Nov 06:17 UTC. the gate is not marked passed until that reading is recorded                                                                                               |
 | G4   | Webhook signature verification on real events | ![PASS](https://img.shields.io/badge/-PASS-2ea44f?style=flat-square)                 | 6 real deliveries verified by PayPal; rejection of a tampered event is covered against the fake PayPal                                                                                                                                       |
-| G5   | Speech-to-text accuracy on noisy bids         | ![PARTIAL](https://img.shields.io/badge/-PARTIAL-dbab09?style=flat-square)           | Wrong accept 0.000 on 24 clips in each of two synthetic sets (tuned on them); 0.058 (Groq) and 0.092 (Deepgram) on a held-out noisy set of 120 clips against 0.05. Every spoken bid goes through the confirm prompt                          |
+| G5   | Speech-to-text accuracy on noisy bids         | ![TESTED](https://img.shields.io/badge/-TESTED%20SYNTHETIC-0969da?style=flat-square) | Wrong accept 0.000 on 24 clips in each of two synthetic sets (tuned on them); 0.058 (Groq) and 0.092 (Deepgram) on a held-out noisy set of 120 clips against 0.05. Every spoken bid goes through the confirm prompt                          |
 
 <p align="center">
   <picture>
@@ -283,13 +283,13 @@ A gate is a question answered by a recorded run. G0 to G4 ran against the real P
 
 Five small datasets and a read-only Evidence Explorer Space are on Hugging Face, each labelled for what it is. The speech, simulation and trace sets use synthetic audio, a fake clock and scripted auctions by design: GAVEL does not collect real people's data.
 
-| Dataset                                                                       | Label                                         |
-| ----------------------------------------------------------------------------- | --------------------------------------------- |
-| [gavel-gates](https://huggingface.co/datasets/harshbhx/gavel-gates)           | real sandbox, synthetic audio, G3 in progress |
-| [gavel-latency](https://huggingface.co/datasets/harshbhx/gavel-latency)       | real sandbox, small n                         |
-| [gavel-sim-30d](https://huggingface.co/datasets/harshbhx/gavel-sim-30d)       | simulated, fake clock                         |
-| [gavel-stt-bids](https://huggingface.co/datasets/harshbhx/gavel-stt-bids)     | synthetic audio                               |
-| [gavel-audit-demo](https://huggingface.co/datasets/harshbhx/gavel-audit-demo) | synthetic, fake PayPal                        |
+| Dataset                                                                       | Label                                     |
+| ----------------------------------------------------------------------------- | ----------------------------------------- |
+| [gavel-gates](https://huggingface.co/datasets/harshbhx/gavel-gates)           | real sandbox, synthetic audio, G3 running |
+| [gavel-latency](https://huggingface.co/datasets/harshbhx/gavel-latency)       | real sandbox, small n                     |
+| [gavel-sim-30d](https://huggingface.co/datasets/harshbhx/gavel-sim-30d)       | simulated, fake clock                     |
+| [gavel-stt-bids](https://huggingface.co/datasets/harshbhx/gavel-stt-bids)     | synthetic audio                           |
+| [gavel-audit-demo](https://huggingface.co/datasets/harshbhx/gavel-audit-demo) | synthetic, fake PayPal                    |
 
 Space: [gavel-evidence-explorer](https://huggingface.co/spaces/harshbhx/gavel-evidence-explorer). How they are built: [docs/HF_COLLECTION.md](docs/HF_COLLECTION.md).
 

@@ -77,41 +77,177 @@
   order: 3;
 }
 
-@media (min-width: 1100px) and (min-height: 640px) {
+@media (min-width: 1100px) and (min-height: 560px) {
   .gv-hub {
     box-sizing: border-box;
-    /* The sandbox banner and the page margin above the hub measure 98 px in the browser run */
-    height: calc(100vh - var(--gv-hub-chrome, 100px));
-    height: calc(100dvh - var(--gv-hub-chrome, 100px));
+    gap: var(--space-3);
+    /* The sandbox notice row above the hub measures about 48 px; the rest is the hub's own. */
+    height: calc(100vh - var(--gv-hub-chrome, 64px));
+    height: calc(100dvh - var(--gv-hub-chrome, 64px));
     overflow: hidden;
-    padding-bottom: var(--space-4);
+    padding: var(--space-3) var(--space-5);
   }
 
-  .gv-hub__grid {
+  /* One line: kicker, title and lead side by side, the state pill at the end. */
+  .gv-hub .gv-hub__head {
+    align-items: center;
+    padding-bottom: var(--space-2);
+  }
+
+  .gv-hub .gv-hub__titles {
+    flex-flow: row wrap;
+    align-items: baseline;
+    gap: var(--space-1) var(--space-4);
+  }
+
+  .gv-hub .gv-hub__titles > h1 {
+    font-size: var(--font-size-5);
+  }
+
+  .gv-hub .gv-hub__lead {
+    font-size: var(--font-size-2);
+  }
+
+  /* The room guide becomes one slim row: title, steps in a line, hide control. */
+  .gv-hub .gv-instructor {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 var(--space-4);
+    margin: 0;
+    padding-inline: var(--space-2);
+  }
+
+  .gv-hub .gv-instructor__head {
+    min-height: 36px;
+    gap: var(--space-3);
+  }
+
+  .gv-hub .gv-instructor__head + div {
+    flex: 1 1 24rem;
+    min-width: 0;
+  }
+
+  .gv-hub .gv-instructor__lead {
+    display: none;
+  }
+
+  .gv-hub .gv-instructor__steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 var(--space-4);
+    margin: 0;
+    padding: 0;
+    list-style-position: inside;
+  }
+
+  .gv-hub .gv-instructor__steps li {
+    padding: 0;
+  }
+
+  .gv-hub .gv-hub__grid {
     display: grid;
     flex: 1;
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 0.8fr);
-    gap: var(--space-5);
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.95fr) minmax(0, 0.8fr);
+    gap: var(--space-4);
     min-height: 0;
   }
 
-  .gv-hub__screen,
-  .gv-hub__ticket,
-  .gv-hub__side {
+  .gv-hub .gv-hub__screen,
+  .gv-hub .gv-hub__ticket,
+  .gv-hub .gv-hub__side {
     order: 0;
     min-height: 0;
   }
 
   /* Whatever does not fit scrolls inside its own column, never the page */
-  .gv-hub__side,
-  .gv-hub__test {
+  .gv-hub .gv-hub__side {
     overflow-y: auto;
   }
 
-  .gv-hub__test {
-    flex: 0 1 auto;
-    min-height: 0;
+  .gv-hub .gv-hub__side {
+    gap: var(--space-3);
+  }
+
+  .gv-hub .gv-hub__card {
+    gap: var(--space-1);
+    padding: var(--space-3);
+    box-shadow: var(--shadow-1);
+  }
+
+  .gv-hub .gv-hub__hint {
+    font-size: var(--font-size-1);
+  }
+
+  .gv-hub .gv-hub__body {
+    gap: var(--space-2);
+    margin-top: var(--space-1);
+  }
+
+  /* Share, audit, verify, new demo and the close buttons sit two to a row */
+  .gv-hub .gv-hub__more {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-2);
     margin-top: 0;
+  }
+
+  .gv-hub .gv-hub__more > .gv-btn,
+  .gv-hub .gv-hub__more > .gv-flow__action,
+  .gv-hub .gv-hub__more > .gv-hub__close,
+  .gv-hub .gv-hub__more > .gv-hub__note {
+    min-width: 0;
+    min-height: 40px;
+  }
+
+  .gv-hub .gv-hub__more > .gv-hub__close {
+    display: contents;
+  }
+
+  .gv-hub .gv-hub__more > .gv-hub__note {
+    grid-column: 1 / -1;
+    min-height: 0;
+  }
+
+  .gv-hub .gv-hub__stub {
+    padding: var(--space-3);
+  }
+
+  .gv-hub .gv-hub__main {
+    gap: var(--space-2);
+    padding: var(--space-3);
+  }
+
+  .gv-hub .gv-hub__flap {
+    max-width: 48px;
+    font-size: clamp(24px, 3vw, 36px);
+  }
+
+  /* Test it in 2 minutes: the five steps as one strip along the bottom */
+  .gv-hub .gv-hub__test {
+    flex: none;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: var(--space-4);
+    margin: 0;
+    padding: var(--space-2) var(--space-4);
+  }
+
+  .gv-hub .gv-hub__test > h2 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: var(--font-size-4);
+    text-transform: uppercase;
+  }
+
+  .gv-hub .gv-hub__test ol {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: var(--space-3);
+    padding-left: var(--space-5);
+    font-size: var(--font-size-1);
+    line-height: 1.3;
   }
 }
 
@@ -213,7 +349,7 @@
   border-radius: var(--radius-md);
 }
 
-.gv-hub__test > h3 {
+.gv-hub__test > h2 {
   margin: 0 0 var(--space-2);
   font-family: var(--font-display);
   font-size: var(--font-size-4);

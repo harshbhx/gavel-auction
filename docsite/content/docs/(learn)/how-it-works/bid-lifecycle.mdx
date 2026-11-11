@@ -10,7 +10,7 @@ full: true
 A <Term id="bid">bid</Term> in GAVEL is a small message with an amount in cents. It can come from a tap on a phone or from speech in the room. Either way it passes the same short chain: the **<Term id="room">room</Term>** decides whether it needs a human yes, the **<Term id="engine">engine</Term>** decides whether the bid is legal, and only then does it reach the event log and the other screens.
 
 <Callout type="info" title="Verified against the code, not measured">
-  This page describes code paths that were read in the repository. It makes no speed or accuracy claim. Speech accuracy is a separate, still partial gate: see the note on <Term id="gate-g5">G5</Term> below.
+  This page describes code paths that were read in the repository. It makes no speed or accuracy claim. Speech accuracy is a separate gate, tested with synthetic clips only: see the note on <Term id="gate-g5">G5</Term> below.
 </Callout>
 
 ## In plain words
@@ -44,7 +44,7 @@ A drop is written to the log as a `voice_dropped` record (reason and confidence,
   </Tab>
 </Tabs>
 
-<Held title="Spoken bids and the partial accuracy gate">
+<Held title="Spoken bids and the speech accuracy gate">
   <GateBadge id="G5" /> Speech accuracy is within the threshold on the synthetic speech clips, with fixes chosen on those same clips. The recorded decision is that spoken bids go through the <Term id="confirm-prompt">confirm prompt</Term>. In the code as wired, the voice bridge has no second parser, so a clean reading scores at most 0.82, below the 0.85 auto line, and every spoken bid arrives as a confirm. The code does not have a separate switch for this. See [Voice and the confirm gate](/docs/how-it-works/voice-and-confirm) and [Gates](/docs/proof/gates).
 </Held>
 

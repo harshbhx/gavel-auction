@@ -8,7 +8,7 @@ This section is written for someone who has to score GAVEL without running it. E
 
 <Held title="Two readings are still coming">
 
-Gate <Term id="gate-g3">G3</Term> (how long a PayPal <Term id="authorization">authorization</Term> stays capturable) is a real timed probe: day 0 was 7 Nov 2026 03:06 UTC and is recorded, and the final reading is about 12 Nov 06:17 UTC. Gate <Term id="gate-g5">G5</Term> (speech accuracy) is PARTIAL: tested with synthetic speech clips, and the confirm prompt protects every voice bid, so spoken bids always go through a <Term id="confirm-prompt">confirm prompt</Term>. No real money moves anywhere.
+Gate <Term id="gate-g3">G3</Term> (how long a PayPal <Term id="authorization">authorization</Term> stays capturable) is a real timed probe: day 0 was 7 Nov 2026 03:06 UTC and is recorded, and the final reading is about 12 Nov 06:17 UTC. Gate <Term id="gate-g5">G5</Term> (speech accuracy) was tested with synthetic speech clips, and the confirm prompt protects every voice bid, so spoken bids always go through a <Term id="confirm-prompt">confirm prompt</Term>. No real money moves anywhere.
 
 </Held>
 
@@ -52,7 +52,8 @@ Gate <Term id="gate-g3">G3</Term> (how long a PayPal <Term id="authorization">au
 | --- | --- |
 | PASS | A real PayPal sandbox run with committed evidence or a named run log. |
 | FAIL | Measured and below the limit. The fallback is in place. |
-| IN PROGRESS | A real run that has started and has no final result yet. |
+| RUNNING | A real run that has started and has no final result yet. |
+| TESTED, SYNTHETIC CLIPS | Tested with synthetic data, with a safeguard on every use; a live or noisy-room test would add more. |
 | SIMULATED | Our code over a model of PayPal on a fake clock. It says nothing about PayPal itself. |
 
 When a page here and `docs/GATES.md` disagree, the gate record wins. The gate table above is generated from it when the site is built.

@@ -8,6 +8,7 @@ import { ControlError, ControlTimeoutError } from '../../net/controlPort';
 import type { ControlPort } from '../../net/transport';
 import type { AuctionConfig, AuctionStatus } from '../../wire';
 import { HammerDialog, type HammerLeader } from './HammerDialog';
+import { HAMMER_HOLD_MS, HAMMER_HOLD_SECONDS } from './hammerHold';
 import { SHORTCUTS, ShortcutHelp, useShortcuts, type ShortcutHandlers } from './ShortcutHelp';
 
 export const DEFAULT_EXTEND_MS = 30_000;
@@ -110,18 +111,43 @@ export function disabledReason(name: ControlName, s: ControlState): ReasonKey | 
   return null;
 }
 
-/** The reason that holds for the whole lot, shown when no single control is being pointed at. */
-function firstReason(s: ControlState): ReasonKey | null {
-  for (const name of CONTROL_ORDER) {
-    // The hammer is exempt from busy, so the lot-wide line follows the others.
-    const r = disabledReason(name, s);
-    if (r === 'controls.reason.stopped' || r === 'controls.reason.offline') return r;
-    if (r === 'controls.reason.busy') return r;
-  }
-  if (s.status === 'SCHEDULED') return 'controls.reason.openFirst';
-  if (s.status === 'PAUSED') return 'controls.reason.paused';
-  if (s.status === 'OPEN') return 'controls.reason.alreadyOpen';
-  return 'controls.reason.ended';
+/**
+ * Open lot is a button only before the lot opens. After that its slot holds a short note of the
+ * lot state, so the bar never shows a button that can not be used again.
+ */
+export function showsOpenButton(status: AuctionStatus): boolean {
+  return status === 'SCHEDULED';
+}
+
+/** The buttons the bar shows in this state, in slot order. */
+export function shownControls(status: AuctionStatus): readonly ControlName[] {
+  return CONTROL_ORDER.filter((name) => name !== 'open' || showsOpenButton(status));
+}
+
+/**
+ * The reason that holds for the whole lot, shown when no single control is being pointed at. It
+ * comes from the predicate that disables the buttons: a reason is given only when every shown
+ * button is off for it, so the line never contradicts a button that can be pressed.
+ */
+export function lotReason(s: ControlState): ReasonKey | null {
+  // The hammer is exempt from busy, so the waiting line follows the other controls.
+  if (s.busy && s.online && !s.stopped) return 'controls.reason.busy';
+  const reasons = shownControls(s.status).map((name) => disabledReason(name, s));
+  const first = reasons[0] ?? null;
+  return first !== null && reasons.every((r) => r === first) ? first : null;
+}
+
+const NOTE_KEY = {
+  open: 'controls.lot.open',
+  paused: 'controls.lot.paused',
+  closed: 'controls.lot.closed',
+} as const;
+
+/** The note that takes the Open lot slot once the lot has opened. */
+function lotNote(status: AuctionStatus): string {
+  if (status === 'OPEN') return t(NOTE_KEY.open);
+  if (status === 'PAUSED') return t(NOTE_KEY.paused);
+  return t(NOTE_KEY.closed);
 }
 
 /** The words for a refused hammer: a new price, a new leader, or a generic change. */
@@ -290,9 +316,24 @@ export function Controls({
 
   // One line under the bar, always the same height: the reason for the control the user is on,
   // else the reason that holds for the lot as a whole. Never one line per button.
+  // An enabled control says what it will do; it never borrows a reason from another control.
+  const effect: Readonly<Record<ControlName, string>> = {
+    open: t('controls.does.open'),
+    pause: t('controls.does.pause'),
+    resume: t('controls.does.resume'),
+    extend: t('controls.does.extend', { s: Math.round(extendMs / 1000) }),
+    hammer: t('controls.does.hammer'),
+  };
+  const wholeLot = lotReason(state);
   const aimedReason = aimed === null ? null : disabledReason(aimed, state);
-  const lotReason = firstReason(state);
-  const reasonLine = aimedReason ?? lotReason;
+  const reasonLine =
+    aimed === null
+      ? wholeLot === null
+        ? ''
+        : t(wholeLot)
+      : aimedReason === null
+        ? effect[aimed]
+        : t(aimedReason);
 
   return (
     <div className="gv-console-controls">
@@ -300,6 +341,15 @@ export function Controls({
         {items.map((item) => {
           const reason = disabledReason(item.name, state);
           const reasonId = `${baseId}-${item.name}`;
+          if (item.name === 'open' && !showsOpenButton(status)) {
+            return (
+              <div key={item.name} className="gv-console-controls__item" data-control={item.name}>
+                <span className="gv-console-controls__note" data-slot="lot-note">
+                  {lotNote(status)}
+                </span>
+              </div>
+            );
+          }
           return (
             <div key={item.name} className="gv-console-controls__item" data-control={item.name}>
               <Button
@@ -328,7 +378,7 @@ export function Controls({
         })}
       </div>
       <p className="gv-console-controls__reason" data-slot="control-reason">
-        {reasonLine === null ? '' : t(reasonLine)}
+        {reasonLine}
       </p>
       <p className="gv-console-controls__result" role="status">
         {result}
@@ -346,7 +396,8 @@ export function Controls({
         <div className="gv-console-hammer">
           <DeskHold
             key={holdRound}
-            label={t('console.hammerDesk')}
+            label={t('console.hammerDesk', { s: HAMMER_HOLD_SECONDS })}
+            holdMs={HAMMER_HOLD_MS}
             hint={t('console.hammerDeskHint')}
             disabled={hammerReason !== null}
             confirmAlternative={false}

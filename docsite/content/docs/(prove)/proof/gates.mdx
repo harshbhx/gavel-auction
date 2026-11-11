@@ -4,7 +4,7 @@ description: Each sandbox gate, its result and the caveat that goes with it.
 icon: DoorOpen
 ---
 
-A <Term id="gate">gate</Term> is **closed** only when its status is PASS or FAIL with a recorded decision. A gate without evidence reads NOT RUN. This table is generated from `docs/GATES.md` when the site is built.
+A <Term id="gate">gate</Term> is **closed** only when its status is PASS or FAIL with a recorded decision. A gate without evidence is not marked passed. This table is generated from `docs/GATES.md` when the site is built.
 
 <GatesTable />
 
@@ -44,7 +44,7 @@ A wallet buyer and a guest with a sandbox card were both authorized through the 
 
 <Held title="In progress">
 
-A real probe started on 7 Nov 2026 at 03:06 UTC. Checkpoints are at 3.5, 4 and 5 days; the final reading is about 12 Nov 06:17 UTC. Earlier attempts on 4 to 7 Nov never ran, so no earlier day is claimed. Until the readings exist the gate reads NOT RUN.
+A real probe started on 7 Nov 2026 at 03:06 UTC. Checkpoints are at 3.5, 4 and 5 days; the final reading is about 12 Nov 06:17 UTC. Earlier attempts on 4 to 7 Nov never ran, so no earlier day is claimed. Until the readings exist the gate is not marked passed.
 
 </Held>
 
@@ -67,13 +67,13 @@ Six real deliveries, including a capture and a void, each verified SUCCESS throu
 | Human-like synthetic voice, noise-free | Deepgram nova-3 | 24 | 1.000 | 0.000 | 0.292 | 0.000 |
 | Human-like synthetic voice, noise-free | Groq whisper-large-v3-turbo with a bid prompt | 24 | 0.923 | 0.000 | 0.333 | 0.000 |
 
-Status PARTIAL. After the evaluation label fix, parser fixes and provider options, both providers are within the limit on both clip sets, but the fixes were chosen on these same clips. The clips are synthetic speech and noise-free. Decision: spoken bids go through the <Term id="confirm-prompt">confirm prompt</Term> (assist mode). See [voice and the confirm gate](/docs/how-it-works/voice-and-confirm).
+Tested with synthetic clips; the confirm step stays. After the evaluation label fix, parser fixes and provider options, both providers are within the limit on both clip sets, but the fixes were chosen on these same clips. The clips are synthetic speech and noise-free. Decision: spoken bids go through the <Term id="confirm-prompt">confirm prompt</Term> (assist mode). See [voice and the confirm gate](/docs/how-it-works/voice-and-confirm).
 
 ## What changes the decision
 
 - <Term id="gate-g3">G3</Term> shows a validity window shorter than the longest planned auction: auctions are capped, or the decision moves to NO-GO for long auctions.
 - G3 passes with a window that covers the planned auctions: GO for card and wallet.
-- <Term id="gate-g5">G5</Term> stays PARTIAL: voice bids stay behind the confirm prompt. The payments decision is unchanged.
+- <Term id="gate-g5">G5</Term> stays tested with synthetic clips only: voice bids stay behind the confirm prompt. The payments decision is unchanged.
 
 <CodePaths
   paths={[

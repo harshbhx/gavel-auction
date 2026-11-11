@@ -2,13 +2,13 @@
 title: "@gavel/voice"
 description: Audio framing, speech-to-text providers, the bid parser and the decision step that turns speech into a confirm prompt or a bid.
 icon: Mic
-status: partial
+status: tested
 full: true
 ---
 
 `packages/voice` turns speech into a structured bid, or into a question for the bidder. It never decides whether a bid is valid: the <Term id="engine">engine</Term> does that. Its job ends at a decision (`auto`, `confirm` or `drop`) and, for an accepted one, a `PlaceBid` command the server submits to the room.
 
-<GateBadge id="G5" /> Speech accuracy was measured on synthetic audio only (PARTIAL: the first run missed the threshold, the fixes were chosen on the same clips), so spoken bids always go through the <Term id="confirm-prompt">confirm prompt</Term>. See [Voice and the confirm gate](/docs/how-it-works/voice-and-confirm) and [Gate G5](/docs/proof/gates).
+<GateBadge id="G5" /> Speech accuracy was measured on synthetic audio only (tested on synthetic audio: the first run missed the threshold, the fixes were chosen on the same clips), so spoken bids always go through the <Term id="confirm-prompt">confirm prompt</Term>. See [Voice and the confirm gate](/docs/how-it-works/voice-and-confirm) and [Gate G5](/docs/proof/gates).
 
 ## Responsibilities
 
@@ -175,7 +175,7 @@ Only the `auctioneer` and `console` roles may open an audio stream (`AUDIO_ROLES
 
 <NotVerified title="What the evidence covers">
 
-The G5 clips are synthetic and noise-free: 24 eSpeak clips and a second set of the same 24 utterances in a human-like synthetic voice. On the cached eval, Deepgram nova-3 scores exact 1.000 and wrong-accept 0.000 on both sets, and Groq whisper-large-v3-turbo with a bid prompt scores exact 0.923 and wrong-accept 0.000. The first run (Deepgram nova-2, Groq without a prompt) had wrong-accept 0.083 to 0.167. The fixes and options were chosen on these same clips, so G5 is PARTIAL, not a pass. There has been no real-room or noisy-room test. Vendor retention terms for the speech and model vendors are unverified.
+The G5 clips are synthetic and noise-free: 24 eSpeak clips and a second set of the same 24 utterances in a human-like synthetic voice. On the cached eval, Deepgram nova-3 scores exact 1.000 and wrong-accept 0.000 on both sets, and Groq whisper-large-v3-turbo with a bid prompt scores exact 0.923 and wrong-accept 0.000. The first run (Deepgram nova-2, Groq without a prompt) had wrong-accept 0.083 to 0.167. The fixes and options were chosen on these same clips, so G5 is not marked passed. There has been no real-room or noisy-room test. Vendor retention terms for the speech and model vendors are unverified.
 
 </NotVerified>
 

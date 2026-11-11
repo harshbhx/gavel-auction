@@ -9,6 +9,13 @@ import { clearAuctioneerToken } from '../../src/store/session';
 import { baseConfig, openSnapshot, priceMsg, roster, stateMsg } from '../../src/testing/builders';
 import { formatUsd } from '../../src/util/money';
 
+// The hold time itself is covered in ConsoleHammerHold.test.tsx. These route tests run on real
+// timers, so the hold is shortened here to keep them from waiting seconds per hammer.
+vi.mock('../../src/screens/console/hammerHold', () => ({
+  HAMMER_HOLD_MS: 50,
+  HAMMER_HOLD_SECONDS: 3,
+}));
+
 const ROOM = '01ARZ3NDEKTSV4RRFFQ69G5FAV';
 const CONSOLE = `/r/${ROOM}/console`;
 

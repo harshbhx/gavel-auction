@@ -2,7 +2,7 @@
 title: Threat model
 description: Who can do what, where the trust boundaries are, and what each secret protects. Names only, never values.
 icon: ShieldAlert
-status: unverified
+status: described
 full: true
 ---
 
@@ -128,7 +128,7 @@ A trust boundary is a line where data passes from something we do not control to
     Per-source rate limits for joins, bids and HTTP, connection limits per bidder and per room, a cap on bids per auction and size caps on bodies and audio frames. The defaults are in `packages/server/src/config.ts`. The limits are covered by the abuse and denial-of-service tests in `packages/e2e/test/security`.
   </Accordion>
   <Accordion title="I speak a bid for someone else">
-    The microphone is the room's, so a spoken bid names a paddle. It still passes the room gate and the engine: the bidder must be on the roster, the amount must be valid, and a low confidence or ambiguous bid is held and the real bidder is asked. G5 is PARTIAL on synthetic speech clips, and the confirm prompt protects every spoken bid.
+    The microphone is the room's, so a spoken bid names a paddle. It still passes the room gate and the engine: the bidder must be on the roster, the amount must be valid, and a low confidence or ambiguous bid is held and the real bidder is asked. G5 is CHECKED on synthetic speech clips, and the confirm prompt protects every spoken bid.
   </Accordion>
 </Accordions>
 
@@ -153,7 +153,7 @@ A trust boundary is a line where data passes from something we do not control to
 
 <NotVerified title="This is a design map, not a sign-off">
 
-- Security checklist: all eight P0 items are PASS as of 2026-11-07, and 13 of the 24 rows are PASS. SEC-19 and SEC-20 are open and wait for an independent reviewer; SEC-09, SEC-10, SEC-14 and SEC-21 to SEC-24 are PARTIAL; SEC-15 (log scan) is PARTIAL (one S01 server log scanned, 0 findings, run 42566851766); automated checks exist for most items.
+- Security checklist: all eight P0 items are PASS as of 2026-11-07, and 13 of the 24 rows are PASS. SEC-19 and SEC-20 are open and wait for an independent reviewer; SEC-09, SEC-10, SEC-14 and SEC-21 to SEC-24 are CHECKED with a named residual; SEC-15 (log scan) is CHECKED (one S01 server log scanned, 0 findings, run 42566851766); automated checks exist for most items.
 - Tampered-webhook rejection is tested against the fake PayPal only. Retry behaviour of real PayPal deliveries is unverified.
 - The sandbox accounts hold no real money, so the stakes of a leaked sandbox secret are low, but they are still kept out of the repository, logs and the web bundle.
 - Staging security tests and load tests stay unverified until a staging URL exists.

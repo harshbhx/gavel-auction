@@ -5,6 +5,7 @@ import type { ControlPort } from '../../src/net/transport';
 import { ControlError, createControlPort } from '../../src/net/controlPort';
 import { Controls, controlStatus, disabledReason } from '../../src/screens/console/Controls';
 import { HammerDialog } from '../../src/screens/console/HammerDialog';
+import { HAMMER_HOLD_MS } from '../../src/screens/console/hammerHold';
 import { KillSwitch } from '../../src/screens/console/KillSwitch';
 import { Roster, type RosterRow } from '../../src/screens/console/Roster';
 import {
@@ -153,7 +154,7 @@ describe('Controls', () => {
 
 describe('HammerDialog', () => {
   const leader = { paddle: 7, name: 'Ada' };
-  it('sends once at 800 ms, not at 799 ms, and never on click', () => {
+  it('sends once at the hold time, not 1 ms before, and never on click', () => {
     const onConfirm = vi.fn();
     render(
       <HammerDialog
@@ -169,7 +170,7 @@ describe('HammerDialog', () => {
     expect(onConfirm).not.toHaveBeenCalled();
     fireEvent.pointerDown(btn);
     act(() => {
-      vi.advanceTimersByTime(799);
+      vi.advanceTimersByTime(HAMMER_HOLD_MS - 1);
     });
     expect(onConfirm).not.toHaveBeenCalled();
     act(() => {
@@ -213,7 +214,7 @@ describe('HammerDialog', () => {
     fireEvent.keyDown(btn, { key: 'Enter' });
     fireEvent.keyDown(btn, { key: 'Enter', repeat: true });
     act(() => {
-      vi.advanceTimersByTime(800);
+      vi.advanceTimersByTime(HAMMER_HOLD_MS);
     });
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });

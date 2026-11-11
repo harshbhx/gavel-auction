@@ -98,7 +98,7 @@ const ROWS: Row[] = [
     word: 'TRUTH FIRST, THEN THE RUNNER-UP',
     out: ['A capture already there is adopted; hold gone or still open:', 'definite fail, then the runner-up at its own price.', 'Truth unreadable: waits. A different capture: review.'],
     explain:
-      'Only a refusal that names this hold may move to the next bidder, and only after the truth says nothing was captured. PR #1947 makes this hold also after a 429 stall. The honor-period issue name is UNVERIFIED (G3).',
+      'Only a refusal that names this hold may move to the next bidder, and only after the truth says nothing was captured. PR #1947 makes this hold also after a 429 stall. The honor-period issue name is not yet recorded (G3).',
   },
   {
     key: 'other',
@@ -139,7 +139,7 @@ export function RetryDecisionDiagram() {
       badge={
         <>
           <Chip kind="fake">Fake PayPal</Chip>
-          <Chip kind="hatched">Real limits UNVERIFIED</Chip>
+          <Chip kind="hatched">Real limits: simulated only</Chip>
         </>
       }
       toolbar={
@@ -167,7 +167,7 @@ export function RetryDecisionDiagram() {
           Read from <code>packages/payments/src/saga/capture.ts</code> (<code>afterFailure</code>),{' '}
           <code>errorMap.ts</code>, <code>transport.ts</code> and <code>saga/unknown.ts</code>; PR #1938 and PR #1947 are
           on main. The behaviour is tested against the fake PayPal (<code>test/saga/rateLimited.test.ts</code>) and in the
-          simulated storm lots of S8. PayPal&apos;s real rate limits are UNVERIFIED (G1 measurement), and so is the exact
+          simulated storm lots of S8. PayPal&apos;s real rate limits are not yet measured (G1 measurement), and so is the exact
           honor-period issue name (G3).
         </>
       }
