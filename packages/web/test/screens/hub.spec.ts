@@ -221,7 +221,8 @@ test.describe('scripted demo in Newsprint', () => {
     await expect(page.getByText(t('prov.scripted'))).toHaveCount(1);
     const bar = await page.locator('.gv-scripted-bar').boundingBox();
     // Wide pages keep it to a slim bar; narrow ones may wrap the chips and buttons.
-    if ((page.viewportSize()?.width ?? 0) >= 900) expect(bar?.height ?? 999).toBeLessThanOrEqual(96);
+    const wide = (page.viewportSize()?.width ?? 0) >= 900;
+    if (wide) expect(bar?.height ?? 999).toBeLessThanOrEqual(96);
     const fits = await page
       .locator('.gv-player')
       .evaluate((el) => el.scrollHeight - el.clientHeight);
