@@ -227,9 +227,7 @@ describe('room hub follows the stop at once', () => {
     expect(screen.getAllByText(t('hub.stopped')).length).toBeGreaterThan(0);
     expect(screen.getByTestId('hub-ended').textContent).toBe(t('hub.stoppedNote'));
     expect(screen.getByTestId('hub-join-open').tagName).not.toBe('A');
-    expect(
-      screen.getByRole('button', { name: t('hub.newInvite') }).getAttribute('aria-disabled'),
-    ).toBe('true');
+    expect(screen.queryByRole('link', { name: new RegExp(t('hub.step4Open')) })).toBeNull();
     expect(
       screen.getByRole('button', { name: t('hub.copyInvite') }).getAttribute('aria-disabled'),
     ).toBe('true');
