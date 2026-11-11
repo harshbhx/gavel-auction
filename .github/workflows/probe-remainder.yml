@@ -1,0 +1,52 @@
+name: probe-remainder
+# One-off sandbox probe of the remainder release: authorize 500.00 (buyer A, headless browser), capture
+# 350.00 with final_capture=true, then read PayPal's own answers (authorization, capture, a void and a
+# re-capture of the remaining 150.00 that should be refused). Sandbox only, no real money.
+on:
+  workflow_dispatch:
+  # Also runs on pushes to its own branch, because a new workflow cannot be dispatched before it is on main.
+  push:
+    branches: [chore/QA-100-probe-remainder]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: sandbox-nightly
+    concurrency:
+      group: probe-remainder
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Cache the browser
+        id: pw-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-1.49.1-chromium
+      - name: Install the browser
+        env:
+          BROWSER_CACHE_HIT: ${{ steps.pw-cache.outputs.cache-hit }}
+        run: |
+          npm install --prefix "$RUNNER_TEMP/pw" --no-audit --no-fund playwright@1.49.1
+          cd "$RUNNER_TEMP/pw"
+          if [ "$BROWSER_CACHE_HIT" = "true" ]; then
+            npx playwright install-deps chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
+      - name: Run probe
+        env:
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          SANDBOX_BUYER_EMAIL: ${{ secrets.SANDBOX_BUYER_EMAIL }}
+          SANDBOX_BUYER_PASSWORD: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/pw/node_modules/playwright/index.mjs
+        working-directory: packages/payments
+        run: npx vite-node gates/probe-remainder.ts
