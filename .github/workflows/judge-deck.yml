@@ -1,0 +1,105 @@
+name: judge-deck
+# Checks the judge deck in brand/devpost/judges (DOC-66). Rebuilds it from src/ to prove the
+# generator still runs, then renders the committed GAVEL-judge-deck.pptx with LibreOffice to a PDF,
+# one PNG per slide and a contact sheet, uploaded as the judge-deck-preview artifact. LibreOffice
+# shows each slide in its final state and the first frame of each GIF; the builds, the Morph
+# transitions and the GIF motion only play in PowerPoint or Keynote. No secrets.
+on:
+  pull_request:
+    paths:
+      - 'brand/devpost/judges/**'
+      - '.github/workflows/judge-deck.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: judge-deck-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      OUT: ${{ github.workspace }}/out
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Install LibreOffice, fonts and the build tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends libreoffice-impress fonts-liberation poppler-utils imagemagick libraqm0 >/dev/null
+          python -m pip install --quiet pillow==12.0.0 python-pptx==1.0.2
+          mkdir -p "$RUNNER_TEMP/deps" && cd "$RUNNER_TEMP/deps"
+          npm init -y >/dev/null && npm install --no-audit --no-fund pptxgenjs@3.12.0 >/dev/null
+      - name: Rebuild the deck from source
+        env:
+          DECK_DEPS: ${{ runner.temp }}/deps
+        run: |
+          python brand/devpost/judges/src/assets.py "$OUT/build"
+          node brand/devpost/judges/src/build-deck.mjs "$OUT/build"
+          python brand/devpost/judges/src/finalize.py "$OUT/build" "$OUT/build/rebuilt.pptx"
+      - name: Check the committed deck
+        run: |
+          python - <<'PY'
+          from pptx import Presentation
+          deck = Presentation('brand/devpost/judges/GAVEL-judge-deck.pptx')
+          slides = list(deck.slides)
+          print(f'{len(slides)} slides')
+          for i, s in enumerate(slides, 1):
+              xml = s._element.xml
+              assert '<p:timing' in xml, f'slide {i} has no build animations'
+              assert 'transition' in xml, f'slide {i} has no transition'
+              assert s.has_notes_slide and s.notes_slide.notes_text_frame.text.strip(), f'slide {i} has no notes'
+          PY
+      - name: Render the committed deck
+        run: |
+          mkdir -p "$OUT/png"
+          cp brand/devpost/judges/GAVEL-judge-deck.pptx "$OUT/"
+          cd "$OUT"
+          soffice --headless --convert-to pdf GAVEL-judge-deck.pptx >/dev/null
+          pdftoppm -png -r 110 GAVEL-judge-deck.pdf png/slide
+          montage png/slide-*.png -tile 3x -geometry 640x360+8+8 -background '#777777' contact-sheet.png
+          ls -la "$OUT" "$OUT/png"
+      - name: Read the animations back through LibreOffice
+        run: |
+          # An independent reader: LibreOffice imports the slide timing into ODP animation nodes.
+          cd "$OUT"
+          soffice --headless --convert-to odp GAVEL-judge-deck.pptx >/dev/null
+          unzip -p GAVEL-judge-deck.odp content.xml > content.xml
+          python - <<'PY' | tee animations.txt
+          import re
+          xml = open('content.xml', encoding='utf-8').read()
+          pages = re.findall(r'<draw:page\b.*?</draw:page>', xml, re.S)
+          print(f'{len(pages)} pages')
+          for i, p in enumerate(pages, 1):
+              effects = len(re.findall(r'presentation:node-type="(?:after|with)-previous"', p))
+              name = re.search(r'draw:style-name="([^"]+)"', p).group(1)
+              style = re.search(rf'<style:style style:name="{name}".*?</style:style>', xml, re.S)
+              trans = re.search(r'smil:type="([^"]+)"', style.group(0) if style else '')
+              print(f'page {i}: {effects} effects imported, transition {trans.group(1) if trans else "none"}')
+          PY
+      - name: Upload the preview
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: judge-deck-preview
+          path: |
+            out/GAVEL-judge-deck.pdf
+            out/contact-sheet.png
+            out/animations.txt
+            out/png/
+          retention-days: 14
