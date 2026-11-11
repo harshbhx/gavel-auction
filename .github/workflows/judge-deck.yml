@@ -52,6 +52,10 @@ jobs:
           python brand/devpost/judges/src/assets.py "$OUT/build"
           node brand/devpost/judges/src/build-deck.mjs "$OUT/build"
           python brand/devpost/judges/src/finalize.py "$OUT/build" "$OUT/build/rebuilt.pptx"
+      - name: Rebuild the judge guide PDF from source
+        run: |
+          python -m pip install --quiet weasyprint brotli
+          python brand/devpost/judges/build.py --out "$OUT/GAVEL-judge-guide.pdf" --png "$OUT/guide-png"
       - name: Check the committed deck
         run: |
           python - <<'PY'
@@ -99,6 +103,9 @@ jobs:
           name: judge-deck-preview
           path: |
             out/GAVEL-judge-deck.pdf
+            out/build/rebuilt.pptx
+            out/GAVEL-judge-guide.pdf
+            out/guide-png/
             out/contact-sheet.png
             out/animations.txt
             out/png/

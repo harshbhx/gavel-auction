@@ -22,7 +22,7 @@ Every number on the slides comes from the repository: [`docs/GATES.md`](../../..
 | 8   | The hammer         | Press and hold to close; capture the winner, void the rest                                                  | Live console recording (GIF); the hold ring draws, SOLD stamps      |
 | 9   | Receipt and verify | Do not trust, verify: a hash-chained ledger anyone can re-check                                             | Ledger entries link up one by one, then the chain verifies          |
 | 10  | Under the hood     | One bid, four stops: browser, Cloudflare, Render, PayPal                                                    | Cards rise, a packet runs the wire                                  |
-| 11  | Proof              | 0 diffs after a server kill, voice 24/24, judge flow 17/17, 4,500+ tests; gates G0 to G5 with honest status | Tiles and numbers build, gate chips pop in                          |
+| 11  | Proof              | 0 mismatches with PayPal after a server kill, voice 24/24, judge flow 17/17, 4,500+ tests; gates G0 to G5 with honest status | Tiles and numbers build, gate chips pop in                          |
 | 12  | Performance        | PageSpeed 100/100/100/100 on mobile and desktop (landing page only, lab data, 10 Nov 2026)                  | Four score rings draw to 100                                        |
 | 13  | The team           | Harsh Bhanushali and Dhairya Patel                                                                          | Cards rise, monogram rings draw                                     |
 | 14  | Try it             | Links (judge panel, scripted demo, docs, API reference, source) and the pointer to the judge guide          | Morph: the mark glides back to the centre                           |
