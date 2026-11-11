@@ -188,9 +188,11 @@ test.describe('judge panel', () => {
     await page.goto('/try');
     await expect(page.getByText(t('try.status.on'))).toBeVisible();
     const bar = page.getByRole('navigation', { name: t('try.bar.label') });
-    await expect(
-      bar.getByRole('button', { name: new RegExp(`^${t('try.run.go')}`) }),
-    ).toBeVisible();
+    // Under reduced motion the run lands on its final state, so the control reads as a replay.
+    const run = (['try.run.go', 'try.run.running', 'try.run.replay'] as const)
+      .map((key) => t(key))
+      .join('|');
+    await expect(bar.getByRole('button', { name: new RegExp(`^(${run})`) })).toBeVisible();
     for (const key of ['try.bar.join', 'try.bar.console', 'try.bar.screen'] as const) {
       await expect(bar.getByRole('button', { name: new RegExp(`^${t(key)}`) })).toHaveCount(0);
     }
