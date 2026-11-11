@@ -8,6 +8,7 @@ import { ControlError, ControlTimeoutError } from '../../net/controlPort';
 import type { ControlPort } from '../../net/transport';
 import type { AuctionStatus } from '../../wire';
 import { HammerDialog, type HammerLeader } from './HammerDialog';
+import { HAMMER_HOLD_MS, HAMMER_HOLD_SECONDS } from './hammerHold';
 import { SHORTCUTS, ShortcutHelp, useShortcuts, type ShortcutHandlers } from './ShortcutHelp';
 
 export const DEFAULT_EXTEND_MS = 30_000;
@@ -303,7 +304,8 @@ export function Controls({
         <div className="gv-console-hammer">
           <DeskHold
             key={holdRound}
-            label={t('console.hammerDesk')}
+            label={t('console.hammerDesk', { s: HAMMER_HOLD_SECONDS })}
+            holdMs={HAMMER_HOLD_MS}
             hint={t('console.hammerDeskHint')}
             disabled={hammerReason !== null}
             confirmAlternative={false}

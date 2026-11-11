@@ -914,7 +914,7 @@ export const en = {
   'console.ladder.high': 'High {amount}',
   'console.ladder.ceiling': 'Limit {amount}',
   'console.hammerHold': 'Press and hold to hammer',
-  'console.hammerDesk': 'Press and hold 3 seconds to close the lot',
+  'console.hammerDesk': 'Press and hold {s} seconds to close the lot',
   'console.hammerDeskHint': 'Falls at the current price. Release early to cancel.',
   'console.hammerDialogHint': 'Cannot hold? Use the Hammer button to confirm in a dialog.',
   'console.hammerConfirm': 'Hammer at {amount} to paddle {n} ({name})?',
@@ -980,7 +980,8 @@ export const en = {
   'kill.failed': 'The stop request was not accepted. The auction is still running.',
   'kill.holdHint': 'Press and hold the button, or press Enter on it, to stop the auction.',
   'common.cancel': 'Cancel',
-  'console.hammerHint': 'Press and hold the button, or press Enter on it, to confirm.',
+  'console.hammerHint':
+    'Press and hold the button for {s} seconds, or hold Enter on it, to confirm. Release early to cancel.',
   'console.roster': 'Bidders',
   'console.guide.title': 'Lot status',
   'console.guide.state.scheduled': 'Ready, not open yet',
