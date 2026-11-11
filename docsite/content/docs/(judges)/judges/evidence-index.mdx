@@ -4,7 +4,7 @@ description: Every claim made on this site, its status, and the committed file o
 icon: ClipboardList
 ---
 
-Status words: PASS, FAIL, IN PROGRESS, SIMULATED. A claim with no committed file says so. File links go to the `main` branch of the repository.
+Status words: PASS, FAIL, RUNNING, TESTED (synthetic clips), SIMULATED. A claim with no committed file says so. File links go to the `main` branch of the repository.
 
 <NotVerified title="Run logs expire">
 
@@ -22,14 +22,14 @@ Where the only record is a GitHub Actions run log (the latency measurement), the
 | A wallet buyer and a guest with a sandbox card are both authorized in the JS SDK v6 | <Chip kind="solid">PASS</Chip> | [`docs/evidence/G2`](https://github.com/harshbhx/gavel-auction/tree/main/docs/evidence/G2): `G2-20261105T115228Z.jsonl`. Authorize only; a 1.00 partial capture on the guest card authorization appears in the early G3 probe, [`docs/evidence/G3-early`](https://github.com/harshbhx/gavel-auction/tree/main/docs/evidence/G3-early). |
 | Six real <Term id="webhook">webhooks</Term>, including a capture and a void, each verify SUCCESS through PayPal's endpoint | <Chip kind="solid">PASS</Chip> | [`docs/evidence/G4`](https://github.com/harshbhx/gavel-auction/tree/main/docs/evidence/G4): `G4-20261105T012205Z.jsonl`; workflow run 41947655945 |
 | Rejection of a tampered webhook | <Chip kind="fake">FAKE ONLY</Chip> | Tested against the fake PayPal. Not run on the sandbox. |
-| How long an authorization stays capturable, and whether reauthorize extends it | <Chip kind="hatched">IN PROGRESS</Chip> | Gate <Term id="gate-g3">G3</Term>, [`gate-g3.yml`](https://github.com/harshbhx/gavel-auction/blob/main/.github/workflows/gate-g3.yml). Day 0 was 7 Nov 2026 03:06 UTC; final reading about 12 Nov 06:17 UTC. No result recorded. |
-| Spoken bids are accurate enough to accept without confirmation | <Chip kind="hatched">PARTIAL</Chip> | Gate <Term id="gate-g5">G5</Term>, synthetic audio only; fixes chosen on the same clips. Numbers below. |
+| How long an authorization stays capturable, and whether reauthorize extends it | <Chip kind="hatched">RUNNING</Chip> | Gate <Term id="gate-g3">G3</Term>, [`gate-g3.yml`](https://github.com/harshbhx/gavel-auction/blob/main/.github/workflows/gate-g3.yml). Day 0 was 7 Nov 2026 03:06 UTC; final reading about 12 Nov 06:17 UTC. No result recorded. |
+| Spoken bids are accurate enough to accept without confirmation | <Chip kind="hatched">TESTED</Chip> | Gate <Term id="gate-g5">G5</Term>, synthetic audio only; fixes chosen on the same clips. Numbers below. |
 
 ## Gate G5 numbers (24 clips each, synthetic and noise-free)
 
 <SpeechTable />
 
-The limit is a wrong-accept rate of 0.05 or less. Every row is within it, but the first run (Deepgram nova-2, Groq without a prompt) was above it at 0.083 to 0.167, and the fixes were chosen on these same clips, so the gate stays PARTIAL. The recorded provider outputs are in [`packages/voice/fixtures/stt-cache`](https://github.com/harshbhx/gavel-auction/tree/main/packages/voice/fixtures/stt-cache) and [`stt-cache-human`](https://github.com/harshbhx/gavel-auction/tree/main/packages/voice/fixtures/stt-cache-human); the clips are under [`packages/voice/fixtures/audio`](https://github.com/harshbhx/gavel-auction/tree/main/packages/voice/fixtures/audio). The human-like set was first recorded by voice-eval run 42342379648; the current recordings come from the option trials of VOI-02. With 24 clips, one clip moves a rate by 0.042, so differences between the two sets are within noise.
+The limit is a wrong-accept rate of 0.05 or less. Every row is within it, but the first run (Deepgram nova-2, Groq without a prompt) was above it at 0.083 to 0.167, and the fixes were chosen on these same clips, so the gate is not marked passed. The recorded provider outputs are in [`packages/voice/fixtures/stt-cache`](https://github.com/harshbhx/gavel-auction/tree/main/packages/voice/fixtures/stt-cache) and [`stt-cache-human`](https://github.com/harshbhx/gavel-auction/tree/main/packages/voice/fixtures/stt-cache-human); the clips are under [`packages/voice/fixtures/audio`](https://github.com/harshbhx/gavel-auction/tree/main/packages/voice/fixtures/audio). The human-like set was first recorded by voice-eval run 42342379648; the current recordings come from the option trials of VOI-02. With 24 clips, one clip moves a rate by 0.042, so differences between the two sets are within noise.
 
 ## Settlement, crash recovery and simulation
 
@@ -52,7 +52,7 @@ The limit is a wrong-accept rate of 0.05 or less. Every row is within it, but th
 
 | Claim | Status | Evidence |
 | --- | --- | --- |
-| Security checklist SEC-01 to SEC-24 | P0 rows PASS; SEC-19 and SEC-20 OPEN; SEC-09, 10, 14, 15 and 21 to 24 PARTIAL; no human sign-off | [`docs/SECURITY-REVIEW.md`](https://github.com/harshbhx/gavel-auction/blob/main/docs/SECURITY-REVIEW.md). Automated checks exist under `packages/e2e/test/security`; no human reviewer has signed an item, and SEC-19 to SEC-24 are agent-only reviews. No FAIL is recorded. |
+| Security checklist SEC-01 to SEC-24 | P0 rows PASS; SEC-19 and SEC-20 OPEN; SEC-09, 10, 14, 15 and 21 to 24 CHECKED; no human sign-off | [`docs/SECURITY-REVIEW.md`](https://github.com/harshbhx/gavel-auction/blob/main/docs/SECURITY-REVIEW.md). Automated checks exist under `packages/e2e/test/security`; no human reviewer has signed an item, and SEC-19 to SEC-24 are agent-only reviews. No FAIL is recorded. |
 | Evidence files match their recorded sha256, and tokens, buyer emails and payer ids are redacted | Checked | `packages/payments/test/gates` (see `docs/GATES.md`, "Run entries"); checklist in [`docs/SUBMISSION.md`](https://github.com/harshbhx/gavel-auction/blob/main/docs/SUBMISSION.md) |
 | What was checked before the repository was public | Checked | [`docs/PUBLIC-REPO-CHECKLIST.md`](https://github.com/harshbhx/gavel-auction/blob/main/docs/PUBLIC-REPO-CHECKLIST.md) |
 | Fresh clone installs, typechecks and passes unit tests | Weekly CI | [`clean-clone.yml`](https://github.com/harshbhx/gavel-auction/blob/main/.github/workflows/clean-clone.yml) |

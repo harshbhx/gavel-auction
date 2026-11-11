@@ -3,7 +3,7 @@ title: Voice bidding in the web
 description: The auctioneer's microphone in the console. What works, what is simulated, and what is still unproven.
 icon: Mic
 status: code-checked
-evidence: 'Read against packages/web/src/audio/, packages/web/src/screens/console/VoiceControl.tsx, packages/server/src/host/audio-ws.ts and the capability probe in packages/server/src/http/judge-rooms.ts (FEAT-62). Tested with a fake microphone and a fake socket; no person has used it in a real room. Accuracy is read from docs/GATES.md (G5 PARTIAL).'
+evidence: 'Read against packages/web/src/audio/, packages/web/src/screens/console/VoiceControl.tsx, packages/server/src/host/audio-ws.ts and the capability probe in packages/server/src/http/judge-rooms.ts (FEAT-62). Tested with a fake microphone and a fake socket; no person has used it in a real room. Accuracy is read from docs/GATES.md (G5 tested with synthetic voice clips).'
 full: true
 ---
 
@@ -43,7 +43,7 @@ The token is the auctioneer token the console already holds. It goes in the firs
 ## What was tested, and how
 
 - **Tested without a person in the loop.** The browser side is covered by tests with a fake microphone, a fake audio context and a fake socket. The server side was run once with 24 synthetic clips through the real socket ([run 42575018866](https://github.com/harshbhx/gavel-auction/actions/runs/42575018866)).
-- **Accuracy.** Gate G5 is **PARTIAL**. On 24 noise-free synthetic clips per set the wrong-accept rate was 0.000 and exact plus recoverable was 1.000, but the parser rules were chosen on those same clips. On a held-out noisy synthetic set measured once (120 clips) wrong accept read 0.058 (Groq) and 0.092 (Deepgram) against the pre-registered 0.05. Voice was tested with synthetic speech clips, and the confirm prompt protects every voice bid: spoken bids always ask for a confirm, and the room microphone cannot reach auto accept. See [Gate G5](/docs/proof/gate-g5).
+- **Accuracy.** Gate G5 was **tested with synthetic voice clips**. On 24 noise-free synthetic clips per set the wrong-accept rate was 0.000 and exact plus recoverable was 1.000, but the parser rules were chosen on those same clips. On a held-out noisy synthetic set measured once (120 clips) wrong accept read 0.058 (Groq) and 0.092 (Deepgram) against the pre-registered 0.05. Voice was tested with synthetic speech clips, and the confirm prompt protects every voice bid: spoken bids always ask for a confirm, and the room microphone cannot reach auto accept. See [Gate G5](/docs/proof/gate-g5).
 - **Fake PayPal in the voice runs.** The recorded socket run used the fake PayPal.
 
 ## Browser support

@@ -151,7 +151,7 @@ const NODES: N[] = [
     sandbox: true,
     detail: (
       <>
-        <b>gate-g3.yml.</b> SANDBOX, IN PROGRESS. Cron <code>17 */6 * * *</code> from main. The scheduled runs pick the probe up again and do the checks at 3.5, 4 and 5 days; the last one
+        <b>gate-g3.yml.</b> SANDBOX, RUNNING. Cron <code>17 */6 * * *</code> from main. The scheduled runs pick the probe up again and do the checks at 3.5, 4 and 5 days; the last one
         appends the GATES.md entry. Day 0 was 7 Nov 2026 03:06 UTC; the final reading is about 12 Nov 06:17 UTC. State lives in the artifact <code>g3-probe-state</code> (14 days), guarded
         by a keyed tag; <code>g3-entry</code> is kept 30 days. A scheduled run with no probe, or a finished one, ends with mode skip.
       </>

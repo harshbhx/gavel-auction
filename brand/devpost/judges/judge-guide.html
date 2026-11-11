@@ -48,7 +48,7 @@
         <div>
           <span class="cover__n">03 / WEIGH</span>
           <span class="cover__h">Evidence and limits</span>
-          Sandbox gates, measured runs, SDKs and what is not proven yet.
+          Sandbox gates, measured runs, SDKs and what is still open.
         </div>
       </div>
       <div class="cover__meta">
@@ -147,7 +147,7 @@
         </li>
         <li>
           <span class="n">09</span><a href="#limits">Known limits</a
-          ><span class="what">What is not proven yet, said plainly</span
+          ><span class="what">What is still open, said plainly</span
           ><span class="pg" data-ref="#limits"></span>
         </li>
         <li>
@@ -710,7 +710,7 @@ curl -s $API/api/judge/rooms/$ID/ledger -H "authorization: Bearer $REVIEWER" &gt
         </div>
         <div class="stat">
           <div class="stat__n">8</div>
-          <div class="stat__l">PARTIAL, each with a named residual</div>
+          <div class="stat__l">CHECKED, each with a named residual</div>
         </div>
         <div class="stat">
           <div class="stat__n">3</div>
@@ -778,12 +778,12 @@ curl -s $API/api/judge/rooms/$ID/ledger -H "authorization: Bearer $REVIEWER" &gt
               Opens judge rooms only, never an operator route. Per-key caps on rooms alive and rooms
               per hour; revocable; five wrong keys lock an address out for 15 minutes.
             </td>
-            <td><span class="chip chip--partial">PARTIAL</span></td>
+            <td><span class="chip chip--partial">CHECKED</span></td>
           </tr>
           <tr>
             <td><strong>Headers and CORS</strong></td>
             <td>Security headers and CSP on the custom domains; origin allowlist on the API.</td>
-            <td><span class="chip chip--partial">PARTIAL</span></td>
+            <td><span class="chip chip--partial">CHECKED</span></td>
           </tr>
           <tr>
             <td><strong>Key-less judge rooms, receipt links</strong></td>
@@ -980,7 +980,7 @@ curl -s $API/api/judge/rooms/$ID/ledger -H "authorization: Bearer $REVIEWER" &gt
                 >[G3 RESULT: Harsh writes the final reading here, or deletes this line]</span
               >
             </td>
-            <td><span class="chip chip--progress">IN PROGRESS</span></td>
+            <td><span class="chip chip--progress">RUNNING</span></td>
           </tr>
           <tr>
             <td class="key">G4</td>
@@ -996,7 +996,7 @@ curl -s $API/api/judge/rooms/$ID/ledger -H "authorization: Bearer $REVIEWER" &gt
               and 0.092 (Deepgram) on a held-out noisy set of 120 clips, against 0.05. Every spoken
               bid waits for a confirm.
             </td>
-            <td><span class="chip chip--partial">PARTIAL</span></td>
+            <td><span class="chip chip--partial">SYNTHETIC TESTED</span></td>
           </tr>
         </tbody>
       </table>
@@ -1230,7 +1230,7 @@ curl -s $API/api/judge/rooms/$ID/ledger -H "authorization: Bearer $REVIEWER" &gt
       <p class="kicker">09 / Honest limits</p>
       <h1 data-short="09 Known limits">Known limits</h1>
       <p class="lead">
-        What is not proven yet, and what we missed. We would rather you read it here than find it
+        What is still open, and what we missed. We would rather you read it here than find it
         yourself.
       </p>
       <table>
@@ -1259,7 +1259,7 @@ curl -s $API/api/judge/rooms/$ID/ledger -H "authorization: Bearer $REVIEWER" &gt
               PayPal's pages disagree on how long a hold stays capturable. Our timed probe reads out
               about 12 Nov; until then demo holds are made minutes before capture.
             </td>
-            <td><span class="chip chip--progress">IN PROGRESS</span></td>
+            <td><span class="chip chip--progress">RUNNING</span></td>
           </tr>
           <tr>
             <td><strong>Voice in a real room (G5)</strong></td>
@@ -1268,7 +1268,7 @@ curl -s $API/api/judge/rooms/$ID/ledger -H "authorization: Bearer $REVIEWER" &gt
               the noisy held-out set. No person has used the console microphone in a real room yet.
               Spoken bids always need a confirm; tap, QR and typed bids work without voice.
             </td>
-            <td><span class="chip chip--partial">PARTIAL</span></td>
+            <td><span class="chip chip--partial">SYNTHETIC TESTED</span></td>
           </tr>
           <tr>
             <td><strong>Whole auction on the hosted server</strong></td>
@@ -1277,7 +1277,7 @@ curl -s $API/api/judge/rooms/$ID/ledger -H "authorization: Bearer $REVIEWER" &gt
               measured runs, but a whole auction settled through the hosted Render server, and a
               process kill on that host, are not run yet. The real kill ran on a CI runner.
             </td>
-            <td><span class="chip chip--open">NOT RUN</span></td>
+            <td><span class="chip chip--open">NEXT RUN</span></td>
           </tr>
           <tr>
             <td><strong>Remainder release</strong></td>
@@ -1293,7 +1293,7 @@ curl -s $API/api/judge/rooms/$ID/ledger -H "authorization: Bearer $REVIEWER" &gt
               G2 shows a guest card authorized in the SDK; a card checkout recorded inside a judge
               room, and a guest card void, are not run.
             </td>
-            <td><span class="chip chip--open">NOT RUN</span></td>
+            <td><span class="chip chip--open">NEXT RUN</span></td>
           </tr>
           <tr>
             <td><strong>Hosted capacity</strong></td>

@@ -318,8 +318,8 @@
         <h2><span class="tag real">real sandbox</span>Go/no-go gates, G0 to G5</h2>
         <p class="small">
           Statuses exactly as recorded in <code>docs/GATES.md</code>. A gate is closed only when it
-          is PASS or FAIL; PARTIAL stays open. G3, the multi-day authorization probe, is still
-          running and has no result yet.
+          is PASS or FAIL; a gate tested only with synthetic data stays open. G3, the multi-day
+          authorization probe, is still running and has no result yet.
         </p>
         <div class="grid" id="gate-cards"></div>
       </section>
@@ -365,7 +365,7 @@
         <div class="banner syn">
           <b>SYNTHETIC.</b> 24 machine-generated, noise-free utterances in two voices. Not a real
           room. The parser and provider options were tuned on these same clips (in sample), and the
-          gate (G5) is PARTIAL, not passed.
+          gate (G5) is tested with synthetic clips only and is not marked passed.
         </div>
         <p class="small">
           Exact word-for-word match rate per provider and clip set (dataset

@@ -1,4 +1,4 @@
-import { repoData } from '@/lib/repo-data';
+import { repoData, gateLabel } from '@/lib/repo-data';
 import { Chip } from './chip';
 
 // Tables whose rows are read from the committed repo evidence by scripts/gen-repo-data.mjs
@@ -46,12 +46,12 @@ export function GatesTable() {
                         ? 'solid'
                         : g.status === 'FAIL'
                           ? 'stop'
-                          : inProgress
+                          : inProgress || g.status === 'PARTIAL'
                             ? 'hatched'
                             : 'hollow'
                     }
                   >
-                    {inProgress ? 'IN PROGRESS' : g.status}
+                    {gateLabel(g)}
                   </Chip>
                 </td>
                 <td className={`${td} max-w-[28rem] text-fd-muted-foreground`}>

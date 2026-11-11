@@ -9,7 +9,7 @@ import { Defs, Legend, T, hatch } from './kit';
 // D. Honor period and reauthorization timeline, and what gate G3 tests. Read from:
 //   packages/payments/src/fake/core.ts          the MODEL: honor 3 days, validity 29 days, reauthorize only after the
 //                                               honor period (REAUTHORIZATION_TOO_EARLY before), a new authorization id and a new honor clock
-//   packages/payments/src/fake/ASSUMPTIONS.md   A07 to A11, all "unverified" until G3
+//   packages/payments/src/fake/ASSUMPTIONS.md   A07 to A11, all modelled, not yet read from the sandbox, until G3
 //   packages/payments/src/saga/reauth.ts        policy: off by default, DEFAULT_HONOR_SAFE_MS = 3 days minus 6 hours
 //   packages/payments/src/holds/recover.ts      the stale flag (flag only; default max age 2 h in payments/src/config.ts)
 //   packages/payments/src/saga/capture.ts       a capture refused after the honor period is a definite, per-hold refusal
@@ -28,7 +28,7 @@ const x = (d: number) => X0 + d * PXD;
 
 const DETAILS: Record<string, string> = {
   honor:
-    'Honor period, 3 days: the fake PayPal models it (honorMs). A capture after it is refused with 422 AUTHORIZATION_NOT_HONORED_AFTER_HONOR_PERIOD in the strict reading. UNVERIFIED: this is the model, not a PayPal observation. packages/payments/src/fake/core.ts, ASSUMPTIONS.md A09',
+    'Honor period, 3 days: the fake PayPal models it (honorMs). A capture after it is refused with 422 AUTHORIZATION_NOT_HONORED_AFTER_HONOR_PERIOD in the strict reading. Simulated only: this is the model, not a PayPal observation. packages/payments/src/fake/core.ts, ASSUMPTIONS.md A09',
   safe:
     'Reauthorization threshold: with GAVEL_REAUTH on, a hold older than 2 days 18 hours (3 days minus 6 hours, honorSafeMs) is reauthorized before the capture, once per generation and never above its original ceiling. Off by default. packages/payments/src/saga/reauth.ts',
   stale:
@@ -40,7 +40,7 @@ const DETAILS: Record<string, string> = {
   capture5:
     'Capture at day 5 on the reauthorized authorization succeeds in the simulation (S4). The same capture without reauthorization is refused in the strict model, and the saga then falls back or releases (S3).',
   validity:
-    'Validity, 29 days: modelled (validityMs). Past it the model reads EXPIRED and a capture fails with 422 AUTHORIZATION_EXPIRED (name assumed). Simulated scenario S5 shows holds that were never reauthorized expire cleanly. UNVERIFIED. ASSUMPTIONS.md A07, A08',
+    'Validity, 29 days: modelled (validityMs). Past it the model reads EXPIRED and a capture fails with 422 AUTHORIZATION_EXPIRED (name assumed). Simulated scenario S5 shows holds that were never reauthorized expire cleanly. Simulated only. ASSUMPTIONS.md A07, A08',
   g31:
     'G3.1: on day 0 a fresh authorization gets an immediate reauthorize attempt, whose error name is recorded, and is then voided. packages/payments/gates/g3.ts',
   d35:
@@ -152,7 +152,7 @@ export function HonorTimelineDiagram() {
           all unverified) and the <strong>simulated</strong> scenarios S2 to S5 in{' '}
           <code>docs/evidence/SIM/SIM-MULTIDAY.md</code>; PayPal&apos;s real values are not verified. The third group is the
           real probe in <code>packages/payments/gates/g3.ts</code> and <code>g3-timed.ts</code>, run by{' '}
-          <code>.github/workflows/gate-g3.yml</code> with day 0 on 7 Nov 2026 03:06 UTC. Gate G3 is IN PROGRESS; the
+          <code>.github/workflows/gate-g3.yml</code> with day 0 on 7 Nov 2026 03:06 UTC. Gate G3 is running; the
           final reading is about 12 Nov 06:17 UTC and no result is claimed here.
         </>
       }

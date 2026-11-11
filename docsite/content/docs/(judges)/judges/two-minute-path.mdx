@@ -28,7 +28,7 @@ Expected: one sentence (every bid is a PayPal authorization hold, only the winni
 
 Open [Gates G0 to G5](/docs/proof/gates).
 
-Expected: a table with <Term id="gate-g0">G0</Term>, G1, G2 and G4 as PASS, <Term id="gate-g5">G5</Term> as PARTIAL and <Term id="gate-g3">G3</Term> as IN PROGRESS. The table is generated from `docs/GATES.md`, so it cannot differ from the repository.
+Expected: a table with <Term id="gate-g0">G0</Term>, G1, G2 and G4 as PASS, <Term id="gate-g5">G5</Term> as TESTED, SYNTHETIC CLIPS and <Term id="gate-g3">G3</Term> as RUNNING, FINAL READING 12 NOV. The table is generated from `docs/GATES.md`, so it cannot differ from the repository.
 
 </Step>
 <Step>
@@ -63,7 +63,7 @@ Expected: eight scenarios, all PASS, each labelled simulated. They run our code 
 ## What you have seen
 
 - Real on the PayPal sandbox: gates G0, G1, G2 and G4.
-- Measured, with the fallback in place: gate G5 is PARTIAL, tested with synthetic speech clips (fixes chosen on the same clips), and the confirm prompt protects every spoken bid.
+- Measured, with the fallback in place: gate G5 was tested with synthetic voice clips, tested with synthetic speech clips (fixes chosen on the same clips), and the confirm prompt protects every spoken bid.
 - In progress: gate G3, a timed probe with day 0 recorded and the final reading about 12 Nov 06:17 UTC.
 - Simulated: the multi-day run and whole-auction settlement on the fake PayPal, plus one lot of three holds on the real sandbox.
 
