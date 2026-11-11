@@ -37,7 +37,7 @@ Online auctions usually make a bidder pay first or trust the bidder to pay later
 
 ## At a glance
 
-|                                   |                                                                                                                                                                                                                                                                                            |
+| Feature                           | What it does                                                                                                                                                                                                                                                                               |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Hold, not charge**              | Every bid is backed by a PayPal authorization hold. Only the winner pays, and only the hammer price.                                                                                                                                                                                       |
 | **Crash-safe settlement**         | A real server process killed mid-capture: one capture, two losers voided, 0 differences between the journal and PayPal ([evidence](docs/evidence/server-kill)).                                                                                                                            |
