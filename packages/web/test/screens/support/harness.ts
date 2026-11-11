@@ -112,9 +112,7 @@ function shiftTimes(value: unknown, shift: number): unknown {
   }
   if (Array.isArray(value)) return value.map((v) => shiftTimes(v, shift));
   if (value !== null && typeof value === 'object') {
-    return Object.fromEntries(
-      Object.entries(value).map(([k, v]) => [k, shiftTimes(v, shift)]),
-    );
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, shiftTimes(v, shift)]));
   }
   return value;
 }
