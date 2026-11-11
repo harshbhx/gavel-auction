@@ -1,0 +1,3 @@
+# Filled copies hold sandbox logins and the judge key: never commit them.
+*-filled.pdf
+judge-fill.json
