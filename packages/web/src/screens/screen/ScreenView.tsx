@@ -31,8 +31,12 @@ import { Logo } from '../../design/Logo';
 import './screen.css';
 import { ChunkBoundary, lazyWithRetry } from '../states/ChunkBoundary';
 
-/** The ticker shows the last five accepted bids (R-WEB-075). */
-export const TICKER_SIZE = 5;
+/** The ticker keeps the latest accepted bids, newest first, in a scroller (R-WEB-075). */
+export const TICKER_SIZE = 50;
+
+/** QR size on the screen: modest, whole pixels per module, never above 170 px. */
+export const QR_MIN = 130;
+export const QR_MAX = 170;
 
 /** The clock turns to the soft close colour in the last ten seconds. */
 const SOFT_CLOSE_MS = 10_000;
@@ -260,18 +264,33 @@ export function ScreenView({
         </div>
       </div>
       <div className="gv-screen__side">
+        {!closed && (
+          <div className="gv-screen__join">
+            <ChunkBoundary>
+              <QrCode url={joinUrl} size={QR_MAX} snapMin={QR_MIN} />
+            </ChunkBoundary>
+            <p className="gv-screen__scan">{t('screen.scan')}</p>
+            {code !== null && <p className="tabular">{t('screen.join', { code })}</p>}
+          </div>
+        )}
         {thermo !== null && <FundraiserThermometer data={thermo} />}
         {!(closed && ticker.length === 0) && (
           <section className="gv-screen__ticker" aria-label={t('screen.latest')}>
             <h2 className="gv-screen__ticker-title">{t('screen.latest')}</h2>
-            <ol>
-              {ticker.map((bid) => (
-                <li key={bid.seq} className="tabular">
-                  {bid.paddle !== null ? `${bid.paddle}  ` : ''}
-                  {formatUsd(bid.amount)}
-                </li>
-              ))}
-            </ol>
+            <div className="gv-screen__ticker-body">
+              <ol
+                className="gv-screen__ticker-list"
+                tabIndex={0}
+                aria-label={t('screen.latestLabel')}
+              >
+                {ticker.map((bid) => (
+                  <li key={bid.seq} className="tabular">
+                    {bid.paddle !== null ? `${bid.paddle}  ` : ''}
+                    {formatUsd(bid.amount)}
+                  </li>
+                ))}
+              </ol>
+            </div>
           </section>
         )}
         {closed && outcome.kind === 'sold' && (
@@ -279,14 +298,6 @@ export function ScreenView({
             view={publicSource(settlementState)}
             auditHref={`/r/${encodeURIComponent(roomId)}/audit`}
           />
-        )}
-        {!closed && (
-          <div className="gv-screen__join">
-            <ChunkBoundary>
-              <QrCode url={joinUrl} size={260} />
-            </ChunkBoundary>
-            {code !== null && <p className="tabular">{t('screen.join', { code })}</p>}
-          </div>
         )}
       </div>
     </Root>

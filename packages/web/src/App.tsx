@@ -1169,10 +1169,13 @@ function ScriptedRoute({
   liveBase,
   attach,
   runKey = 0,
+  mark = true,
 }: {
   match: RouteMatch;
   roomId: string;
   request: ScriptedRequest;
+  /** False when the page header already carries the recording chip. */
+  mark?: boolean;
   liveBase: string | undefined;
   /** Scripted demo player: take over the clock of the scenario. */
   attach?: (transport: ScenarioTransport) => void;
@@ -1207,7 +1210,7 @@ function ScriptedRoute({
   if (scripted === null) return <p role="status">{t('net.resyncing')}</p>;
   return (
     <>
-      <Provenance kind="scripted" />
+      {mark && <Provenance kind="scripted" />}
       <LiveRoute
         match={match}
         liveBase={liveBase ?? window.location.origin}
@@ -1250,6 +1253,9 @@ function InMemoryScriptedDemo({
   return (
     <div className="gv-scripted-frame">
       <div className="gv-scripted-bar" role="region" aria-label={t('scriptedDemo.barLabel')}>
+        <HomeLink routeId="scriptedDemo" />
+        <SandboxBanner />
+        <Provenance kind="scripted" />
         <p>{t('scriptedDemo.banner')}</p>
         <div className="gv-scripted-bar__links">
           <a className="ui-link" href="/demo">
@@ -1268,6 +1274,7 @@ function InMemoryScriptedDemo({
           liveBase={liveBase}
           attach={playback.attach}
           runKey={playback.run}
+          mark={false}
         />
       </div>
       <ScriptedPlayer playback={playback} />
@@ -1459,10 +1466,12 @@ export function App({ initialPath, gallery = import.meta.env.DEV, liveBase, api 
   return (
     <ErrorBoundary>
       {match.route.id !== 'gallery' && <SkipLink />}
-      <div className="gv-chrome">
-        {match.route.id !== 'gallery' && <SandboxBanner />}
-        <HomeLink routeId={match.route.id} />
-      </div>
+      {match.route.id !== 'scriptedDemo' && match.route.id !== 'scriptedBid' && (
+        <div className="gv-chrome">
+          {match.route.id !== 'gallery' && <SandboxBanner />}
+          <HomeLink routeId={match.route.id} />
+        </div>
+      )}
       {match.route.id !== 'gallery' && match.route.id !== 'bid' && <OfflineBanner />}
       {match.route.id !== 'gallery' && <BusyBanner />}
       {match.route.id !== 'gallery' && <Announcer />}

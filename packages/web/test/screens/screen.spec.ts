@@ -53,6 +53,12 @@ test.describe('screen', () => {
     if (qr === null || view === null) throw new Error('QR code or viewport missing');
     expect(qr.x).toBeGreaterThanOrEqual(0);
     expect(qr.x + qr.width).toBeLessThanOrEqual(view.width);
+    expect(qr.width).toBeGreaterThanOrEqual(120);
+    expect(qr.width).toBeLessThanOrEqual(180);
+    const list = await page.locator('.gv-screen__ticker-list').boundingBox();
+    if (list === null) throw new Error('latest list missing');
+    expect(list.y).toBeGreaterThan(qr.y + qr.height);
+    await expect(page.locator('.gv-screen__ticker-list')).toHaveCSS('overflow-y', 'auto');
     await shoot('screen', 'live-fits');
   });
 
