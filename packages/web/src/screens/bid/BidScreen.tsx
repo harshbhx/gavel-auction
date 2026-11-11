@@ -85,9 +85,9 @@ export interface BidScreenProps {
   onConfirm?: (confirmId: string, accept: boolean) => void;
   /** The room was stopped by the operator. */
   stopped?: boolean;
-  /** End pop-up: "Go home". The pop-up shows only when all three handlers are given. */
+  /** Winner pop-up: "Go to home". The pop-up shows only when all three handlers are given. */
   onHome?: () => void;
-  /** End pop-up: "Join room" (the join entry with the code field focused). */
+  /** Winner pop-up: "Enter a join code" (the join entry with the code field focused). */
   onJoinCode?: () => void;
   /** Winner pop-up: "View receipt". */
   onReceipt?: () => void;
@@ -170,13 +170,14 @@ export function BidScreen({
   // can never both stand.
   const send = useSendGuard(onBid, pending || unsent);
 
-  // The end pop-up: once per closed lot and tab, for the winner, the others and watchers alike.
+  // The winner pop-up: only this bidder's own win, once per lot (never watchers or losers).
   const wonCents = price?.currentCents ?? 0;
   const winKey = winnerSeenKey(roomId, wonCents);
   const [winClosed, setWinClosed] = useState<string | null>(null);
   const showWin =
+    base === 'won' &&
     closedLot &&
-    !recorded &&
+    wonCents > 0 &&
     onHome !== undefined &&
     onJoinCode !== undefined &&
     onReceipt !== undefined &&
@@ -436,7 +437,6 @@ export function BidScreen({
           <WinnerDialog
             lotTitle={lotTitle}
             amountCents={wonCents}
-            outcome={base === 'won' && wonCents > 0 ? 'won' : base === 'lost' ? 'lost' : 'closed'}
             onHome={() => closeWin(onHome)}
             onJoinCode={() => closeWin(onJoinCode)}
             onReceipt={() => closeWin(onReceipt)}

@@ -95,21 +95,9 @@ describe('winner pop-up (UIX-60)', () => {
     expect(screen.getByRole('main')).toBeTruthy();
   });
 
-  it('shows the closed pop-up with the same two buttons for a bidder who lost', async () => {
-    const { onHome, onJoinCode } = renderBid(closedStore(7));
-    const dialog = await screen.findByRole('dialog', { name: t('bidEnd.title') });
-    expect(dialog.textContent).toContain(t('bidEnd.closedAt', { amount: '$400.00' }));
-    expect(screen.queryByRole('button', { name: t('win.receipt') })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Join room' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Go home' }));
-    expect(onHome).toHaveBeenCalledTimes(1);
-    expect(onJoinCode).not.toHaveBeenCalled();
-  });
-
-  it('moves focus to the first button when it opens', async () => {
-    renderBid(closedStore(12));
-    const join = await screen.findByRole('button', { name: t('win.joinCode') });
-    expect(document.activeElement).toBe(join);
+  it('never shows for a bidder who lost', () => {
+    renderBid(closedStore(7));
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('never shows while the lot is open', () => {
