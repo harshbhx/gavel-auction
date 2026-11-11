@@ -71,7 +71,7 @@ Where to look afterwards:
 - Version: `GET /version` on the API host returns the deployed commit; compare it with the commit the report names.
 - Audit export: the audit trail link in step 5, and the verification steps below.
 
-Steps 3 and 4 depend on the web UI; the nightly smoke exercises the hub, join, bid and hammer path, and the spec `judge-walkthrough.spec.ts` covers steps 1 and 2 only.
+Steps 3 and 4 depend on the web UI; the nightly smoke exercises the hub, join, bid and hammer path, and the spec `judge-walkthrough.spec.ts` covers steps 1 and 2 from the landing page, then steps 3 to 5 on a seeded room of the fake stack (console, bidder view, big screen before and after the hammer, audit trail) inside the same 300 second budget. It does not place a bid through the UI; the scripted tests in `happy-path.spec.ts` and the nightly smoke do.
 
 ## Run the fake-PayPal demo
 
