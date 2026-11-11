@@ -21,6 +21,8 @@ export interface SoldProps {
   readonly settlement?: SettleCounts | null;
   /** Settlement stopped for review: no sale is claimed and no capture count is shown. */
   readonly review?: boolean;
+  /** The lot closed with no bid at all: the card says so in one centred result. */
+  readonly noBids?: boolean;
 }
 
 /** The result line: also what the announcer speaks at the hammer. */
@@ -38,12 +40,15 @@ export function soldText(outcome: SoldOutcome, review: boolean): string {
 }
 
 /** SOLD or Passed banner with a compact settlement summary (R-WEB-078). */
-export function Sold({ outcome, settlement = null, review = false }: SoldProps) {
+export function Sold({ outcome, settlement = null, review = false, noBids = false }: SoldProps) {
   return (
     <section data-testid="sold" className="gv-screen__sold" data-kind={outcome.kind}>
       <p className="gv-hammer-stamp gv-screen__stamp tabular" data-closed="true">
         {soldText(outcome, review)}
       </p>
+      {outcome.kind === 'passed' && noBids && (
+        <p className="gv-screen__passed-note">{t('screen.passedNoBids')}</p>
+      )}
       {review && outcome.kind === 'sold' && (
         <p className="gv-screen__settle" data-testid="settle-review" role="status">
           {t('screen.settleReview')}

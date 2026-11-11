@@ -163,6 +163,8 @@ export function ScreenView({
     ),
   );
   const ticker = stream.slice(0, TICKER_SIZE);
+  // A lot hammered with no bid ends in one state, "No sale": it is not a stop and has no winner.
+  const noBids = closed && winnerId === null && stream.length === 0;
   const outcome: SoldOutcome =
     winnerId === null || finalPrice === null
       ? { kind: 'passed' }
@@ -190,8 +192,8 @@ export function ScreenView({
     if (!preview && settledText !== null) announce('polite', settledText, 'ladder');
   }, [preview, settledText]);
   useEffect(() => {
-    if (!preview && stopped) announce('assertive', t('screen.stopped'), 'stop');
-  }, [preview, stopped]);
+    if (!preview && stopped && !noBids) announce('assertive', t('screen.stopped'), 'stop');
+  }, [preview, stopped, noBids]);
 
   const soft = !closed && remaining !== null && remaining <= SOFT_CLOSE_MS;
   const screenState = closed
@@ -220,7 +222,7 @@ export function ScreenView({
         <Title className="gv-screen__lot">{lotTitle}</Title>
         <FrozenChip disconnected={offline} />
         <StoryRail phase={closed ? (settlement !== null ? 2 : 1) : 0} />
-        {stopped && (
+        {stopped && !noBids && (
           <p role="status" className="gv-screen__notice">
             {t('screen.stopped')}
           </p>
@@ -230,7 +232,7 @@ export function ScreenView({
       <div className="gv-screen__stage">
         <div className="gv-screen__board">
           {closed ? (
-            <Sold outcome={outcome} settlement={settlement} review={review} />
+            <Sold outcome={outcome} settlement={settlement} review={review} noBids={noBids} />
           ) : price === null ? (
             <p className="gv-screen__opening">{t('screen.lobby')}</p>
           ) : price.currentCents === null ? (
@@ -259,18 +261,20 @@ export function ScreenView({
       </div>
       <div className="gv-screen__side">
         {thermo !== null && <FundraiserThermometer data={thermo} />}
-        <section className="gv-screen__ticker" aria-label={t('screen.latest')}>
-          <h2 className="gv-screen__ticker-title">{t('screen.latest')}</h2>
-          <ol>
-            {ticker.map((bid) => (
-              <li key={bid.seq} className="tabular">
-                {bid.paddle !== null ? `${bid.paddle}  ` : ''}
-                {formatUsd(bid.amount)}
-              </li>
-            ))}
-          </ol>
-        </section>
-        {closed && (
+        {!(closed && ticker.length === 0) && (
+          <section className="gv-screen__ticker" aria-label={t('screen.latest')}>
+            <h2 className="gv-screen__ticker-title">{t('screen.latest')}</h2>
+            <ol>
+              {ticker.map((bid) => (
+                <li key={bid.seq} className="tabular">
+                  {bid.paddle !== null ? `${bid.paddle}  ` : ''}
+                  {formatUsd(bid.amount)}
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
+        {closed && outcome.kind === 'sold' && (
           <SettlementPanel
             view={publicSource(settlementState)}
             auditHref={`/r/${encodeURIComponent(roomId)}/audit`}

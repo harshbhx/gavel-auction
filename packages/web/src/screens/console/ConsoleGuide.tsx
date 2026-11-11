@@ -5,6 +5,8 @@ import type { AuctionStatus } from '../../wire';
 export interface ConsoleGuideProps {
   readonly status: AuctionStatus;
   readonly stopped: boolean;
+  /** Hammered with no bid: not a stop, the lot closed with no sale. */
+  readonly noSale?: boolean;
   readonly roomId: string | null;
 }
 
@@ -30,12 +32,23 @@ const NEXT: Readonly<Record<AuctionStatus, NextKey>> = {
 };
 
 /** Plain-language status for the lot and the one thing to do next, plus where the audit trail lives. */
-export function ConsoleGuide({ status, stopped, roomId }: ConsoleGuideProps) {
-  const stateKey: StateKey = stopped ? 'console.guide.state.stopped' : STATE[status];
-  const nextKey: NextKey = stopped ? 'console.guide.next.stopped' : NEXT[status];
+export function ConsoleGuide({ status, stopped, noSale = false, roomId }: ConsoleGuideProps) {
+  const stateKey: StateKey = noSale
+    ? 'console.guide.state.noSale'
+    : stopped
+      ? 'console.guide.state.stopped'
+      : STATE[status];
+  const nextKey: NextKey = noSale
+    ? 'console.guide.next.noSale'
+    : stopped
+      ? 'console.guide.next.stopped'
+      : NEXT[status];
   return (
     <section className="gv-console-guide" aria-label={t('console.guide.title')}>
-      <p className="gv-console-guide__state" data-status={stopped ? 'STOPPED' : status}>
+      <p
+        className="gv-console-guide__state"
+        data-status={noSale ? 'NO_SALE' : stopped ? 'STOPPED' : status}
+      >
         <span className="ui-kicker">{t('console.guide.title')}</span>
         <strong>{t(stateKey)}</strong>
       </p>
