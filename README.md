@@ -77,6 +77,12 @@ Online auctions usually make a bidder pay first or trust the bidder to pay later
 | Open data   | [Hugging Face collection](https://huggingface.co/collections/harshbhx/gavel-evidence-auction-holds-hammer-and-receipts-6af0afebebb37eb4c9184504): five datasets and an Evidence Explorer Space                                     |
 | Source      | [github.com/harshbhx/gavel-auction](https://github.com/harshbhx/gavel-auction), MIT                                                                                                                                                |
 
+When you share a link, it unfurls as a card like this one (web app, docs, the judge panel and the ledger each have their own). How to refresh the cards: [brand/og/README.md](brand/og/README.md).
+
+<p align="center">
+  <img src="packages/web/public/og/og-landing.png" alt="The GAVEL link preview card: Every bid is a hold. The hammer is the payment. PayPal sandbox only. Partners: Render, APIMatic, AG Grid." width="600">
+</p>
+
 ## Judge path in 60 seconds
 
 No login and no PayPal account needed. Do not use a personal PayPal account anywhere.
