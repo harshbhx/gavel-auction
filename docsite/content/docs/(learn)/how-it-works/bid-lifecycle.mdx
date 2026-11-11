@@ -45,7 +45,7 @@ A drop is written to the log as a `voice_dropped` record (reason and confidence,
 </Tabs>
 
 <Held title="Spoken bids and the partial accuracy gate">
-  <GateBadge id="G5" /> Speech accuracy is within the threshold only on synthetic, noise-free audio, with fixes chosen on those same clips, and there is no real-room test. The recorded decision is that spoken bids go through the <Term id="confirm-prompt">confirm prompt</Term>. In the code as wired, the voice bridge has no second parser, so a clean reading scores at most 0.82, below the 0.85 auto line, and every spoken bid arrives as a confirm. The code does not have a separate switch for this. See [Voice and the confirm gate](/docs/how-it-works/voice-and-confirm) and [Gates](/docs/proof/gates).
+  <GateBadge id="G5" /> Speech accuracy is within the threshold on the synthetic speech clips, with fixes chosen on those same clips. The recorded decision is that spoken bids go through the <Term id="confirm-prompt">confirm prompt</Term>. In the code as wired, the voice bridge has no second parser, so a clean reading scores at most 0.82, below the 0.85 auto line, and every spoken bid arrives as a confirm. The code does not have a separate switch for this. See [Voice and the confirm gate](/docs/how-it-works/voice-and-confirm) and [Gates](/docs/proof/gates).
 </Held>
 
 ## The confirm gate

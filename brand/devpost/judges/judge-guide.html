@@ -1,0 +1,1467 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>GAVEL Judge Guide (confidential, for judges only)</title>
+    <meta name="author" content="Harsh Bhanushali and Dhairya Patel" />
+    <meta
+      name="description"
+      content="Hands-on test path, architecture, security and verification, evidence, SDKs and limits of GAVEL, for the judges of the PayPal AI Hackathon."
+    />
+    <meta name="keywords" content="GAVEL, PayPal sandbox, authorization hold, judge guide" />
+    <meta name="generator" content="brand/devpost/judges/build.py" />
+    <link rel="stylesheet" href="judge-guide.css" />
+  </head>
+  <body>
+    <!-- ==================== COVER ==================== -->
+    <section class="cover">
+      <div class="cover__top">
+        <span>PAYPAL AI HACKATHON 2026</span>
+        <span>JUDGE GUIDE &nbsp;/&nbsp; V1.0 &nbsp;/&nbsp; 10 NOV 2026</span>
+      </div>
+      <img class="cover__logo" src="../../svg/lockup-h-reversed.svg" alt="GAVEL" />
+      <h1 class="cover__title">Judge<br />guide<span>.</span></h1>
+      <p class="cover__lead">
+        Test GAVEL in five minutes, then check how it is built, how it is secured and what the
+        evidence does and does not prove.
+      </p>
+      <div class="stamp">
+        <span class="stamp__big">CONFIDENTIAL</span>
+        <span class="stamp__small">FOR JUDGES ONLY</span>
+        <span class="stamp__note">CONTAINS SANDBOX TEST ACCESS</span>
+      </div>
+      <div class="cover__hatch"></div>
+      <div class="cover__hatch-label">
+        HELD, NOT CHARGED. PAYPAL SANDBOX ONLY. NO REAL MONEY MOVES.
+      </div>
+      <div class="cover__inside">
+        <div>
+          <span class="cover__n">01 / TEST</span>
+          <span class="cover__h">Five minutes, hands on</span>
+          Your sandbox access and the live room, step by step.
+        </div>
+        <div>
+          <span class="cover__n">02 / INSPECT</span>
+          <span class="cover__h">Built and secured</span>
+          Architecture, the settlement saga, security and the ledger check.
+        </div>
+        <div>
+          <span class="cover__n">03 / WEIGH</span>
+          <span class="cover__h">Evidence and limits</span>
+          Sandbox gates, measured runs, SDKs and what is not proven yet.
+        </div>
+      </div>
+      <div class="cover__meta">
+        <div><strong>HARSH BHANUSHALI &amp; DHAIRYA PATEL</strong>THE GAVEL TEAM</div>
+        <div style="text-align: right">
+          <strong>COMPANION TO THE GAVEL DECK</strong>THE DECK TELLS THE STORY. THIS GUIDE IS THE
+          PROOF.
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 00 READ FIRST ==================== -->
+    <section class="section" id="read-first">
+      <p class="kicker">00 / Read this first</p>
+      <h1 data-short="Read this first">Before you start</h1>
+      <p class="lead">
+        This guide is for the judging panel only. It holds the shared judge key and the PayPal
+        sandbox logins, so please keep it inside the panel. The story and the pitch are in the GAVEL
+        deck; this guide is the hands-on and technical companion.
+      </p>
+
+      <div class="grid">
+        <div class="card card--ink">
+          <p class="card__label">GAVEL in one paragraph</p>
+          <p>
+            A live auction on PayPal holds. A bidder approves a ceiling as a PayPal authorization:
+            held, not charged. Bids land anywhere under that ceiling. At the hammer GAVEL captures
+            only the winning price from the winner's hold and voids every other hold. Every accepted
+            bid is sealed in a hash-chained ledger that anyone can re-check in a browser.
+          </p>
+          <p style="margin: 0">
+            Everything runs on the PayPal sandbox. No real money moves, and you never need your own
+            PayPal account.
+          </p>
+        </div>
+        <div class="card">
+          <p class="card__label">Three things to keep in mind</p>
+          <ul class="clean" style="margin: 0">
+            <li>
+              <strong>Sandbox only.</strong> Use the test logins on
+              <a class="pageref" href="#access"></a>, never your own account.
+            </li>
+            <li>
+              <strong>A bid is a hold.</strong> Hatched means held, solid means charged, hollow
+              means released.
+            </li>
+            <li>
+              <strong>Check, do not trust.</strong> Every claim in this guide names the run or file
+              behind it, and the misses are listed too.
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <h2>Contents</h2>
+      <ol class="toc">
+        <li>
+          <span class="n">01</span><a href="#access">Your access</a
+          ><span class="what">Judge key, sandbox buyers A to D</span
+          ><span class="pg" data-ref="#access"></span>
+        </li>
+        <li>
+          <span class="n">02</span><a href="#test">Test it in five minutes</a
+          ><span class="what">Step by step, with what you should see</span
+          ><span class="pg" data-ref="#test"></span>
+        </li>
+        <li>
+          <span class="n">03</span><a href="#http">Drive it over HTTP</a
+          ><span class="what">Optional: the same room with curl and the judge key</span
+          ><span class="pg" data-ref="#http"></span>
+        </li>
+        <li>
+          <span class="n">04</span><a href="#architecture">Architecture</a
+          ><span class="what">One bid through the stack, the settlement saga</span
+          ><span class="pg" data-ref="#architecture"></span>
+        </li>
+        <li>
+          <span class="n">05</span><a href="#security">Security</a
+          ><span class="what">Guards, judge key limits, review status</span
+          ><span class="pg" data-ref="#security"></span>
+        </li>
+        <li>
+          <span class="n">06</span><a href="#verify">Verify the ledger</a
+          ><span class="what">Three ways to re-check the hash chain</span
+          ><span class="pg" data-ref="#verify"></span>
+        </li>
+        <li>
+          <span class="n">07</span><a href="#evidence">Evidence</a
+          ><span class="what">Sandbox gates, measured runs, PageSpeed, open data</span
+          ><span class="pg" data-ref="#evidence"></span>
+        </li>
+        <li>
+          <span class="n">08</span><a href="#sdks">API and APIMatic SDKs</a
+          ><span class="what">OpenAPI 3.1, generated clients, status</span
+          ><span class="pg" data-ref="#sdks"></span>
+        </li>
+        <li>
+          <span class="n">09</span><a href="#limits">Known limits</a
+          ><span class="what">What is not proven yet, said plainly</span
+          ><span class="pg" data-ref="#limits"></span>
+        </li>
+        <li>
+          <span class="n">10</span><a href="#team">Team and contact</a
+          ><span class="what">Who built what, how to reach us</span
+          ><span class="pg" data-ref="#team"></span>
+        </li>
+      </ol>
+    </section>
+
+    <!-- ==================== 01 ACCESS ==================== -->
+    <section class="section" id="access">
+      <p class="kicker">01 / Your access</p>
+      <h1 data-short="01 Your access">Your access</h1>
+      <p class="lead">
+        You need none of this to watch GAVEL work: the scripted demo and a demo room run with no
+        login. Use the logins below when you want a real PayPal sandbox hold, and the key when you
+        want to drive a room over HTTP or with a higher room allowance.
+      </p>
+
+      <div class="card card--ink">
+        <p class="card__label">Shared judge key</p>
+        <p style="margin-bottom: 2mm">
+          <span class="ph" data-key="JUDGE_KEY">[JUDGE KEY: Harsh pastes here]</span>
+        </p>
+        <p class="small" style="margin: 0">
+          Format
+          <code style="background: #3a2f26; color: #efe6d3"
+            >gvl_judge_&lt;id&gt;_&lt;secret&gt;</code
+          >. Paste it into the <strong>Judge key</strong> field on the
+          <a href="https://gavel.dualmindlab.tech/try">judge panel</a> and press Unlock, or send it
+          as the
+          <code class="nw" style="background: #3a2f26; color: #efe6d3">x-judge-key</code> header (<a
+            class="pageref"
+            href="#http"
+          ></a
+          >). It opens sandbox judge rooms only, never an operator route, it does not expire, and
+          the team can revoke it. It stays in your browser tab and is never put in a link.
+        </p>
+      </div>
+
+      <h2>PayPal sandbox buyers</h2>
+      <p>
+        Four sandbox buyer accounts, one per role. All are US personal accounts in USD with pretend
+        funds. You sign in on PayPal's own sandbox page; GAVEL never sees these details. Two judges
+        can use the same buyer at the same time, because a hold only reserves sandbox funds.
+      </p>
+      <table class="access">
+        <thead>
+          <tr>
+            <th class="key">Role</th>
+            <th>Use it for</th>
+            <th>Email</th>
+            <th>Password</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="key">A &middot; wallet</td>
+            <td>
+              Your first bidder, the one you let win. You see the capture of the winning price.
+            </td>
+            <td>
+              <span class="ph" data-key="BUYER_A_EMAIL">[BUYER A EMAIL: Harsh pastes here]</span>
+            </td>
+            <td>
+              <span class="ph" data-key="BUYER_A_PASSWORD"
+                >[BUYER A PASSWORD: Harsh pastes here]</span
+              >
+            </td>
+          </tr>
+          <tr>
+            <td class="key">D &middot; wallet</td>
+            <td>A second bidder in a private window who loses. You see their hold voided.</td>
+            <td>
+              <span class="ph" data-key="BUYER_D_EMAIL">[BUYER D EMAIL: Harsh pastes here]</span>
+            </td>
+            <td>
+              <span class="ph" data-key="BUYER_D_PASSWORD"
+                >[BUYER D PASSWORD: Harsh pastes here]</span
+              >
+            </td>
+          </tr>
+          <tr>
+            <td class="key">B &middot; wallet</td>
+            <td>Spare bidder. Use it if A is refused, or as a third bidder (the runner-up).</td>
+            <td>
+              <span class="ph" data-key="BUYER_B_EMAIL">[BUYER B EMAIL: Harsh pastes here]</span>
+            </td>
+            <td>
+              <span class="ph" data-key="BUYER_B_PASSWORD"
+                >[BUYER B PASSWORD: Harsh pastes here]</span
+              >
+            </td>
+          </tr>
+          <tr>
+            <td class="key">C &middot; card</td>
+            <td>A buyer whose wallet pays from a sandbox test card. Optional.</td>
+            <td>
+              <span class="ph" data-key="BUYER_C_EMAIL">[BUYER C EMAIL: Harsh pastes here]</span>
+            </td>
+            <td>
+              <span class="ph" data-key="BUYER_C_PASSWORD"
+                >[BUYER C PASSWORD: Harsh pastes here]</span
+              >
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="grid">
+        <div class="note">
+          <strong>Where else</strong> Sandbox logins are also in the Devpost testing instructions.
+          They are never in the public repository, issues or pull requests.
+        </div>
+        <div class="note">
+          <strong>If a login fails</strong> Check it is the sandbox page (the address contains
+          <code>sandbox</code>), use a private window, then try buyer B. Or pick "Join with the
+          demo", which needs no login.
+        </div>
+      </div>
+      <div class="note">
+        <strong>Access window</strong> The web app, the API on Render and these sandbox buyers stay
+        live until the judging period ends on 15 Dec 2026. A demo room lasts about thirty minutes,
+        so register, bid and hammer in one sitting.
+      </div>
+    </section>
+
+    <!-- ==================== 02 TEST ==================== -->
+    <section class="section" id="test">
+      <p class="kicker">02 / Hands-on</p>
+      <h1 data-short="02 Test it in five minutes">Test it in five minutes</h1>
+      <p class="lead">
+        Three ways in. Start with the one-minute replay if you only have a minute; the live room is
+        the real test. Each step says what you should see.
+      </p>
+
+      <div class="grid grid--3" style="margin-bottom: 5mm">
+        <div class="path">
+          <div class="path__time">1 <small>MIN</small></div>
+          <div class="path__name">Scripted demo, no login</div>
+          <p>
+            <a href="https://gavel.dualmindlab.tech/demo/scripted">Open the scripted demo</a>. A
+            recorded room plays in your tab with no server and no PayPal calls, and says so on
+            screen.
+          </p>
+        </div>
+        <div class="path path--main">
+          <div class="path__time">3&ndash;5 <small>MIN</small></div>
+          <div class="path__name">Live sandbox room</div>
+          <p>
+            Your own room on the hosted server: hold, bid, hammer, receipt and ledger check. The
+            steps below.
+          </p>
+        </div>
+        <div class="path">
+          <div class="path__time">5 <small>MIN</small></div>
+          <div class="path__name">HTTP with the key, optional</div>
+          <p>
+            The same room driven with curl or the Try it panel in the docs. See
+            <a class="pageref" href="#http"></a>.
+          </p>
+        </div>
+      </div>
+
+      <h2><span class="num">&rarr;</span>The live room, step by step</h2>
+      <ol class="steps">
+        <li>
+          <span class="step__title">Open the judge panel and start a room</span>
+          Go to the <a href="https://gavel.dualmindlab.tech/try">judge panel</a>. Optionally paste
+          the judge key and press <strong>Unlock</strong>. Press <strong>Start a demo room</strong>.
+          <span class="expect"
+            >The room hub: a join code, a QR code, and buttons for the projection screen, the
+            console and a bidder. A timer shows when the room closes.</span
+          >
+        </li>
+        <li>
+          <span class="step__title">Put the projection screen up</span>
+          Press <strong>Open screen</strong> and keep that window beside the others.
+          <span class="expect"
+            >The lot, the opening price and the join code. It updates the moment a bid lands.</span
+          >
+        </li>
+        <li>
+          <span class="step__title">Join as bidder A</span>
+          Press <strong>Join as a bidder</strong> (or scan the QR code with a phone). Pick
+          <strong>Use the PayPal sandbox</strong>, or <strong>Join with the demo</strong> for a
+          simulated hold with no login. Enter a display name and choose your limit.
+          <span class="expect">Your paddle number, and the line "Held, not charged".</span>
+        </li>
+        <li>
+          <span class="step__title">Approve the hold</span>
+          Press and hold <strong>Approve hold with PayPal</strong> for 3 seconds (Space or Enter
+          also work, and a two-tap option sits below it). In the PayPal sandbox window, sign in as
+          buyer A and approve.
+          <span class="expect"
+            >"Your hold of $X is in place", with a reference. The hold card is hatched: held, not
+            charged.</span
+          >
+        </li>
+
+        <li>
+          <span class="step__title">Add a second bidder</span>
+          In a private window, open the hub's join link (or press <strong>Open bidder</strong>) and
+          register as buyer D the same way.
+          <span class="expect">Two holds on the projection screen. No money has moved.</span>
+        </li>
+        <li>
+          <span class="step__title">Bid</span>
+          Place bids from both bidders. Try one above a bidder's limit too.
+          <span class="expect"
+            >Each accepted bid on the screen within a moment. A bid above the limit, or not higher
+            than the current price, is refused with a reason.</span
+          >
+        </li>
+        <li>
+          <span class="step__title">Hammer</span>
+          Press <strong>Open console</strong> on the hub (press <strong>Open lot</strong> first if
+          the lot is not open yet). Press and hold the hammer button for 3 seconds. Release early to
+          cancel; a dialog option exists if you cannot hold.
+          <span class="expect"
+            >SOLD to the highest valid bid. The winner's hold turns solid (captured for the winning
+            price only); the other hold turns hollow (voided).</span
+          >
+        </li>
+        <li>
+          <span class="step__title">Receipt</span>
+          Open the receipt from the bidder screen.
+          <span class="expect"
+            >Winner, price, held amount and released holds. It can mint a share link with a QR code
+            and has a print layout.</span
+          >
+        </li>
+        <li>
+          <span class="step__title">Check the ledger</span>
+          From the hub, open <strong>Verify the ledger</strong> and press
+          <strong>Check my room</strong>, or open the <strong>Read-only audit trail</strong>.
+          <span class="expect"
+            >Every entry linked and intact. The check runs in your browser and uploads nothing (more
+            on <a class="pageref" href="#verify"></a>).</span
+          >
+        </li>
+      </ol>
+
+      <div class="figside">
+        <img
+          src="../../../docs/assets/readme/see-it-run-1-start-room.png"
+          alt="The room hub of a demo room on the live site"
+        />
+        <div class="figside__text">
+          <p class="card__label">The room hub</p>
+          <p class="small">
+            Everything for one room on one page: the projection screen preview, the join ticket with
+            its code and QR, the console and a second bidder.
+          </p>
+          <p class="small muted" style="margin: 0">
+            Still from the judge smoke run of 9 Nov 2026 on the live site. Labels may have moved
+            slightly since.
+          </p>
+        </div>
+      </div>
+
+      <h3>If something gets in the way</h3>
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 38%">What you see</th>
+            <th>What to do</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>The PayPal popup is blocked</td>
+            <td>
+              Allow popups for the GAVEL site and press approve again, or open PayPal in the same
+              tab when offered.
+            </td>
+          </tr>
+          <tr>
+            <td>The login is refused</td>
+            <td>
+              Check for typos, use a private window, make sure the address contains
+              <code>sandbox</code>, then try buyer B.
+            </td>
+          </tr>
+          <tr>
+            <td>Room full or expired, a wrong code, or a hold shows released</td>
+            <td>Start a new demo room, use the fresh code, and do the whole run in one sitting.</td>
+          </tr>
+          <tr>
+            <td>"Live rooms are full or paused" or switched off</td>
+            <td>
+              Use the <a href="https://gavel.dualmindlab.tech/demo/scripted">scripted demo</a>; it
+              needs no server.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ==================== 03 HTTP ==================== -->
+    <section class="section" id="http">
+      <p class="kicker">03 / Optional</p>
+      <h1 data-short="03 Drive it over HTTP">Drive it over HTTP</h1>
+      <p class="lead">
+        The whole auction also runs over plain HTTP with the judge key: open a room, join, hold,
+        bid, hammer and read the ledger. The
+        <a href="https://docs.gavel.dualmindlab.tech/docs/judges/call-the-api"
+          >Call the API as a judge</a
+        >
+        page has a Try it panel that makes the same calls against the hosted API.
+      </p>
+
+      <pre><span class="c"># Keep the key out of your shell history</span>
+API=https://api.gavel.dualmindlab.tech
+read -rs JUDGE_KEY        <span class="c"># paste the judge key, press Enter</span>
+
+<span class="c"># 1. Check the key (creates nothing)</span>
+curl -s -X POST $API/api/judge/key -H "x-judge-key: $JUDGE_KEY"
+
+<span class="c"># 2. Create a room. Keep auctionId, joinCode, auctioneerToken and reviewerToken</span>
+curl -s -X POST $API/api/judge/rooms -H "x-judge-key: $JUDGE_KEY" \
+  -H 'content-type: application/json' -d '{"title":"My lot"}'
+
+<span class="c"># 3. Join as a bidder with the join code. The answer holds sessionToken</span>
+curl -s -X POST $API/api/judge/join -H 'content-type: application/json' \
+  -d '{"code":"&lt;joinCode&gt;","displayName":"Asha"}'
+
+<span class="c"># 4. Simulated hold so the bidder is in the room (amounts are in cents)</span>
+curl -s -X POST $API/api/judge/rooms/$ID/sim-hold -H "authorization: Bearer $SESSION" \
+  -H 'content-type: application/json' -d '{"ceilingCents":5000,"name":"Asha"}'
+
+<span class="c"># 5. Bid 15.00</span>
+curl -s -X POST $API/api/judge/rooms/$ID/bids -H "authorization: Bearer $SESSION" \
+  -H 'content-type: application/json' -d '{"amount":1500}'
+
+<span class="c"># 6. Hammer with the auctioneer token</span>
+curl -s -X POST $API/api/auctions/$ID/control -H "authorization: Bearer $AUCTIONEER" \
+  -H 'content-type: application/json' \
+  -d '{"controlId":"c1","action":"hammer","args":{"closeNow":1}}'
+
+<span class="c"># 7. The sealed ledger, with the reviewer token</span>
+curl -s $API/api/judge/rooms/$ID/ledger -H "authorization: Bearer $REVIEWER" &gt; bundle.json</pre>
+
+      <div class="grid">
+        <div>
+          <h3>Why there is an HTTP bid route</h3>
+          <p class="small">
+            Live bidding in the app uses a WebSocket that only accepts a browser origin. The route
+            <code>POST /api/judge/rooms/{id}/bids</code> takes the same path as a socket bid (rate
+            limit, registration check, the auction engine) so curl and generated clients can bid.
+            Send a <code>mid</code> (a ULID) with a bid to retry it safely: the same
+            <code>mid</code> returns the first answer and records nothing twice.
+          </p>
+        </div>
+        <div>
+          <h3>Answers you may see</h3>
+          <table style="font-size: 7.8pt">
+            <tbody>
+              <tr>
+                <td class="key">401</td>
+                <td>
+                  <code>judge_key_invalid</code>, <code>_expired</code> or <code>_revoked</code>.
+                  Five wrong keys in a row lock the address out for 15 minutes.
+                </td>
+              </tr>
+              <tr>
+                <td class="key">429</td>
+                <td>
+                  <code>judge_key_room_cap</code> or <code>judge_rate_limited</code>: wait, see
+                  <code>Retry-After</code>.
+                </td>
+              </tr>
+              <tr>
+                <td class="key">409</td>
+                <td>
+                  <code>bid_rejected</code>: the engine refused the bid, <code>reason</code> says
+                  why.
+                </td>
+              </tr>
+              <tr>
+                <td class="key">410</td>
+                <td><code>judge_room_expired</code>: the room ended. Open a new one.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p class="small muted">
+        Full request and response shapes: the
+        <a href="https://docs.gavel.dualmindlab.tech/api-reference">API reference</a> and
+        <a href="https://github.com/harshbhx/gavel-auction/blob/main/openapi/gavel.yaml"
+          >openapi/gavel.yaml</a
+        >.
+      </p>
+    </section>
+
+    <!-- ==================== 04 ARCHITECTURE ==================== -->
+    <section class="section" id="architecture">
+      <p class="kicker">04 / How it is built</p>
+      <h1 data-short="04 Architecture">Architecture</h1>
+      <p class="lead">
+        A TypeScript monorepo (Node 22, npm workspaces) started on 4 Nov 2026. A deterministic
+        engine decides outcomes; a payments package owns every PayPal call; one always-on Node
+        service hosts the rooms; the web app and docs run on Cloudflare.
+      </p>
+
+      <figure class="bare arch">
+        <img
+          src="../../../docs/assets/readme/architecture-light.png"
+          alt="Architecture: Cloudflare Worker, browser, Render API, PayPal sandbox, hash-chained ledger, receipt and verify"
+        />
+        <figcaption>
+          ONE BID, END TO END. DOTTED: SIGNED PAYPAL WEBHOOKS BACK TO THE API.
+        </figcaption>
+      </figure>
+
+      <table>
+        <thead>
+          <tr>
+            <th class="key">Part</th>
+            <th>What it does</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="key">packages/engine</td>
+            <td>
+              Rules (ascending bids, minimum increment, ceiling, soft close), commands, events and
+              the hash-chained ledger. No Node built-ins: the same events always give the same
+              result. Money is integer cents.
+            </td>
+          </tr>
+          <tr>
+            <td class="key">packages/payments</td>
+            <td>
+              Orders v2 with intent AUTHORIZE, Payments v2 (authorize, capture, void, reauthorize),
+              JS SDK v6, signature-verified and de-duplicated webhooks, the journaled settlement
+              saga, and a fake PayPal for offline tests.
+            </td>
+          </tr>
+          <tr>
+            <td class="key">packages/server</td>
+            <td>
+              HTTP routes, the room WebSocket gateway, the <code>/audio</code> voice socket and file
+              stores (room log, ledger, journals, holds, webhook events) on a persistent disk.
+            </td>
+          </tr>
+          <tr>
+            <td class="key">packages/voice</td>
+            <td>
+              Speech to text (Deepgram nova-3, Groq whisper-large-v3-turbo as failover), a
+              rule-based bid parser and a confirm gate. The model never decides a winner or moves
+              money.
+            </td>
+          </tr>
+          <tr>
+            <td class="key">packages/web</td>
+            <td>
+              Join, register, bid, console, projection screen, receipt, audit and verify screens. AG
+              Grid Community tables for the ledger, bids and holds.
+            </td>
+          </tr>
+          <tr>
+            <td class="key">Hosting</td>
+            <td>
+              Web app and docs on Cloudflare Workers with security headers. API and WebSocket host:
+              one Render service with a 1 GB persistent disk, one instance by design (the file
+              stores have a single owner).
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="pb" id="settlement">
+      <h2><span class="num">&rarr;</span>The settlement saga</h2>
+      <p>
+        Settlement is the part that must never pay twice. The saga journals every step. If the
+        process dies mid-settlement, on restart it asks PayPal what is true and continues instead of
+        repeating; an unknown answer stops for review.
+      </p>
+      <figure class="bare">
+        <img
+          src="../../../docs/assets/readme/lifecycle-light.png"
+          alt="Hold, bid, hammer, receipt, verify"
+        />
+      </figure>
+      <ol class="steps">
+        <li>
+          <span class="step__title">Register</span>
+          The server creates an order with intent AUTHORIZE for the bidder's ceiling; the bidder
+          approves in the PayPal popup; the server authorizes it. PayPal sends
+          <code>PAYMENT.AUTHORIZATION.CREATED</code>.
+        </li>
+        <li>
+          <span class="step__title">Bid</span>
+          Each bid is validated by the engine against the ceiling, the increment and the lot state,
+          then appended to the ledger. Two bids arriving together get one ordered answer.
+        </li>
+        <li>
+          <span class="step__title">Hammer</span>
+          The highest valid bid wins. The saga checks the winner's hold with PayPal, captures the
+          winning price with <code>final_capture</code>, then voids every other hold.
+        </li>
+        <li>
+          <span class="step__title">Confirm</span>
+          Verified, de-duplicated webhooks confirm each state; the final ledger entry seals the lot.
+          If the winner's hold is expired, declined or voided, the saga falls back to the runner-up.
+        </li>
+      </ol>
+      <div class="card">
+        <p class="card__label">Invariants the tests hold the saga to</p>
+        <div class="grid">
+          <ul class="clean" style="margin: 0">
+            <li>At most one capture per lot.</li>
+            <li>Captured is never more than the ceiling.</li>
+            <li>Each non-winner is voided exactly once.</li>
+          </ul>
+          <ul class="clean" style="margin: 0">
+            <li>Captured plus released equals the holds.</li>
+            <li>Safe under retried, duplicate and out-of-order webhooks.</li>
+            <li>An unknown capture outcome stops for review.</li>
+          </ul>
+        </div>
+      </div>
+      <p class="small muted">
+        Deeper reading: the
+        <a href="https://docs.gavel.dualmindlab.tech/docs/how-it-works/system-architecture"
+          >system architecture page</a
+        >,
+        <a
+          href="https://github.com/harshbhx/gavel-auction/blob/main/docs/submission/ARCHITECTURE.md"
+          >ARCHITECTURE.md</a
+        >
+        and the
+        <a href="https://docs.gavel.dualmindlab.tech/docs/run/hosting-on-render"
+          >Render hosting write-up</a
+        >.
+      </p>
+    </section>
+
+    <!-- ==================== 05 SECURITY ==================== -->
+    <section class="section" id="security">
+      <p class="kicker">05 / Security</p>
+      <h1 data-short="05 Security">Security</h1>
+      <p class="lead">
+        A 24-item security checklist, reviewed item by item, with the residual risk named where an
+        item is not fully closed. All eight P0 items pass.
+      </p>
+
+      <div class="grid" style="margin-bottom: 4.5mm">
+        <div class="stat">
+          <div class="stat__n">8<small>/8</small></div>
+          <div class="stat__l">P0 items PASS</div>
+        </div>
+        <div class="stat">
+          <div class="stat__n">13</div>
+          <div class="stat__l">items PASS in all</div>
+        </div>
+        <div class="stat">
+          <div class="stat__n">8</div>
+          <div class="stat__l">PARTIAL, each with a named residual</div>
+        </div>
+        <div class="stat">
+          <div class="stat__n">3</div>
+          <div class="stat__l">1 ACCEPTED, 2 OPEN awaiting independent review</div>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Guard</th>
+            <th>How it works</th>
+            <th class="key">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Sandbox only</strong></td>
+            <td>
+              Boot validation refuses judge rooms unless the host is on the PayPal sandbox, and
+              refuses the fake PayPal in production mode.
+            </td>
+            <td><span class="chip chip--pass">PASS P0</span></td>
+          </tr>
+          <tr>
+            <td><strong>Money integrity</strong></td>
+            <td>Integer cents end to end; server time is authoritative for the soft close.</td>
+            <td><span class="chip chip--pass">PASS P0</span></td>
+          </tr>
+          <tr>
+            <td><strong>Webhook authenticity</strong></td>
+            <td>
+              Every webhook is verified with PayPal before it counts, then de-duplicated; the
+              certificate URL host is allowlisted (SSRF).
+            </td>
+            <td><span class="chip chip--pass">PASS P0</span></td>
+          </tr>
+          <tr>
+            <td><strong>Access control</strong></td>
+            <td>
+              Auctioneer actions need the auctioneer token; bidder tokens are bound to one bidder;
+              room keys sit after the <code>#</code> in links so they never reach a server log.
+            </td>
+            <td><span class="chip chip--pass">PASS P0</span></td>
+          </tr>
+          <tr>
+            <td><strong>Secrets</strong></td>
+            <td>
+              Gitleaks on every change and on the full history, plus a scan of the web bundle. A log
+              scan with 9 planted canaries found none (one server log scanned so far).
+            </td>
+            <td><span class="chip chip--pass">PASS P0</span></td>
+          </tr>
+          <tr>
+            <td><strong>Untrusted text</strong></td>
+            <td>
+              Display names and inputs are fuzzed for injection and rendering; abusive input sizes
+              are capped.
+            </td>
+            <td><span class="chip chip--pass">PASS P0</span></td>
+          </tr>
+          <tr>
+            <td><strong>Judge key</strong></td>
+            <td>
+              Opens judge rooms only, never an operator route. Per-key caps on rooms alive and rooms
+              per hour; revocable; five wrong keys lock an address out for 15 minutes.
+            </td>
+            <td><span class="chip chip--partial">PARTIAL</span></td>
+          </tr>
+          <tr>
+            <td><strong>Headers and CORS</strong></td>
+            <td>Security headers and CSP on the custom domains; origin allowlist on the API.</td>
+            <td><span class="chip chip--partial">PARTIAL</span></td>
+          </tr>
+          <tr>
+            <td><strong>Key-less judge rooms, receipt links</strong></td>
+            <td>
+              Capped, rate limited and switchable off at runtime; tested in CI, written up, awaiting
+              an independent reviewer.
+            </td>
+            <td><span class="chip chip--open">OPEN</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="card">
+        <p class="card__label">Your data as a judge</p>
+        <p style="margin: 0">
+          GAVEL keeps the display name you type, your bids and holds (amounts in cents, times and
+          sandbox order ids) and the room's audit trail. No analytics, no ad identifiers, no
+          cookies; the session token lives in memory for the auction. The PayPal login happens on
+          PayPal's sandbox pages. Voice is off unless the host turns it on, and audio is not written
+          to disk by GAVEL.
+        </p>
+      </div>
+      <p class="small muted">
+        Item by item, with evidence and reviewers:
+        <a href="https://github.com/harshbhx/gavel-auction/blob/main/docs/SECURITY-REVIEW.md"
+          >SECURITY-REVIEW.md</a
+        >.
+      </p>
+    </section>
+
+    <!-- ==================== 06 VERIFY ==================== -->
+    <section class="section" id="verify">
+      <p class="kicker">06 / Do not trust, verify</p>
+      <h1 data-short="06 Verify the ledger">Verify the ledger</h1>
+      <p class="lead">
+        Every accepted bid goes into a ledger where each entry carries a SHA-256 fingerprint of its
+        content and of the entry before it. Change, remove or reorder one entry and every
+        fingerprint after it breaks.
+      </p>
+
+      <div class="grid grid--3" style="margin-bottom: 4mm">
+        <div class="card">
+          <p class="card__label">Way 1 &middot; your room</p>
+          <p class="card__title">Check my room</p>
+          <p class="small" style="margin: 0">
+            From the hub, open <strong>Verify the ledger</strong> and press
+            <strong>Check my room</strong>. Or paste or pick any exported bundle on the
+            <a href="https://gavel.dualmindlab.tech/verify">verify page</a>. It runs in your
+            browser; nothing is uploaded.
+          </p>
+        </div>
+        <div class="card">
+          <p class="card__label">Way 2 &middot; Ledger Lab</p>
+          <p class="card__title">Break it on purpose</p>
+          <p class="small" style="margin: 0">
+            The <a href="https://gavel.dualmindlab.tech/ledger">Ledger Lab</a> loads a 30-day
+            simulated run (2,134 entries) in AG Grid tables. Press
+            <strong>Simulate an edit to entry 1173</strong> and watch the chain fail from that entry
+            on.
+          </p>
+        </div>
+        <div class="card">
+          <p class="card__label">Way 3 &middot; code</p>
+          <p class="card__title">Re-check offline</p>
+          <p class="small" style="margin: 0">
+            <code>verifyPublicExport(entries, expectedHead)</code> in
+            <code>@gavel/engine</code> returns <code>ok: true</code> or the first bad index with a
+            reason. Fetch a bundle with the reviewer token (<a class="pageref" href="#http"></a>,
+            call 7).
+          </p>
+        </div>
+      </div>
+
+      <figure>
+        <div class="crop" style="height: 52mm">
+          <img
+            src="../../../docs/assets/ag-grid/ledger-verified-desktop.png"
+            alt="Ledger Lab with the chain verified"
+            style="margin-top: -41mm"
+          />
+        </div>
+        <figcaption>
+          LEDGER LAB ON THE LIVE SITE: 2,134 SIMULATED ENTRIES, CHAIN CHECKED IN THE BROWSER.
+          SIMULATED DATA, LABELLED AS SUCH.
+        </figcaption>
+      </figure>
+
+      <div class="grid">
+        <div class="card">
+          <p class="card__label">What a verified chain proves</p>
+          <p class="small" style="margin: 0">
+            The recorded events are complete, in order and unedited since the ledger sealed them.
+            The engine is deterministic, so replaying the same events gives the same winner and
+            price.
+          </p>
+        </div>
+        <div class="card">
+          <p class="card__label">What it does not prove</p>
+          <p class="small" style="margin: 0">
+            That what was recorded was true: a bid is kept as it was received. Private limits are
+            left out of the public copy, and the check never moves money.
+          </p>
+        </div>
+      </div>
+      <table style="font-size: 7.8pt">
+        <thead>
+          <tr>
+            <th class="key">Reason</th>
+            <th>Meaning when the check fails</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="key">bad_hash</td>
+            <td>The entry's content no longer matches its fingerprint: it was edited.</td>
+          </tr>
+          <tr>
+            <td class="key">bad_prev</td>
+            <td>The link to the previous entry is broken: an entry was removed or reordered.</td>
+          </tr>
+          <tr>
+            <td class="key">bad_seq</td>
+            <td>Sequence numbers skip or repeat.</td>
+          </tr>
+          <tr>
+            <td class="key">truncated</td>
+            <td>
+              The chain stops before the expected head (pass <code>expectedHead</code> to catch
+              this).
+            </td>
+          </tr>
+          <tr>
+            <td class="key">bad_version</td>
+            <td>The export format version is not one the verifier knows.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ==================== 07 EVIDENCE ==================== -->
+    <section class="section" id="evidence">
+      <p class="kicker">07 / Evidence before claims</p>
+      <h1 data-short="07 Evidence">Evidence</h1>
+      <p class="lead">
+        Nothing counted until a real run backed it. Each result below names what it measured, and
+        real sandbox, simulated and synthetic results are kept apart. The gate record wins where any
+        summary differs.
+      </p>
+
+      <h2>PayPal sandbox gates</h2>
+      <table>
+        <thead>
+          <tr>
+            <th class="key">Gate</th>
+            <th>Question</th>
+            <th>Result</th>
+            <th class="key">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="key">G0</td>
+            <td>Does the sandbox app authenticate and create an AUTHORIZE order?</td>
+            <td>
+              Token 200 with payments scope, order 201 CREATED (re-run 9 Nov,
+              <a href="https://github.com/harshbhx/gavel-auction/actions/runs/42555610707"
+                >run 42555610707</a
+              >).
+            </td>
+            <td><span class="chip chip--pass">PASS</span></td>
+          </tr>
+          <tr>
+            <td class="key">G1</td>
+            <td>Partial capture with <code>final_capture</code>: what happens to the rest?</td>
+            <td>
+              Authorize 500.00, capture 350.00, authorization reads CAPTURED; a later void answers
+              422 PREVIOUSLY_CAPTURED, so the remainder counts as released (inferred).
+            </td>
+            <td><span class="chip chip--pass">PASS</span></td>
+          </tr>
+          <tr>
+            <td class="key">G2</td>
+            <td>Wallet and guest card AUTHORIZE in JS SDK v6?</td>
+            <td>Both authorized on the sandbox.</td>
+            <td><span class="chip chip--pass">PASS</span></td>
+          </tr>
+          <tr>
+            <td class="key">G3</td>
+            <td>How long does a hold stay capturable, and does reauthorize extend it?</td>
+            <td>
+              Timed probe since 7 Nov 03:06 UTC, final reading about 12 Nov 06:17 UTC.<br /><span
+                class="ph"
+                data-key="G3_RESULT"
+                >[G3 RESULT: Harsh writes the final reading here, or deletes this line]</span
+              >
+            </td>
+            <td><span class="chip chip--progress">IN PROGRESS</span></td>
+          </tr>
+          <tr>
+            <td class="key">G4</td>
+            <td>Are real webhooks verified?</td>
+            <td>Six real sandbox deliveries verified through PayPal's endpoint.</td>
+            <td><span class="chip chip--pass">PASS</span></td>
+          </tr>
+          <tr>
+            <td class="key">G5</td>
+            <td>Is spoken bidding accurate enough?</td>
+            <td>
+              Synthetic audio only: wrong accept 0.000 on 24 noise-free clips per set; 0.058 (Groq)
+              and 0.092 (Deepgram) on a held-out noisy set of 120 clips, against 0.05. Every spoken
+              bid waits for a confirm.
+            </td>
+            <td><span class="chip chip--partial">PARTIAL</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>Measured runs</h2>
+      <div class="grid" style="margin-bottom: 3mm">
+        <div class="stat">
+          <div class="stat__n">17<small>/17</small></div>
+          <div class="stat__l">
+            steps passed by the judge smoke on the live domains, /try to receipts (<a
+              href="https://github.com/harshbhx/gavel-auction/actions/runs/42584326641"
+              >run</a
+            >)
+          </div>
+        </div>
+        <div class="stat">
+          <div class="stat__n">1</div>
+          <div class="stat__l">
+            capture after a real process kill mid-settlement on a CI runner, 2 losers voided,
+            19-entry chain verifies (<a
+              href="https://github.com/harshbhx/gavel-auction/actions/runs/42558021614"
+              >run</a
+            >)
+          </div>
+        </div>
+        <div class="stat">
+          <div class="stat__n">24<small>/24</small></div>
+          <div class="stat__l">
+            synthetic clips answered by both speech providers through the live socket, none accepted
+            without a confirm (<a
+              href="https://github.com/harshbhx/gavel-auction/actions/runs/42575018866"
+              >run</a
+            >)
+          </div>
+        </div>
+        <div class="stat">
+          <div class="stat__n">4,500<small>+</small></div>
+          <div class="stat__l">test cases declared across the packages and run in CI</div>
+        </div>
+      </div>
+      <p class="small">
+        Also measured: the hosted webhook route answered at p95 112.03 ms from a GitHub runner
+        against a 300 ms target (n=50); a warm-up after 16 idle minutes took at most 0.66 s (n=2).
+        One lot of three holds settled on the real sandbox with an in-process crash recovered
+        (nightly specs R7, R8, R10). As of 9 Nov, 172 deep-dig and 597 red-team issues found by our
+        own audit waves were closed on GitHub.
+      </p>
+    </section>
+
+    <section class="pb" id="evidence-2">
+      <div class="grid">
+        <div style="flex: 1.15">
+          <h2 style="margin-top: 0">PageSpeed 100, landing page</h2>
+          <p>
+            PageSpeed Insights scored the landing page 100 in all four categories, on mobile and on
+            desktop (Lighthouse 13.6.0, lab data, measured by hand on 10 Nov 2026).
+          </p>
+          <p class="small muted" style="margin-bottom: 1mm">MOBILE</p>
+          <div class="score">
+            <div><b>100</b><span>Perf</span></div>
+            <div><b>100</b><span>A11y</span></div>
+            <div><b>100</b><span>Best pr.</span></div>
+            <div><b>100</b><span>SEO</span></div>
+          </div>
+          <p class="small muted" style="margin-bottom: 1mm">DESKTOP</p>
+          <div class="score">
+            <div><b>100</b><span>Perf</span></div>
+            <div><b>100</b><span>A11y</span></div>
+            <div><b>100</b><span>Best pr.</span></div>
+            <div><b>100</b><span>SEO</span></div>
+          </div>
+          <p class="small">
+            Mobile: LCP 1.1 s, TBT 10 ms, CLS 0. Desktop: LCP 0.2 s, TBT 20 ms, CLS 0.
+          </p>
+          <div class="note">
+            <strong>Scope</strong> The landing page only, one lab run. The room, hub, console, audit
+            and docs pages were not measured, and field data for real users is "No data".
+            <a
+              href="https://github.com/harshbhx/gavel-auction/blob/main/docs/evidence/perf/PAGESPEED.md"
+              >Details and screenshots</a
+            >.
+          </div>
+        </div>
+        <div style="flex: 0.85">
+          <figure style="margin-bottom: 3mm">
+            <div class="crop ps">
+              <img
+                src="../../../docs/evidence/perf/pagespeed-mobile-2026-11-10.jpg"
+                alt="PageSpeed Insights mobile report: 100 in all four categories"
+              />
+            </div>
+            <figcaption>MOBILE REPORT, 10 NOV 2026, 12:51 IST</figcaption>
+          </figure>
+          <figure style="margin-bottom: 0">
+            <div class="crop ps">
+              <img
+                src="../../../docs/evidence/perf/pagespeed-desktop-2026-11-10.jpg"
+                alt="PageSpeed Insights desktop report: 100 in all four categories"
+              />
+            </div>
+            <figcaption>DESKTOP REPORT, SAME RUN</figcaption>
+          </figure>
+        </div>
+      </div>
+
+      <h2>Open data</h2>
+      <div class="grid">
+        <div>
+          <p>
+            Five small datasets on Hugging Face, each labelled real sandbox, simulated or synthetic,
+            each with a SHA-256 manifest, plus a read-only Evidence Explorer. Synthetic by design:
+            GAVEL does not collect real people's voices, names or payment details.
+          </p>
+          <p>
+            <a
+              href="https://huggingface.co/collections/harshbhx/gavel-evidence-auction-holds-hammer-and-receipts-6af0afebebb37eb4c9184504"
+              >The collection</a
+            >
+            &nbsp;&middot;&nbsp;
+            <a href="https://huggingface.co/spaces/harshbhx/gavel-evidence-explorer"
+              >Evidence Explorer</a
+            >
+          </p>
+        </div>
+        <div class="card" style="margin: 0">
+          <p class="card__label">Where the raw evidence lives</p>
+          <ul class="clean" style="margin: 0">
+            <li>
+              <a href="https://github.com/harshbhx/gavel-auction/blob/main/docs/GATES.md"
+                >GATES.md</a
+              >: every gate, its question, requests, result
+            </li>
+            <li>
+              <a href="https://github.com/harshbhx/gavel-auction/tree/main/docs/evidence"
+                >docs/evidence</a
+              >: redacted sandbox run logs (JSON lines)
+            </li>
+            <li>
+              <a href="https://github.com/harshbhx/gavel-auction/actions/workflows/judge-smoke.yml"
+                >Judge smoke runs</a
+              >: the nightly walk of the live site
+            </li>
+            <li><code>GET /version</code> on the API names the deployed commit</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== 08 SDKS ==================== -->
+    <section class="section" id="sdks">
+      <p class="kicker">08 / For developers</p>
+      <h1 data-short="08 API and APIMatic SDKs">API and APIMatic SDKs</h1>
+      <p class="lead">
+        The host API is described by one OpenAPI 3.1 document. CI lints it with Spectral and checks
+        it against the server router, so the spec cannot drift from the code. APIMatic generates
+        typed clients from that same document.
+      </p>
+
+      <div class="grid">
+        <div class="card">
+          <p class="card__label">TypeScript</p>
+          <p class="card__title">gavel-sdk 0.0.5</p>
+          <pre style="margin: 0 0 2mm">npm install ./gavel-sdk-0.0.5.tgz
+<span class="k">import</span> { ... } <span class="k">from</span> "gavel-sdk"</pre>
+          <p class="small" style="margin: 0">Beta. Default server: the sandbox host.</p>
+        </div>
+        <div class="card">
+          <p class="card__label">Python</p>
+          <p class="card__title">gavel-sdk 0.0.5</p>
+          <pre style="margin: 0 0 2mm">pip install ./gavel_sdk-0.0.5-py3-none-any.whl
+<span class="k">import</span> gavel_host_api</pre>
+          <p class="small" style="margin: 0">Beta. Same operations as the TypeScript client.</p>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Piece</th>
+            <th>Status on 10 Nov 2026</th>
+            <th class="key">State</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>OpenAPI 3.1 spec</strong></td>
+            <td>
+              <a href="https://github.com/harshbhx/gavel-auction/blob/main/openapi/gavel.yaml"
+                >openapi/gavel.yaml</a
+              >, linted in CI, rendered with a Try it panel in the
+              <a href="https://docs.gavel.dualmindlab.tech/api-reference">API reference</a>.
+            </td>
+            <td><span class="chip chip--pass">LIVE</span></td>
+          </tr>
+          <tr>
+            <td><strong>Generated SDKs</strong></td>
+            <td>
+              TypeScript and Python generated by APIMatic, package name patched to
+              <code>gavel-sdk</code> 0.0.5. A workflow builds and smoke-imports both, and publishes
+              them as a GitHub Release on the tag <code>sdk-v0.0.5</code>; that change was in review
+              when this guide was written.<br />
+              <span class="ph" data-key="SDK_RELEASE"
+                >[SDK RELEASE: Harsh confirms the GitHub release is live and pastes its link, or
+                deletes this line]</span
+              >
+            </td>
+            <td><span class="chip chip--progress">IN REVIEW</span></td>
+          </tr>
+          <tr>
+            <td><strong>npm and PyPI</strong></td>
+            <td>Not published. GitHub Releases only for now.</td>
+            <td><span class="chip chip--open">NOT YET</span></td>
+          </tr>
+          <tr>
+            <td><strong>Hosted developer portal</strong></td>
+            <td>Not live (the portal address answered 404 on 10 Nov), so we do not claim it.</td>
+            <td><span class="chip chip--open">NOT YET</span></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="note">
+        <strong>Why a bid route exists</strong> Live bidding uses a WebSocket that only accepts a
+        browser origin, which a generated client cannot use. The HTTP bid route gives the SDKs and
+        curl the same path through the engine. The socket rules are unchanged.
+      </div>
+    </section>
+
+    <!-- ==================== 09 LIMITS ==================== -->
+    <section class="section" id="limits">
+      <p class="kicker">09 / Honest limits</p>
+      <h1 data-short="09 Known limits">Known limits</h1>
+      <p class="lead">
+        What is not proven yet, and what we missed. We would rather you read it here than find it
+        yourself.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 27%">Area</th>
+            <th>Today</th>
+            <th class="key">State</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Settlement speed</strong></td>
+            <td>
+              On the sandbox, 50 settlements of 6 holds (49 completed): hammer to settled p95 6.93 s
+              against a 6 s target, hammer to captured p95 3.77 s against 2.5 s (<a
+                href="https://github.com/harshbhx/gavel-auction/actions/runs/42563147792"
+                >run</a
+              >). An earlier n=20 run settled at p95 5.59 s. The capture call alone is p95 2.72 s.
+            </td>
+            <td><span class="chip chip--miss">MISSED</span></td>
+          </tr>
+          <tr>
+            <td><strong>Hold lifetime (G3)</strong></td>
+            <td>
+              PayPal's pages disagree on how long a hold stays capturable. Our timed probe reads out
+              about 12 Nov; until then demo holds are made minutes before capture.
+            </td>
+            <td><span class="chip chip--progress">IN PROGRESS</span></td>
+          </tr>
+          <tr>
+            <td><strong>Voice in a real room (G5)</strong></td>
+            <td>
+              Accuracy is measured on synthetic audio only and missed the pre-registered limit on
+              the noisy held-out set. No person has used the console microphone in a real room yet.
+              Spoken bids always need a confirm; tap, QR and typed bids work without voice.
+            </td>
+            <td><span class="chip chip--partial">PARTIAL</span></td>
+          </tr>
+          <tr>
+            <td><strong>Whole auction on the hosted server</strong></td>
+            <td>
+              Settlement is proven against the fake PayPal, in nightly sandbox specs and in the
+              measured runs, but a whole auction settled through the hosted Render server, and a
+              process kill on that host, are not run yet. The real kill ran on a CI runner.
+            </td>
+            <td><span class="chip chip--open">NOT RUN</span></td>
+          </tr>
+          <tr>
+            <td><strong>Remainder release</strong></td>
+            <td>
+              Inferred from PayPal's answers (CAPTURED, then 422 PREVIOUSLY_CAPTURED), not read from
+              a buyer balance.
+            </td>
+            <td><span class="chip chip--partial">INFERRED</span></td>
+          </tr>
+          <tr>
+            <td><strong>Card in a live room</strong></td>
+            <td>
+              G2 shows a guest card authorized in the SDK; a card checkout recorded inside a judge
+              room, and a guest card void, are not run.
+            </td>
+            <td><span class="chip chip--open">NOT RUN</span></td>
+          </tr>
+          <tr>
+            <td><strong>Hosted capacity</strong></td>
+            <td>
+              One Render instance by design; judge rooms are capped and rate limited, so a busy host
+              offers the scripted demo instead.
+            </td>
+            <td><span class="chip chip--open">BY DESIGN</span></td>
+          </tr>
+          <tr>
+            <td><strong>Reviews</strong></td>
+            <td>
+              Two security items (key-less judge rooms, receipt links) await an independent
+              reviewer. Accessibility is checked by automated axe sweeps in CI; a manual
+              screen-reader and 200 percent zoom pass is still to do.
+            </td>
+            <td><span class="chip chip--open">OPEN</span></td>
+          </tr>
+          <tr>
+            <td><strong>APIMatic portal</strong></td>
+            <td>SDKs generated; release in review; hosted portal not live.</td>
+            <td><span class="chip chip--progress">IN REVIEW</span></td>
+          </tr>
+          <tr>
+            <td><strong>PayPal popup automation</strong></td>
+            <td>
+              PayPal's review page can ignore automated clicks (bot detection), so our robots use
+              the demo hold. In a normal browser the login works as usual.
+            </td>
+            <td><span class="chip chip--open">NOTE</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="small muted">
+        The full list with owners and dates:
+        <a href="https://docs.gavel.dualmindlab.tech/docs/roadmap/limits">Limits and next steps</a>.
+      </p>
+    </section>
+
+    <!-- ==================== 10 TEAM ==================== -->
+    <section class="section" id="team">
+      <p class="kicker">10 / Team</p>
+      <h1 data-short="10 Team and contact">Team and contact</h1>
+      <p class="lead">
+        Two builders, one public repository, every change through a pull request and CI.
+      </p>
+
+      <div class="grid">
+        <div class="card">
+          <p class="card__label">Engine, payments, evidence</p>
+          <p class="card__title">Harsh Bhanushali</p>
+          <p class="small" style="margin-bottom: 2mm">
+            The auction engine, PayPal payments and the settlement saga, voice, the evidence gates
+            and operations.
+          </p>
+          <p class="small" style="margin: 0">
+            <a href="https://github.com/harshbhx">github.com/harshbhx</a>
+          </p>
+        </div>
+        <div class="card">
+          <p class="card__label">Web, accessibility, deploys</p>
+          <p class="card__title">Dhairya Patel</p>
+          <p class="small" style="margin-bottom: 2mm">
+            The web UI, accessibility and UX polish, the end-to-end scenario runner, and the deploys
+            on Render.
+          </p>
+          <p class="small" style="margin: 0">
+            <a href="https://github.com/DhairyaPatel-Devloper">github.com/DhairyaPatel-Devloper</a>
+          </p>
+        </div>
+      </div>
+
+      <h2>Reach us</h2>
+      <table>
+        <tbody>
+          <tr>
+            <td class="key" style="width: 30%">Email</td>
+            <td>
+              <span class="ph" data-key="CONTACT_EMAIL">[CONTACT EMAIL: Harsh pastes here]</span>
+            </td>
+          </tr>
+          <tr>
+            <td class="key">Devpost</td>
+            <td>The GAVEL project page on the PayPal AI Hackathon Devpost.</td>
+          </tr>
+          <tr>
+            <td class="key">GitHub</td>
+            <td>
+              <a href="https://github.com/harshbhx/gavel-auction/issues">Open an issue</a> (please
+              never paste a login or key there).
+            </td>
+          </tr>
+          <tr>
+            <td class="key">A login is locked</td>
+            <td>Tell us through any of the above without the password; we reset it.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2>Every link in one place</h2>
+      <table>
+        <tbody>
+          <tr>
+            <td class="key" style="width: 30%">Try it</td>
+            <td>
+              <a href="https://gavel.dualmindlab.tech/try">Judge panel</a> &middot;
+              <a href="https://gavel.dualmindlab.tech/demo/scripted">Scripted demo</a> &middot;
+              <a href="https://gavel.dualmindlab.tech/verify">Verify a ledger</a> &middot;
+              <a href="https://gavel.dualmindlab.tech/ledger">Ledger Lab</a>
+            </td>
+          </tr>
+          <tr>
+            <td class="key">Read</td>
+            <td>
+              <a href="https://docs.gavel.dualmindlab.tech">Docs</a> &middot;
+              <a href="https://docs.gavel.dualmindlab.tech/docs/judges">For judges</a> &middot;
+              <a href="https://docs.gavel.dualmindlab.tech/docs/judges/trust-and-faq"
+                >Trust and FAQ</a
+              >
+              &middot; <a href="https://docs.gavel.dualmindlab.tech/api-reference">API reference</a>
+            </td>
+          </tr>
+          <tr>
+            <td class="key">Check</td>
+            <td>
+              <a href="https://github.com/harshbhx/gavel-auction">Source (MIT)</a> &middot;
+              <a href="https://github.com/harshbhx/gavel-auction/blob/main/docs/GATES.md">Gates</a>
+              &middot;
+              <a href="https://github.com/harshbhx/gavel-auction/blob/main/docs/SECURITY-REVIEW.md"
+                >Security review</a
+              >
+              &middot;
+              <a href="https://huggingface.co/spaces/harshbhx/gavel-evidence-explorer"
+                >Evidence Explorer</a
+              >
+            </td>
+          </tr>
+          <tr>
+            <td class="key">Host health</td>
+            <td>
+              <a href="https://api.gavel.dualmindlab.tech/healthz">API health</a> &middot;
+              <a href="https://api.gavel.dualmindlab.tech/version">Deployed commit</a>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ==================== BACK ==================== -->
+    <section class="back">
+      <div class="back__inner">
+        <img src="../../svg/mark-reversed.svg" alt="" style="width: 30mm; margin-bottom: 10mm" />
+        <h1>
+          Every bid<br />is a hold.<br /><span style="color: #ff6a1f"
+            >The hammer<br />is the payment.</span
+          >
+        </h1>
+        <p style="color: #e6dac1; font-size: 11pt; max-width: 120mm; margin-top: 8mm">
+          Thank you for judging GAVEL. Start at the
+          <a href="https://gavel.dualmindlab.tech/try">judge panel</a>, and if anything blocks you,
+          the <a href="https://gavel.dualmindlab.tech/demo/scripted">scripted demo</a> always works.
+        </p>
+      </div>
+      <div class="cover__hatch" style="top: 236mm"></div>
+      <div class="back__foot">
+        <span>CONFIDENTIAL. FOR THE JUDGING PANEL ONLY. PLEASE DO NOT SHARE.</span>
+        <span>PAYPAL SANDBOX ONLY &middot; MIT LICENCE</span>
+      </div>
+    </section>
+  </body>
+</html>

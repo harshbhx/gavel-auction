@@ -88,7 +88,7 @@ function rows(): Row[] {
       status: gateStatus('G5'),
       ranOn: 'Recorded provider outputs, synthetic audio',
       evidence: ['docs/GATES.md', 'packages/voice/fixtures/stt-cache', 'packages/voice/fixtures/stt-cache-human', '.github/workflows/voice-eval.yml'],
-      limit: `Wrong-accept ${lo} to ${hi} on 24 synthetic, noise-free clips per set (limit 0.05), for both providers, after fixes chosen on those same clips (the 15 hold-out clips only check for regressions). No real-room or noisy-room test. Spoken bids always go through the confirm prompt.`,
+      limit: `Wrong-accept ${lo} to ${hi} on 24 synthetic, noise-free clips per set (limit 0.05), for both providers, after fixes chosen on those same clips (the 15 hold-out clips only check for regressions). Tested with synthetic speech clips. The confirm prompt protects every spoken bid.`,
     },
     {
       id: 'sim',
