@@ -113,38 +113,6 @@
     min-height: 0;
     margin-top: 0;
   }
-
-  /* One screen (UIX-52): the console and bidder cards and the links below share the column
-   * without a scrollbar. Links sit two to a row and the two close buttons side by side. */
-  .gv-hub__side {
-    gap: var(--space-3);
-  }
-
-  .gv-hub__card {
-    padding: var(--space-3) var(--space-4);
-  }
-
-  .gv-hub__more {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-2);
-    margin-top: 0;
-  }
-
-  .gv-hub__more > button:first-child,
-  .gv-hub__more > .gv-hub__note,
-  .gv-hub__more > .gv-hub__close {
-    grid-column: 1 / -1;
-  }
-
-  .gv-hub__more > .gv-hub__close {
-    flex-direction: row;
-    gap: var(--space-2);
-  }
-
-  .gv-hub__more > .gv-hub__close > * {
-    flex: 1 1 0;
-  }
 }
 
 .gv-hub__row {
