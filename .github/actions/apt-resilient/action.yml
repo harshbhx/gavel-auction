@@ -1,0 +1,41 @@
+name: apt-resilient
+description: Make apt retry, avoid the Azure mirror host and tolerate a flaky index update
+runs:
+  using: composite
+  steps:
+    - name: Harden apt
+      shell: bash
+      run: |
+        printf '%s\n' \
+          'Acquire::Retries "5";' \
+          'Acquire::http::Timeout "20";' \
+          'Acquire::https::Timeout "20";' \
+          'Acquire::ForceIPv4 "true";' | sudo tee /etc/apt/apt.conf.d/80-retries >/dev/null
+        # Hosted images list the mirror in /etc/apt/apt-mirrors.txt (mirror+file: URIs), so rewrite it too.
+        for f in /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources /etc/apt/apt-mirrors.txt; do
+          if [ -f "$f" ]; then
+            sudo sed -i 's#http://azure\.archive\.ubuntu\.com/ubuntu#http://archive.ubuntu.com/ubuntu#g' "$f"
+          fi
+        done
+        echo "apt mirror list:"
+        cat /etc/apt/apt-mirrors.txt 2>/dev/null || true
+        if ! getent hosts archive.ubuntu.com >/dev/null; then
+          echo "DNS cannot resolve archive.ubuntu.com; resolver state:"
+          resolvectl status 2>&1 | head -20 || true
+          cat /etc/resolv.conf || true
+          echo "trying public resolvers"
+          iface=$(ip route show default | awk '{print $5; exit}')
+          sudo resolvectl dns "$iface" 1.1.1.1 8.8.8.8 || true
+          sudo resolvectl flush-caches || true
+          getent hosts archive.ubuntu.com || echo "still cannot resolve archive.ubuntu.com"
+        fi
+        for attempt in 1 2 3; do
+          if sudo apt-get update -qq; then
+            break
+          fi
+          echo "apt-get update failed (attempt $attempt of 3)"
+          if [ "$attempt" -lt 3 ]; then
+            sleep 10
+          fi
+        done
+        exit 0
