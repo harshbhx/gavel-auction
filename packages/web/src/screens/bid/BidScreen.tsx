@@ -14,6 +14,7 @@ import {
   selectCeilingUsage,
   selectConfirmQueue,
   selectMyStatus,
+  type MyStatus,
   selectAuctionStatus,
   selectPrice,
   selectStream,
@@ -34,6 +35,7 @@ import { StateBanner, bidsLocked, bidsNotice } from './StateBanner';
 import { myStatus, StatusChip, type ChipStatus } from './StatusChip';
 import { useBidAnnounce } from './useBidAnnounce';
 import { useOutbid } from './useOutbid';
+import type { EndOutcome } from './EndDialog';
 import { markWinnerSeen, winnerSeen, winnerSeenKey } from './winnerSeen';
 
 // Loaded on first use: a confirm question is rare, and this keeps the first route small.
@@ -41,10 +43,8 @@ const ConfirmSheet = lazy(() =>
   import('./ConfirmSheet').then((m) => ({ default: m.ConfirmSheet })),
 );
 
-// Loaded when this bidder wins: most visits never see it.
-const WinnerDialog = lazy(() =>
-  import('./WinnerDialog').then((m) => ({ default: m.WinnerDialog })),
-);
+// Loaded when the lot ends: most visits never see it.
+const EndDialog = lazy(() => import('./EndDialog').then((m) => ({ default: m.EndDialog })));
 
 export { REJECTION_CLEAR_MS };
 export type { BidRejection };
@@ -59,6 +59,14 @@ function kindOf(status: ChipStatus): 'win' | 'out' | 'review' | 'idle' {
   if (status === 'outbid') return 'out';
   if (status === 'review') return 'review';
   return 'idle';
+}
+
+/** How the lot ended for this person, or null while it is still running (or under review). */
+function endOutcome(base: MyStatus, closedLot: boolean, cents: number): EndOutcome | null {
+  if (!closedLot || base === 'review') return null;
+  if (cents <= 0) return 'noSale';
+  if (base === 'won' || base === 'leading') return 'won';
+  return base === 'watching' ? 'sold' : 'lost';
 }
 
 export interface BidScreenProps {
@@ -85,11 +93,11 @@ export interface BidScreenProps {
   onConfirm?: (confirmId: string, accept: boolean) => void;
   /** The room was stopped by the operator. */
   stopped?: boolean;
-  /** Winner pop-up: "Go to home". The pop-up shows only when all three handlers are given. */
+  /** End pop-up: "Go home". The pop-up shows only when onHome and onJoinCode are given. */
   onHome?: () => void;
-  /** Winner pop-up: "Enter a join code" (the join entry with the code field focused). */
+  /** End pop-up: "Join room" (the join entry with the code field focused). */
   onJoinCode?: () => void;
-  /** Winner pop-up: "View receipt". */
+  /** End pop-up: "View receipt", offered to bidders who have one. */
   onReceipt?: () => void;
   /** Lot title from the room's public summary, used while the live snapshot has none. */
   lotTitleFallback?: string | null;
@@ -170,20 +178,18 @@ export function BidScreen({
   // can never both stand.
   const send = useSendGuard(onBid, pending || unsent);
 
-  // The winner pop-up: only this bidder's own win, once per lot (never watchers or losers).
+  // The end pop-up: once per lot, for everyone in the room (winner, loser, watcher, no sale).
   const wonCents = price?.currentCents ?? 0;
   const winKey = winnerSeenKey(roomId, wonCents);
   const [winClosed, setWinClosed] = useState<string | null>(null);
-  const showWin =
-    base === 'won' &&
-    closedLot &&
-    wonCents > 0 &&
+  const outcome = endOutcome(base, closedLot, wonCents);
+  const showEnd =
+    outcome !== null &&
     onHome !== undefined &&
     onJoinCode !== undefined &&
-    onReceipt !== undefined &&
     winClosed !== winKey &&
     !winnerSeen(winKey);
-  const closeWin = (after?: () => void): void => {
+  const closeEnd = (after?: () => void): void => {
     markWinnerSeen(winKey);
     setWinClosed(winKey);
     after?.();
@@ -271,176 +277,193 @@ export function BidScreen({
         <StateBanner status={auctionStatus} stopped={stopped} />
       </div>
 
-      <div className="bid__status">
-        <StatusChip status={status} />
-      </div>
-
-      <section aria-label={t('bid.price')} className="bid__panel bid__priceboard">
-        <h1 tabIndex={-1} className="bid__kicker">
-          {t('bid.price')}
-        </h1>
-        {price === null ? (
-          <SkeletonGroup>
-            <Skeleton height="3.5rem" width="70%" />
-          </SkeletonGroup>
-        ) : (
-          <PriceRoll cents={price.currentCents ?? reserve} className="bid__price" />
-        )}
-        {leader !== null && <p className="bid__leader">{leader}</p>}
-      </section>
-
-      <section className="bid__lot">
-        <LotBlock title={lotTitle ?? lotTitleFallback} />
-        {price === null && <p className="bid__wait">{t('bid.waitingLot')}</p>}
-      </section>
-
-      {ceilingHold !== null && (
-        <HoldCard
-          state="held"
-          legend={false}
-          ceilingCents={ceilingHold}
-          {...(myPaddle === undefined ? {} : { caption: t('reg.yourPaddle', { n: myPaddle }) })}
-        />
-      )}
-
-      <div className="bid__prefs">
-        <label className="bid__vibrate">
-          <input type="checkbox" checked={vibrate} onChange={(e) => setVibrate(e.target.checked)} />
-          <span>{t('bid.vibrate')}</span>
-        </label>
-        <MuteToggle />
-      </div>
-
-      {canRaise && (
-        <section className="bid__raise" data-testid="raise-limit">
-          {raiseHint !== null && (
-            <p role="status" data-testid="raise-hint">
-              {raiseHint}
-            </p>
-          )}
-          <Button
-            variant={raiseHint === null && !mustRaise ? 'outline' : 'solid'}
-            onClick={() => setRaising(true)}
-          >
-            {t('raise.cta')}
-          </Button>
-        </section>
-      )}
-
-      {base === 'watching' && onJoin !== undefined && (
-        <Button size="bid" onClick={onJoin}>
-          {t('join.asBidder')}
-        </Button>
-      )}
-
-      {blockedReason !== null && (
-        <p role="status" data-testid="bid-blocked" className="bid__panel">
-          {blockedReason}
-        </p>
-      )}
-
-      {canBid && !unsent && pending && (
-        <p role="status" data-testid="bid-sent">
-          {t('bid.sentWaiting')}
-        </p>
-      )}
-
-      {canBid && !unsent && ceiling !== null && nextMin > ceiling && (
-        <p role="status" data-testid="bid-at-ceiling">
-          {t('bid.atCeiling', { min: formatUsd(nextMin), max: formatUsdCompact(ceiling) })}
-        </p>
-      )}
-
-      {canBid && recorded && (
-        <section className="bid__panel bid__recorded" data-testid="bid-recorded">
-          <p role="status">{t('bid.recorded')}</p>
-          <a className="ui-link" href="/demo">
-            {t('bid.recordedLive')}
-          </a>
-        </section>
-      )}
-
-      {canBid && !recorded && !unsent && (
-        <section
-          data-testid="bid-bar"
-          className="bid__bar"
-          style={{
-            position: 'sticky',
-            paddingBottom: 'env(safe-area-inset-bottom)',
-          }}
-        >
-          <p className="bid__barprice" data-testid="bid-bar-price">
-            <span>{t('bid.barNow', { price: formatUsd(price?.currentCents ?? reserve) })}</span>
-            {ceiling !== null && (
-              <span>{t('bid.barLimit', { max: formatUsdCompact(ceiling) })}</span>
+      <div className="bid__cols">
+        <div className="bid__col bid__col--lot">
+          <section aria-label={t('bid.price')} className="bid__panel bid__priceboard">
+            <div className="bid__pricehead">
+              <h1 tabIndex={-1} className="bid__kicker">
+                {t('bid.price')}
+              </h1>
+              <StatusChip status={status} />
+            </div>
+            {price === null ? (
+              <SkeletonGroup>
+                <Skeleton height="3.5rem" width="70%" />
+              </SkeletonGroup>
+            ) : (
+              <PriceRoll cents={price.currentCents ?? reserve} className="bid__price" />
             )}
-          </p>
-          <QuickBid
-            nextMinCents={nextMin}
-            incrementCents={increment}
-            ceilingCents={ceiling}
-            onBid={send}
-          />
-          <CustomBid
-            nextMinCents={nextMin}
-            ceilingCents={ceiling}
-            incrementCents={increment}
-            onBid={send}
-            {...(canRaise ? { onRaise: () => setRaising(true) } : {})}
-          />
-        </section>
-      )}
+            {leader !== null && <p className="bid__leader">{leader}</p>}
+          </section>
 
-      <Rejection
-        rejection={rejection}
-        priceCents={price?.currentCents ?? null}
-        maxCents={ceiling}
-        minCents={nextMin}
-      />
+          <section className="bid__lot">
+            <LotBlock title={lotTitle ?? lotTitleFallback} />
+            {price === null && <p className="bid__wait">{t('bid.waitingLot')}</p>}
+          </section>
 
-      {unsent && !pending && (
-        <div role="status" className="bid__panel bid__unsent">
-          <p>{t('bid.unknown')}</p>
-          {unsentCents !== null && unsentCents < nextMin && onReplace !== undefined ? (
-            <Button disabled={connection.offline} onClick={() => onReplace(nextMin)}>
-              {t('bid.resendCurrent', { amount: formatUsd(nextMin) })}
-            </Button>
-          ) : (
-            onResend !== undefined && (
-              <Button disabled={connection.offline} onClick={onResend}>
-                {unsentCents === null
-                  ? t('bid.resend')
-                  : t('bid.resendAmount', { amount: formatUsd(unsentCents) })}
+          {ceilingHold !== null && (
+            <section aria-label={t('bid.position.title')} className="bid__position">
+              <HoldCard
+                state="held"
+                legend={false}
+                ceilingCents={ceilingHold}
+                {...(myPaddle === undefined
+                  ? {}
+                  : { caption: t('reg.yourPaddle', { n: myPaddle }) })}
+              />
+              {usage !== null && (
+                <CeilingMeter usedCents={usage.usedCents} maxCents={usage.maxCents} />
+              )}
+            </section>
+          )}
+
+          {canRaise && (
+            <section className="bid__panel bid__raise" data-testid="raise-limit">
+              {raiseHint !== null && (
+                <p role="status" data-testid="raise-hint">
+                  {raiseHint}
+                </p>
+              )}
+              <Button
+                variant={raiseHint === null && !mustRaise ? 'outline' : 'solid'}
+                onClick={() => setRaising(true)}
+              >
+                {t('raise.cta')}
               </Button>
-            )
+            </section>
           )}
         </div>
-      )}
 
-      {usage !== null && <CeilingMeter usedCents={usage.usedCents} maxCents={usage.maxCents} />}
+        <div className="bid__col bid__col--act">
+          <div className="bid__prefs">
+            <label className="bid__vibrate">
+              <input
+                type="checkbox"
+                checked={vibrate}
+                onChange={(e) => setVibrate(e.target.checked)}
+              />
+              <span>{t('bid.vibrate')}</span>
+            </label>
+            <MuteToggle />
+          </div>
+          {base === 'watching' && onJoin !== undefined && (
+            <Button size="bid" onClick={onJoin}>
+              {t('join.asBidder')}
+            </Button>
+          )}
 
-      <ul aria-label={t('console.stream')} className="bid__stream">
-        {stream.slice(0, LAST_EVENTS).map((b, i) => (
-          <li key={b.seq}>
-            <span>
-              {b.paddle === null
-                ? null
-                : t(i === 0 ? 'bid.rowLeading' : 'bid.row', { n: b.paddle })}
-            </span>
-            <span className="bid__amt">{formatUsd(b.amount)}</span>
-          </li>
-        ))}
-      </ul>
+          {blockedReason !== null && (
+            <p role="status" data-testid="bid-blocked" className="bid__panel">
+              {blockedReason}
+            </p>
+          )}
 
-      {showWin && (
+          {canBid && !unsent && pending && (
+            <p role="status" data-testid="bid-sent">
+              {t('bid.sentWaiting')}
+            </p>
+          )}
+
+          {canBid && !unsent && ceiling !== null && nextMin > ceiling && (
+            <p role="status" data-testid="bid-at-ceiling">
+              {t('bid.atCeiling', { min: formatUsd(nextMin), max: formatUsdCompact(ceiling) })}
+            </p>
+          )}
+
+          {canBid && recorded && (
+            <section className="bid__panel bid__recorded" data-testid="bid-recorded">
+              <p role="status">{t('bid.recorded')}</p>
+              <a className="ui-link" href="/demo">
+                {t('bid.recordedLive')}
+              </a>
+            </section>
+          )}
+
+          {canBid && !recorded && !unsent && (
+            <section
+              data-testid="bid-bar"
+              className="bid__bar"
+              style={{
+                position: 'sticky',
+                paddingBottom: 'env(safe-area-inset-bottom)',
+              }}
+            >
+              <p className="bid__barprice" data-testid="bid-bar-price">
+                <span>{t('bid.barNow', { price: formatUsd(price?.currentCents ?? reserve) })}</span>
+                {ceiling !== null && (
+                  <span>{t('bid.barLimit', { max: formatUsdCompact(ceiling) })}</span>
+                )}
+              </p>
+              <QuickBid
+                nextMinCents={nextMin}
+                incrementCents={increment}
+                ceilingCents={ceiling}
+                onBid={send}
+              />
+              <CustomBid
+                nextMinCents={nextMin}
+                ceilingCents={ceiling}
+                incrementCents={increment}
+                onBid={send}
+                {...(canRaise ? { onRaise: () => setRaising(true) } : {})}
+              />
+            </section>
+          )}
+
+          <Rejection
+            rejection={rejection}
+            priceCents={price?.currentCents ?? null}
+            maxCents={ceiling}
+            minCents={nextMin}
+          />
+
+          {unsent && !pending && (
+            <div role="status" className="bid__panel bid__unsent">
+              <p>{t('bid.unknown')}</p>
+              {unsentCents !== null && unsentCents < nextMin && onReplace !== undefined ? (
+                <Button disabled={connection.offline} onClick={() => onReplace(nextMin)}>
+                  {t('bid.resendCurrent', { amount: formatUsd(nextMin) })}
+                </Button>
+              ) : (
+                onResend !== undefined && (
+                  <Button disabled={connection.offline} onClick={onResend}>
+                    {unsentCents === null
+                      ? t('bid.resend')
+                      : t('bid.resendAmount', { amount: formatUsd(unsentCents) })}
+                  </Button>
+                )
+              )}
+            </div>
+          )}
+
+          <ul aria-label={t('console.stream')} className="bid__stream">
+            {stream.slice(0, LAST_EVENTS).map((b, i) => (
+              <li key={b.seq}>
+                <span>
+                  {b.paddle === null
+                    ? null
+                    : t(i === 0 ? 'bid.rowLeading' : 'bid.row', { n: b.paddle })}
+                </span>
+                <span className="bid__amt">{formatUsd(b.amount)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      {showEnd && outcome !== null && (
         <Suspense fallback={null}>
-          <WinnerDialog
-            lotTitle={lotTitle}
+          <EndDialog
+            outcome={outcome}
+            lotTitle={lotTitle ?? lotTitleFallback}
             amountCents={wonCents}
-            onHome={() => closeWin(onHome)}
-            onJoinCode={() => closeWin(onJoinCode)}
-            onReceipt={() => closeWin(onReceipt)}
-            onClose={() => closeWin()}
+            winnerPaddle={
+              outcome === 'lost' || outcome === 'sold' ? (price?.leaderPaddle ?? null) : null
+            }
+            onHome={() => closeEnd(onHome)}
+            onJoinCode={() => closeEnd(onJoinCode)}
+            onReceipt={onReceipt === undefined ? undefined : () => closeEnd(onReceipt)}
+            onClose={() => closeEnd()}
           />
         </Suspense>
       )}
