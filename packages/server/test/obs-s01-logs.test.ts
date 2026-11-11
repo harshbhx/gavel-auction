@@ -118,7 +118,7 @@ describe('T-QA-081 log schema over a settled happy path (R-QA-047)', () => {
       auctioneerToken,
     );
 
-    const conns = [];
+    const conns: Array<{ ws: WebSocket; frames: Frame[] }> = [];
     for (const token of tokens) conns.push(await open(port, token, auctionId));
     await Promise.all(
       conns.map((c) => until(() => c.frames.find((f) => f.t === 'state'), 5000, 'state')),
