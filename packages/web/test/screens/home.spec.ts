@@ -100,6 +100,18 @@ test.describe('home', () => {
     await expect(page.getByRole('link', { name: /Docs/ })).toBeInViewport();
   });
 
+  test('the header Home link keeps its normal height after visiting Home', async ({ page }) => {
+    await remember(page, [entry({}), ...EARLIER]);
+    await mockApi(page, () => ({ status: 404 }));
+    await page.goto('/');
+    await ready(page);
+    await page.getByRole('link', { name: /Public ledger/ }).click();
+    const nav = page.getByTestId('home-nav');
+    await expect(nav).toBeVisible();
+    const box = await nav.boundingBox();
+    expect(box?.height ?? Number.POSITIVE_INFINITY).toBeLessThan(120);
+  });
+
   test('lost, only one room: the last auction spans the full width', async ({ page, shoot }) => {
     await remember(page, [entry({ result: 'lost' })]);
     await mockApi(page, () => ({

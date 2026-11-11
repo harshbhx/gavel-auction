@@ -133,6 +133,15 @@ describe('Home screen: structure', () => {
   });
 });
 
+describe('Home screen: class names stay clear of the shell Home link', () => {
+  it('uses only gv-homepage names, so the header Home link keeps its own styles', () => {
+    const { container } = setup([room(), room({ roomId: 'room2' })]);
+    expect(container.querySelector('.gv-homepage')).not.toBeNull();
+    expect(container.querySelector('.gv-home')).toBeNull();
+    expect(container.querySelector('[class*="gv-home__"]')).toBeNull();
+  });
+});
+
 describe('Home screen: the last auction', () => {
   it('won: the price, the hold and the plain-words result', () => {
     const { container } = setup([room()]);
@@ -141,13 +150,13 @@ describe('Home screen: the last auction', () => {
     expect(screen.getByText('You held $960 and won at $540')).toBeTruthy();
     expect(screen.getByText('2 hours ago')).toBeTruthy();
     expect(screen.getByText('As a bidder, Paddle 7')).toBeTruthy();
-    expect(container.querySelector('.gv-home__badge')?.textContent).toBe('Won');
+    expect(container.querySelector('.gv-homepage__badge')?.textContent).toBe('Won');
   });
 
   it('lost', () => {
     setup([room({ result: 'lost' })]);
     expect(screen.getByText('You held $960. Someone else won at $540')).toBeTruthy();
-    expect(document.querySelector('.gv-home__badge')?.textContent).toBe('Lost');
+    expect(document.querySelector('.gv-homepage__badge')?.textContent).toBe('Lost');
   });
 
   it('stopped', () => {
@@ -160,7 +169,7 @@ describe('Home screen: the last auction', () => {
     setup([room({ result: 'closed', roles: ['auctioneer'] })]);
     expect(screen.getByText('Room closed')).toBeTruthy();
     expect(screen.getByText('As the auctioneer')).toBeTruthy();
-    expect(document.querySelector('.gv-home__badge')?.textContent).toBe('Closed');
+    expect(document.querySelector('.gv-homepage__badge')?.textContent).toBe('Closed');
   });
 
   it('open, and no price yet', () => {
@@ -212,7 +221,7 @@ describe('Home screen: the last auction', () => {
     setup([room({ result: 'open', expiresAt: NOW - MINUTE })], { checkRoom });
     expect(checkRoom).not.toHaveBeenCalled();
     expect(screen.queryByRole('link', { name: 'Open ledger' })).toBeNull();
-    expect(document.querySelector('.gv-home__badge')?.textContent).toBe('Closed');
+    expect(document.querySelector('.gv-homepage__badge')?.textContent).toBe('Closed');
     expect(screen.getByText('Room closed')).toBeTruthy();
   });
 
@@ -233,7 +242,7 @@ describe('Home screen: the last auction', () => {
         onNavigate={() => undefined}
       />,
     );
-    expect(container.querySelector('.gv-home__links')).toBeNull();
+    expect(container.querySelector('.gv-homepage__links')).toBeNull();
   });
 
   it('lists earlier rooms as ruled rows', () => {
@@ -248,7 +257,7 @@ describe('Home screen: the last auction', () => {
         expiresAt: NOW - 70 * 60 * MINUTE,
       }),
     ]);
-    const list = container.querySelector<HTMLElement>('.gv-home__rows');
+    const list = container.querySelector<HTMLElement>('.gv-homepage__rows');
     const rows = within(list as HTMLElement).getAllByRole('listitem');
     expect(rows).toHaveLength(1);
     expect(rows[0]?.textContent).toContain('Vinyl');
@@ -260,7 +269,7 @@ describe('Home screen: the last auction', () => {
   it('shows no earlier section when there is only one room, and the last card spans the row', () => {
     const { container } = setup([room()]);
     expect(screen.queryByText(t('home.earlier.kicker'))).toBeNull();
-    expect(container.querySelector('.gv-home__deck--solo')).not.toBeNull();
+    expect(container.querySelector('.gv-homepage__deck--solo')).not.toBeNull();
   });
 
   it('keeps the caption about deleted rooms inside the last auction card', () => {
@@ -277,11 +286,11 @@ describe('Home screen: the last auction', () => {
       );
     }
     const { container } = setup(rooms);
-    const titles = Array.from(container.querySelectorAll('.gv-home__row-title')).map(
+    const titles = Array.from(container.querySelectorAll('.gv-homepage__row-title')).map(
       (el) => el.textContent,
     );
     expect(titles).toEqual(['Lot 0', 'Lot 1', 'Lot 2', 'Lot 3']);
-    expect(container.querySelector('.gv-home__deck--solo')).toBeNull();
+    expect(container.querySelector('.gv-homepage__deck--solo')).toBeNull();
   });
 });
 
