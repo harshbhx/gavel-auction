@@ -5,6 +5,7 @@ import { App } from '../../src/App';
 import { t } from '../../src/copy/t';
 import { LadderCompact } from '../../src/ladder/LadderCompact';
 import type { SettlementView } from '../../src/ladder/ladderModel';
+import { HAMMER_HOLD_SECONDS } from '../../src/screens/console/hammerHold';
 import { roomStore } from '../../src/store/roomStore';
 import { clearAuctioneerToken } from '../../src/store/session';
 import {
@@ -83,13 +84,13 @@ afterEach(() => {
 
 describe('console right after the hammer', () => {
   it('shows the sale, stops the clock and drops the hammer panel', () => {
-    expect(screen.getByText(t('console.hammerDesk'))).toBeTruthy();
+    expect(screen.getByText(t('console.hammerDesk', { s: HAMMER_HOLD_SECONDS }))).toBeTruthy();
     deliver(hammerMsg(12, 40_000));
     expect(
       screen.getByText(t('console.result.sold', { n: 12, amount: formatUsd(40_000) })),
     ).toBeTruthy();
     expect(screen.getByText(t('console.clockClosed'))).toBeTruthy();
-    expect(screen.queryByText(t('console.hammerDesk'))).toBeNull();
+    expect(screen.queryByText(t('console.hammerDesk', { s: HAMMER_HOLD_SECONDS }))).toBeNull();
     expect(screen.queryByText(t('console.hammerDialogHint'))).toBeNull();
   });
 
