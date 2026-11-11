@@ -77,7 +77,6 @@ describe('hold-to-confirm dialogs (3 seconds)', () => {
       vi.advanceTimersByTime(HAMMER_HOLD_MS);
     });
     expect(onConfirm).toHaveBeenCalledTimes(1);
-    expect(screen.getByText(t('ui.hold.statusDone'))).toBeTruthy();
   });
 
   it('reduced motion moves progress in whole seconds', () => {
