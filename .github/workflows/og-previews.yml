@@ -1,0 +1,63 @@
+name: og-previews
+
+# Renders the link-preview cards (brand/og) to PNG: the web landing, the judge panel, the ledger, the
+# docs, a square fallback and the GitHub social preview. The PNGs are committed under
+# packages/web/public/og, docsite/public/og and brand/social-preview; run this workflow (or open a
+# PR that touches brand/og) and download the artifact to refresh them. Browser work stays in CI.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'brand/og/**'
+      - 'brand/svg/lockup-h-color.svg'
+      - '.github/workflows/og-previews.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: og-previews-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: ./.github/actions/apt-resilient
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+        with:
+          node-version: 22
+      - name: Install Playwright
+        run: |
+          mkdir -p "$RUNNER_TEMP/pw" && cd "$RUNNER_TEMP/pw"
+          npm init -y >/dev/null && npm install --no-audit --no-fund playwright@1.49.1
+          npx playwright install --with-deps chromium
+          sudo apt-get install -y -qq imagemagick
+      - name: Render the cards
+        run: PW_DIR="$RUNNER_TEMP/pw" node brand/og/render.mjs out/og
+      - name: Shrink and check
+        run: |
+          cd out/og
+          for f in *.png; do
+            # Flat colours: an 8-bit palette keeps every card well under the 300 KB budget.
+            if [ "$(stat -c %s "$f")" -gt 250000 ]; then convert "$f" -strip -colors 96 "PNG8:$f"; fi
+          done
+          test "$(identify -format '%wx%h' og-landing.png)" = "1200x630"
+          test "$(identify -format '%wx%h' og-try.png)" = "1200x630"
+          test "$(identify -format '%wx%h' og-ledger.png)" = "1200x630"
+          test "$(identify -format '%wx%h' og-docs.png)" = "1200x630"
+          test "$(identify -format '%wx%h' og-square.png)" = "1200x1200"
+          test "$(identify -format '%wx%h' github-social-preview-1280x640.png)" = "1280x640"
+          for f in *.png; do
+            size="$(stat -c %s "$f")"
+            echo "$f $size bytes" >> "$GITHUB_STEP_SUMMARY"
+            test "$size" -lt 300000
+          done
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: og-previews
+          path: out/og
+          if-no-files-found: error
+          retention-days: 14
