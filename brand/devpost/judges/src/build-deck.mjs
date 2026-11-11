@@ -1045,7 +1045,7 @@ function rings(s, cx, cy, fades) {
     const x = tx(i);
     rect(s, `proof-tile${i + 1}`, { x, y: 2.15, w: 2.85, h: 3.1 }, { fill: { color: K.ink2 } });
     disp(s, n, x + 0.25, 2.45, `proof-num${i + 1}`, 0.8);
-    disp(s, u, x + 0.25, 3.45, `proof-unit${i + 1}`);
+    disp(s, u, x + 0.25, i === 0 ? 3.3 : 3.45, `proof-unit${i + 1}`);
     text(
       s,
       `proof-body${i + 1}`,
