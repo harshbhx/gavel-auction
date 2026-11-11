@@ -6,10 +6,11 @@ import { Banner } from '../../design/primitives/Banner';
 import { Button } from '../../design/primitives/Button';
 import { Dialog } from '../../design/primitives/Dialog';
 import { Field } from '../../design/primitives/Field';
-import { HoldButton as DeskHold } from '../../ui';
-import { HoldButton } from './HammerDialog';
+import { HoldButton } from '../../ui';
+import { HAMMER_HOLD_MS, HAMMER_HOLD_SECONDS } from './hammerHold';
 
-export const KILL_HOLD_MS = 1500;
+/** Stop uses the same 3 second hold as the hammer, from the one shared value. */
+export const KILL_HOLD_MS = HAMMER_HOLD_MS;
 export const KILL_PHRASE = 'STOP';
 
 export interface KillSwitchProps {
@@ -61,7 +62,7 @@ export function KillSwitch({ stopped, onKill }: KillSwitchProps) {
   return (
     <>
       <div className="gv-console-kill">
-        <DeskHold
+        <HoldButton
           key={holdRound}
           tone="danger"
           label={t('kill.deskHold')}
@@ -90,12 +91,19 @@ export function KillSwitch({ stopped, onKill }: KillSwitchProps) {
             autoComplete="off"
             onChange={(e) => setTyped(e.target.value)}
           />
-          <p>{t('kill.holdHint')}</p>
+          <p>{t('kill.holdHint', { s: HAMMER_HOLD_SECONDS })}</p>
           <HoldButton
+            key={holdRound}
+            fill
+            tone="danger"
             label={t('kill.hold')}
             holdMs={KILL_HOLD_MS}
             disabled={!ready}
-            onComplete={fire}
+            confirmAlternative={false}
+            onConfirm={() => {
+              fire();
+              setHoldRound((n) => n + 1);
+            }}
           />
           <Button variant="outline" tone="neutral" onClick={close}>
             {t('common.cancel')}
