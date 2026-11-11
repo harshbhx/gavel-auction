@@ -1,0 +1,48 @@
+name: probe-big-hold
+# One-off sandbox probe: does PayPal accept AUTHORIZE holds above 100,000 USD? Creates, approves
+# (buyer A, headless browser), authorizes and then voids a hold for each test amount. Sandbox only.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: sandbox-nightly
+    concurrency:
+      group: probe-big-hold
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup
+      - name: Cache the browser
+        id: pw-cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-1.49.1-chromium
+      - name: Install the browser
+        env:
+          BROWSER_CACHE_HIT: ${{ steps.pw-cache.outputs.cache-hit }}
+        run: |
+          npm install --prefix "$RUNNER_TEMP/pw" --no-audit --no-fund playwright@1.49.1
+          cd "$RUNNER_TEMP/pw"
+          if [ "$BROWSER_CACHE_HIT" = "true" ]; then
+            npx playwright install-deps chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
+      - name: Run probe
+        env:
+          PAYPAL_CLIENT_ID: ${{ secrets.PAYPAL_CLIENT_ID }}
+          PAYPAL_CLIENT_SECRET: ${{ secrets.PAYPAL_CLIENT_SECRET }}
+          SANDBOX_BUYER_EMAIL: ${{ secrets.SANDBOX_BUYER_EMAIL }}
+          SANDBOX_BUYER_PASSWORD: ${{ secrets.SANDBOX_BUYER_PASSWORD }}
+          PLAYWRIGHT_MODULE: ${{ runner.temp }}/pw/node_modules/playwright/index.mjs
+        working-directory: packages/payments
+        run: npx vite-node gates/probe-big-hold.ts
