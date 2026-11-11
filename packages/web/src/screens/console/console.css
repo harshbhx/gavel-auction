@@ -175,6 +175,18 @@
   justify-content: center;
 }
 
+/* The note that takes the Open lot slot once the lot has opened: same box, not a button. */
+.gv-console-controls__note {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-fg-muted);
+  font-size: var(--font-size-3);
+  white-space: nowrap;
+}
+
 /* The spinner sits at the end of the clicked button; the label keeps its place. */
 .gv-console-controls__spinner {
   position: absolute;

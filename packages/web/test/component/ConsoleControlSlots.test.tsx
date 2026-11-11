@@ -56,7 +56,8 @@ describe('control bar slots (UIX-46)', () => {
     expect(reasons.length).toBeGreaterThan(0);
     reasons.forEach((r) => expect(r.classList.contains('gv-sr-only')).toBe(true));
     const line = document.querySelector('[data-slot="control-reason"]');
-    expect(line?.textContent).toBe(t('controls.reason.alreadyOpen'));
+    // Extend, Pause and Hammer can be pressed, so the line has nothing to refuse.
+    expect(line?.textContent).toBe('');
   });
 
   it('keeps the same slots while a request is in flight and spins inside the clicked one', async () => {
@@ -90,15 +91,15 @@ describe('control bar slots (UIX-46)', () => {
     expect(slots()).toEqual([...CONTROL_ORDER]);
   });
 
-  it('explains Open lot: off once the lot is open, on while scheduled', () => {
+  it('shows Open lot as a button only while scheduled; a note holds its slot after', () => {
     const { rerender } = render(bar('OPEN'));
     const open = () => screen.getByRole('button', { name: t('console.open') });
-    expect(open().getAttribute('aria-disabled')).toBe('true');
-    fireEvent.focus(open());
-    expect(document.querySelector('[data-slot="control-reason"]')?.textContent).toBe(
-      t('controls.reason.alreadyOpen'),
+    expect(screen.queryByRole('button', { name: t('console.open') })).toBeNull();
+    expect(document.querySelector('[data-slot="lot-note"]')?.textContent).toBe(
+      t('controls.lot.open'),
     );
     rerender(bar('SCHEDULED'));
+    expect(document.querySelector('[data-slot="lot-note"]')).toBeNull();
     expect(open().getAttribute('aria-disabled')).toBeNull();
     fireEvent.focus(screen.getByRole('button', { name: t('console.pause') }));
     expect(document.querySelector('[data-slot="control-reason"]')?.textContent).toBe(
