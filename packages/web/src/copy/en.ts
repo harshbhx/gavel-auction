@@ -755,11 +755,16 @@ export const en = {
   'win.price': 'Winning price {amount}',
   'win.money':
     'Your hold settles at the hammer price of {amount}. This is a sandbox, so no real money moves.',
-  'win.home': 'Go to home',
-  'win.joinCode': 'Enter a join code',
+  'win.home': 'Go home',
+  'win.joinCode': 'Join room',
   'win.receipt': 'View receipt',
   'win.announce':
-    'You won the lot at {amount}. Choose go to home, enter a join code, or view the receipt.',
+    'You won the lot at {amount}. Choose join room, go home, or view the receipt.',
+  // End pop-up for bidders who did not win and for watchers (UIX-64).
+  'bidEnd.title': 'Auction closed',
+  'bidEnd.closedAt': 'The lot closed at {amount}.',
+  'bidEnd.noSale': 'The lot closed with no winner.',
+  'bidEnd.next': 'Join another room or go back home.',
   'bid.announce.lost': 'Lot closed at {amount}. You did not win.',
   'bid.announce.closed': 'Lot closed at {amount}.',
   'bid.announce.passed': 'Lot closed with no winner.',

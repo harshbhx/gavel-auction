@@ -10,58 +10,68 @@ import { formatUsd } from '../../util/money';
 export interface WinnerDialogProps {
   /** The lot title, or null when the room has none. */
   lotTitle: string | null;
-  /** The hammer price in cents. */
+  /** The hammer price in cents (0 when the lot closed with no bid). */
   amountCents: number;
+  /** How the lot ended for this bidder. */
+  outcome: 'won' | 'lost' | 'closed';
   /** Routes to the start page. */
   onHome: () => void;
   /** Routes to the join entry with the code field focused. */
   onJoinCode: () => void;
-  /** Opens the receipt. */
+  /** Opens the receipt (the winner only). */
   onReceipt: () => void;
-  /** Dismisses the pop-up and stays on the bid screen. */
+  /** Escape or a click outside dismisses the pop-up and stays on the bid screen. */
   onClose: () => void;
 }
 
 /**
- * The pop-up the winning bidder sees once, when the lot closes in their favour. It is a modal
- * dialog (focus trap, Escape and backdrop close come from Sheet) and is spoken through the live
- * region. It adds no motion, so reduced-motion settings change nothing.
+ * The pop-up every bidder sees once when the lot closes; the winner also gets the win copy and the
+ * receipt link. Two buttons, Join room and Go home, end it. It is a modal dialog (focus moves to
+ * the first button, focus is trapped, Escape and backdrop close come from Sheet) and a win is
+ * spoken through the live region. It adds no motion, so reduced-motion settings change nothing.
  */
 export function WinnerDialog({
   lotTitle,
   amountCents,
+  outcome,
   onHome,
   onJoinCode,
   onReceipt,
   onClose,
 }: WinnerDialogProps) {
   const amount = formatUsd(amountCents);
+  const won = outcome === 'won';
   useEffect(() => {
-    announce('assertive', t('win.announce', { amount }), 'summary');
-  }, [amount]);
+    if (won) announce('assertive', t('win.announce', { amount }), 'summary');
+  }, [won, amount]);
+
+  const title = won ? t('win.title') : t('bidEnd.title');
+  let detail: string;
+  if (won) {
+    detail =
+      lotTitle === null ? t('win.price', { amount }) : t('win.lot', { lot: lotTitle, amount });
+  } else if (amountCents === 0) detail = t('bidEnd.noSale');
+  else detail = t('bidEnd.closedAt', { amount });
 
   return (
-    <Sheet open onClose={onClose} title={t('win.title')}>
+    <Sheet open onClose={onClose} title={title}>
       <div className="bid-win" data-testid="winner-dialog">
-        <h2 className="bid-win__title">{t('win.title')}</h2>
-        <p className="bid-win__lot">
-          {lotTitle === null ? t('win.price', { amount }) : t('win.lot', { lot: lotTitle, amount })}
-        </p>
-        <p className="bid-win__money">{t('win.money', { amount })}</p>
+        <h2 className="bid-win__title">{title}</h2>
+        <p className="bid-win__lot">{detail}</p>
+        <p className="bid-win__money">{won ? t('win.money', { amount }) : t('bidEnd.next')}</p>
         <ActionGroup>
-          <Button size="bid" onClick={onHome}>
-            {t('win.home')}
-          </Button>
-          <Button size="bid" variant="outline" onClick={onJoinCode}>
+          <Button size="bid" onClick={onJoinCode}>
             {t('win.joinCode')}
           </Button>
-          <Button size="bid" variant="text" onClick={onReceipt}>
-            {t('win.receipt')}
+          <Button size="bid" variant="outline" onClick={onHome}>
+            {t('win.home')}
           </Button>
         </ActionGroup>
-        <Button variant="text" onClick={onClose}>
-          {t('generic.close')}
-        </Button>
+        {won && (
+          <Button variant="text" onClick={onReceipt}>
+            {t('win.receipt')}
+          </Button>
+        )}
       </div>
     </Sheet>
   );
