@@ -122,7 +122,20 @@ function newSlide(layout, kicker, transition) {
 // Effects: fade, float (rise and fade), wipe (dir), zoom (from scale), wheel, path, exitFade, exitRight.
 // start: 'after' the previous effect, or 'with' it (plus delay). Times in ms.
 function fx(name, effect, opts = {}) {
-  current.anims.push({ name, fx: effect, start: 'after', dur: 500, delay: 0, ...opts });
+  const a = { name, fx: effect, start: 'after', dur: 500, delay: 0, ...opts };
+  if (motion.length > 1) polish(a); // the cover keeps its original feel
+  current.anims.push(a);
+}
+
+// Motion rules by role, applied to every slide after the cover so the whole deck moves alike:
+// headlines wipe in from the left, big numbers and chips pop with a small overshoot, everything
+// else keeps its effect. Times sit between 0.4 and 0.8 s; wheels and paths keep their own length.
+function polish(a) {
+  if (/-h$/.test(a.name) && a.fx === 'float') Object.assign(a, { fx: 'wipe', dir: 'left', dur: 600 });
+  if (a.fx === 'zoom' && !a.rotate && (a.from ?? 0.5) < 1 && /(num|100|chip|stop|^hook-\d)/.test(a.name)) {
+    a.fx = 'pop';
+  }
+  if (!['wheel', 'path'].includes(a.fx)) a.dur = Math.min(800, Math.max(400, a.dur));
 }
 
 function cornerMark(s) {
@@ -324,7 +337,7 @@ function rings(s, cx, cy, fades) {
 
 // 3. Problem
 {
-  const s = newSlide('paper', ['LOT 02', 'THE PROBLEM'], 'fade');
+  const s = newSlide('paper', ['LOT 02', 'THE PROBLEM'], 'push');
   cornerMark(s);
   disp(s, 'prob_h', 0.6, 1.1, 'prob-h');
   const cols = [
@@ -356,10 +369,10 @@ function rings(s, cx, cy, fades) {
       from: 0.3,
       dur: 450,
       start: i === 0 ? 'after' : 'with',
-      delay: i * 450,
+      delay: i * 150,
     });
-    fx(`prob-word${i + 1}`, 'float', { dur: 500, start: 'with', delay: i * 450 + 120 });
-    fx(`prob-body${i + 1}`, 'fade', { dur: 500, start: 'with', delay: i * 450 + 260 });
+    fx(`prob-word${i + 1}`, 'float', { dur: 500, start: 'with', delay: i * 150 + 120 });
+    fx(`prob-body${i + 1}`, 'fade', { dur: 500, start: 'with', delay: i * 150 + 260 });
   });
   s.slide.addNotes(
     [
@@ -371,7 +384,7 @@ function rings(s, cx, cy, fades) {
 
 // 4. The idea
 {
-  const s = newSlide('dark', ['LOT 03', 'THE IDEA'], 'fade');
+  const s = newSlide('dark', ['LOT 03', 'THE IDEA'], 'blackfade');
   cornerMark(s);
   disp(s, 'idea_h', 0.6, 1.1, 'idea-h');
   text(
@@ -471,7 +484,7 @@ function rings(s, cx, cy, fades) {
 
 // 5. How it works
 {
-  const s = newSlide('paper', ['LOT 04', 'HOW IT WORKS'], 'fade');
+  const s = newSlide('paper', ['LOT 04', 'HOW IT WORKS'], 'push');
   cornerMark(s);
   disp(s, 'how_h', 0.6, 1.1, 'how-h');
   const trackY = 2.95;
@@ -541,7 +554,7 @@ function rings(s, cx, cy, fades) {
 
 // 6. How it feels: the bidder
 {
-  const s = newSlide('dark', ['LOT 05', 'HOW IT FEELS'], 'fade');
+  const s = newSlide('dark', ['LOT 05', 'HOW IT FEELS'], 'pull');
   cornerMark(s);
   disp(s, 'feel_h', 0.6, 1.1, 'feel-h');
   const shots = [
@@ -728,7 +741,7 @@ function rings(s, cx, cy, fades) {
 
 // 8. Hammer
 {
-  const s = newSlide('dark', ['LOT 07', 'THE HAMMER'], 'fade');
+  const s = newSlide('dark', ['LOT 07', 'THE HAMMER'], 'blackcut');
   cornerMark(s);
   disp(s, 'ham_h', 0.6, 1.1, 'ham-h');
   s.slide.addImage({
@@ -794,7 +807,7 @@ function rings(s, cx, cy, fades) {
 
 // 9. Receipt and verify
 {
-  const s = newSlide('paper', ['LOT 08', 'RECEIPT AND VERIFY'], 'fade');
+  const s = newSlide('paper', ['LOT 08', 'RECEIPT AND VERIFY'], 'pushup');
   cornerMark(s);
   disp(s, 'ver_h', 0.6, 1.1, 'ver-h');
   text(
@@ -910,7 +923,7 @@ function rings(s, cx, cy, fades) {
 
 // 10. Under the hood
 {
-  const s = newSlide('dark', ['LOT 09', 'UNDER THE HOOD'], 'fade');
+  const s = newSlide('dark', ['LOT 09', 'UNDER THE HOOD'], 'cover');
   cornerMark(s);
   disp(s, 'arch_h', 0.6, 1.1, 'arch-h');
   const stops = [
@@ -986,7 +999,7 @@ function rings(s, cx, cy, fades) {
   fx('arch-h', 'float', { dur: 600, delay: 150 });
   stops.forEach((_, i) => {
     const st = i === 0 ? 'after' : 'with';
-    const d = i * 220;
+    const d = i * 150;
     fx(`arch-card${i + 1}`, 'float', { dur: 550, rise: 0.04, start: st, delay: d });
     fx(`arch-num${i + 1}`, 'float', { dur: 550, rise: 0.04, start: 'with', delay: d });
     fx(`arch-word${i + 1}`, 'float', { dur: 550, rise: 0.04, start: 'with', delay: d });
@@ -1019,7 +1032,7 @@ function rings(s, cx, cy, fades) {
 
 // 11. Proof
 {
-  const s = newSlide('dark', ['LOT 10', 'PROOF, NOT PROMISES'], 'fade');
+  const s = newSlide('dark', ['LOT 10', 'PROOF, NOT PROMISES'], 'blackfade');
   cornerMark(s);
   disp(s, 'proof_h', 0.6, 1.1, 'proof-h');
   const tiles = [
@@ -1096,8 +1109,8 @@ function rings(s, cx, cy, fades) {
   fx('proof-h', 'float', { dur: 600, delay: 150 });
   tiles.forEach((_, i) => {
     const st = i === 0 ? 'after' : 'with';
-    const d = i * 300;
-    fx(`proof-tile${i + 1}`, 'fade', { dur: 450, start: st, delay: d });
+    const d = i * 150;
+    fx(`proof-tile${i + 1}`, 'float', { dur: 450, start: st, delay: d });
     fx(`proof-num${i + 1}`, 'zoom', { from: 0.5, dur: 450, start: 'with', delay: d + 120 });
     fx(`proof-unit${i + 1}`, 'fade', { dur: 400, start: 'with', delay: d + 250 });
     fx(`proof-body${i + 1}`, 'fade', { dur: 400, start: 'with', delay: d + 350 });
@@ -1105,6 +1118,9 @@ function rings(s, cx, cy, fades) {
   fx('proof-gates', 'fade', { dur: 350, delay: 150 });
   chips.forEach((_, i) =>
     fx(`proof-chip${i + 1}`, 'zoom', { from: 0.6, dur: 300, start: 'with', delay: 120 + i * 110 }),
+  );
+  tiles.forEach((_, i) =>
+    fx(`proof-num${i + 1}`, 'pulse', { dur: 600, start: i === 0 ? 'after' : 'with', delay: i * 150 }),
   );
   fx('proof-note', 'fade', { dur: 500, delay: 100 });
   s.slide.addNotes(
@@ -1136,7 +1152,7 @@ function rings(s, cx, cy, fades) {
   cats.forEach((c, i) => {
     const cx = ringC(i);
     oval(s, `ps-track${i + 1}`, cx, 3.95, 2.1, { color: K.rule, width: 9 });
-    oval(s, `ps-ring${i + 1}`, cx, 3.95, 2.1, { color: K.orange, width: 9 });
+    oval(s, `!!ring-b${i + 1}`, cx, 3.95, 2.1, { color: K.orange, width: 9 });
     const a = A.ps_100;
     s.slide.addImage({
       path: a.file,
@@ -1179,7 +1195,7 @@ function rings(s, cx, cy, fades) {
     const st = i === 0 ? 'after' : 'with';
     const d = i * 260;
     fx(`ps-track${i + 1}`, 'fade', { dur: 300, start: st, delay: d });
-    fx(`ps-ring${i + 1}`, 'wheel', { dur: 1100, start: 'with', delay: d + 100 });
+    fx(`!!ring-b${i + 1}`, 'wheel', { dur: 1100, start: 'with', delay: d + 100 });
     fx(`ps-100-${i + 1}`, 'zoom', { from: 0.5, dur: 400, start: 'with', delay: d + 900 });
     fx(`ps-cat${i + 1}`, 'fade', { dur: 400, start: 'with', delay: d + 1000 });
   });
@@ -1196,7 +1212,7 @@ function rings(s, cx, cy, fades) {
 
 // 13. Team
 {
-  const s = newSlide('dark', ['LOT 12', 'THE TEAM'], 'fade');
+  const s = newSlide('dark', ['LOT 12', 'THE TEAM'], 'morph');
   cornerMark(s);
   disp(s, 'team_h', 0.6, 1.1, 'team-h');
   const people = [
@@ -1220,7 +1236,7 @@ function rings(s, cx, cy, fades) {
     const y = 2.15;
     const n = i + 1;
     rect(s, `team-card${n}`, { x, y, w: 5.9, h: 3.75 }, { fill: { color: K.ink2 } });
-    oval(s, `team-ring${n}`, x + 0.98, y + 0.98, 1.3, { color: K.orange, width: 2.5 });
+    oval(s, `!!ring-b${n}`, x + 0.98, y + 0.98, 1.3, { color: K.orange, width: 2.5 });
     const a = A[ini];
     s.slide.addImage({
       path: a.file,
@@ -1257,9 +1273,9 @@ function rings(s, cx, cy, fades) {
   people.forEach((_, i) => {
     const n = i + 1;
     const st = i === 0 ? 'after' : 'with';
-    const d = i * 350;
+    const d = i * 150;
     fx(`team-card${n}`, 'float', { dur: 550, rise: 0.04, start: st, delay: d });
-    fx(`team-ring${n}`, 'wheel', { dur: 800, start: 'with', delay: d + 200 });
+    fx(`!!ring-b${n}`, 'wheel', { dur: 800, start: 'with', delay: d + 200 });
     fx(`team-ini${n}`, 'fade', { dur: 400, start: 'with', delay: d + 500 });
     fx(`team-name${n}`, 'float', { dur: 500, rise: 0.04, start: 'with', delay: d + 300 });
     fx(`team-role${n}`, 'fade', { dur: 450, start: 'with', delay: d + 500 });

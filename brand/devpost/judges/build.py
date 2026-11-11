@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
-"""Build the confidential judge guide PDF from judge-guide.html.
+"""Build the judge guide PDF from judge-guide.html.
 
 Usage (from the repository root):
 
     python3 brand/devpost/judges/build.py
-        Writes brand/devpost/judges/GAVEL-judge-guide.pdf with every placeholder left as a
-        visible marked box. This is the only version that may be committed.
+        Writes brand/devpost/judges/GAVEL-judge-guide.pdf. The guide has no placeholders and no
+        secrets: the judge key and the sandbox logins live only in the Devpost Testing
+        instructions.
 
-    python3 brand/devpost/judges/build.py --fill ~/secure/judge-fill.json --out ~/judge.pdf
-        Replaces the placeholders with the values in the JSON file (keys as in
-        placeholders.example.json). A filled PDF holds sandbox logins and the judge key, so the
-        script refuses to write it anywhere inside the repository.
-
+    --out FILE  writes the PDF somewhere else.
     --png DIR   also renders every page as a PNG into DIR (needs pdftoppm from poppler-utils).
 
 Needs: pip install weasyprint brotli (fontTools and Pillow come with WeasyPrint).
@@ -21,9 +18,6 @@ instance renders the same in every PDF reader.
 """
 
 import argparse
-import html
-import json
-import re
 import shutil
 import subprocess
 import sys
@@ -45,7 +39,6 @@ FONTS = {
 }
 
 # Tolerates the line breaks a formatter puts inside the tag and around the text.
-PLACEHOLDER = re.compile(r'<span\s+class="ph"\s+data-key="([A-Z0-9_]+)"\s*>([^<]*)</span\s*>')
 
 
 def cut_fonts(tmp: Path) -> str:
@@ -68,23 +61,6 @@ def cut_fonts(tmp: Path) -> str:
     return "\n".join(rules)
 
 
-def fill(source: str, values: dict) -> str:
-    missing = []
-
-    def swap(match: re.Match) -> str:
-        key = match.group(1)
-        value = values.get(key, "")
-        if not isinstance(value, str) or value.strip() == "":
-            missing.append(key)
-            return match.group(0)
-        return '<span class="ph filled" data-key="%s">%s</span>' % (key, html.escape(value))
-
-    out = PLACEHOLDER.sub(swap, source)
-    if missing:
-        print("not filled (left as placeholders): " + ", ".join(sorted(set(missing))))
-    return out
-
-
 def inside_repo(path: Path) -> bool:
     try:
         path.resolve().relative_to(ROOT)
@@ -95,21 +71,12 @@ def inside_repo(path: Path) -> bool:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("--fill", type=Path, help="JSON file with placeholder values")
     parser.add_argument("--out", type=Path, help="output PDF path")
     parser.add_argument("--png", type=Path, help="folder for one PNG per page")
     args = parser.parse_args()
 
     out = args.out or DEFAULT_OUT
     source = SOURCE.read_text(encoding="utf-8")
-    keys = sorted(set(m.group(1) for m in PLACEHOLDER.finditer(source)))
-
-    if args.fill:
-        if inside_repo(out):
-            print("refusing: a filled guide holds logins; write it outside the repository")
-            return 2
-        values = json.loads(args.fill.expanduser().read_text(encoding="utf-8"))
-        source = fill(source, values)
 
     from weasyprint import CSS, HTML
     from weasyprint.text.fonts import FontConfiguration
@@ -122,7 +89,7 @@ def main() -> int:
         document = HTML(string=source, base_url=str(HERE) + "/")
         document.write_pdf(out, stylesheets=[fonts_css, style_css], font_config=font_config)
 
-    print(f"wrote {out} ({out.stat().st_size // 1024} KB), placeholders: {', '.join(keys)}")
+    print(f"wrote {out} ({out.stat().st_size // 1024} KB)")
 
     if args.png:
         if shutil.which("pdftoppm") is None:
