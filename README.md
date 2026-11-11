@@ -265,7 +265,7 @@ A gate is a question answered by a recorded run. G0 to G4 ran against the real P
 | G0   | Sandbox app and buyer accounts work           | ![PASS](https://img.shields.io/badge/-PASS-2ea44f?style=flat-square)                 | Token, scopes and an AUTHORIZE order; re-run on 9 Nov ([G0](docs/evidence/G0))                                                                                                                                                               |
 | G1   | Partial capture and release of the remainder  | ![PASS](https://img.shields.io/badge/-PASS-2ea44f?style=flat-square)                 | Authorize 500.00, capture 350.00 with `final_capture`: the authorization reads CAPTURED for two PayPal-account buyers, and a later void answers 422 `PREVIOUSLY_CAPTURED`. The release of the remainder is inferred, not read from a balance |
 | G2   | Card and guest AUTHORIZE                      | ![PASS](https://img.shields.io/badge/-PASS-2ea44f?style=flat-square)                 | Wallet and guest card both authorized in PayPal JS SDK v6                                                                                                                                                                                    |
-| G3   | Honor period, validity and reauthorize        | ![RUNNING](https://img.shields.io/badge/-RUNNING-0969da?style=flat-square)          | A real probe running since 7 Nov 03:06 UTC; final reading about 12 Nov 06:17 UTC. the gate is not marked passed until that reading is recorded                                                                                                      |
+| G3   | Honor period, validity and reauthorize        | ![RUNNING](https://img.shields.io/badge/-RUNNING-0969da?style=flat-square)           | A real probe running since 7 Nov 03:06 UTC; final reading about 12 Nov 06:17 UTC. the gate is not marked passed until that reading is recorded                                                                                               |
 | G4   | Webhook signature verification on real events | ![PASS](https://img.shields.io/badge/-PASS-2ea44f?style=flat-square)                 | 6 real deliveries verified by PayPal; rejection of a tampered event is covered against the fake PayPal                                                                                                                                       |
 | G5   | Speech-to-text accuracy on noisy bids         | ![TESTED](https://img.shields.io/badge/-TESTED%20SYNTHETIC-0969da?style=flat-square) | Wrong accept 0.000 on 24 clips in each of two synthetic sets (tuned on them); 0.058 (Groq) and 0.092 (Deepgram) on a held-out noisy set of 120 clips against 0.05. Every spoken bid goes through the confirm prompt                          |
 
@@ -283,13 +283,13 @@ A gate is a question answered by a recorded run. G0 to G4 ran against the real P
 
 Five small datasets and a read-only Evidence Explorer Space are on Hugging Face, each labelled for what it is. The speech, simulation and trace sets use synthetic audio, a fake clock and scripted auctions by design: GAVEL does not collect real people's data.
 
-| Dataset                                                                       | Label                                         |
-| ----------------------------------------------------------------------------- | --------------------------------------------- |
-| [gavel-gates](https://huggingface.co/datasets/harshbhx/gavel-gates)           | real sandbox, synthetic audio, G3 running     |
-| [gavel-latency](https://huggingface.co/datasets/harshbhx/gavel-latency)       | real sandbox, small n                         |
-| [gavel-sim-30d](https://huggingface.co/datasets/harshbhx/gavel-sim-30d)       | simulated, fake clock                         |
-| [gavel-stt-bids](https://huggingface.co/datasets/harshbhx/gavel-stt-bids)     | synthetic audio                               |
-| [gavel-audit-demo](https://huggingface.co/datasets/harshbhx/gavel-audit-demo) | synthetic, fake PayPal                        |
+| Dataset                                                                       | Label                                     |
+| ----------------------------------------------------------------------------- | ----------------------------------------- |
+| [gavel-gates](https://huggingface.co/datasets/harshbhx/gavel-gates)           | real sandbox, synthetic audio, G3 running |
+| [gavel-latency](https://huggingface.co/datasets/harshbhx/gavel-latency)       | real sandbox, small n                     |
+| [gavel-sim-30d](https://huggingface.co/datasets/harshbhx/gavel-sim-30d)       | simulated, fake clock                     |
+| [gavel-stt-bids](https://huggingface.co/datasets/harshbhx/gavel-stt-bids)     | synthetic audio                           |
+| [gavel-audit-demo](https://huggingface.co/datasets/harshbhx/gavel-audit-demo) | synthetic, fake PayPal                    |
 
 Space: [gavel-evidence-explorer](https://huggingface.co/spaces/harshbhx/gavel-evidence-explorer). How they are built: [docs/HF_COLLECTION.md](docs/HF_COLLECTION.md).
 
