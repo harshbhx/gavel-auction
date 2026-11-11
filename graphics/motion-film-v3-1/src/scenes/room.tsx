@@ -1042,21 +1042,21 @@ function Leader({
 /* 8. voice: the waveform reacts to the words, the transcript types, parse chips rise, the confirm card lands. */
 export function Voice({ t, frame, fps, spec }: SceneCtx) {
   const words = [
-    { at: 2.6, w: 'three' },
-    { at: 3.1, w: 'fifty' },
-    { at: 3.7, w: 'for' },
-    { at: 4.0, w: 'paddle' },
-    { at: 4.5, w: 'twelve' },
+    { at: 3.5, w: 'three' },
+    { at: 3.9, w: 'fifty' },
+    { at: 4.15, w: 'for' },
+    { at: 4.35, w: 'paddle' },
+    { at: 4.65, w: 'twelve' },
   ];
   const level =
     words.reduce((m, w) => Math.max(m, Math.exp(-Math.pow((t - w.at - 0.18) / 0.22, 2))), 0) *
       0.95 +
-    (t > 1 && t < 5.4 ? 0.06 : 0.02);
+    (t > 1 && t < 5.2 ? 0.06 : 0.02);
   const transcript = words
     .filter((w) => w.at <= t)
     .map((w) => w.w)
     .join(' ');
-  const confirm = sp(t, 5.7, fps, { damping: 16, stiffness: 120 });
+  const confirm = sp(t, 7.7, fps, { damping: 16, stiffness: 120 });
   return (
     <Stage
       t={t}
@@ -1065,7 +1065,7 @@ export function Voice({ t, frame, fps, spec }: SceneCtx) {
       seed={7}
       cam={[
         { at: 0, dur: 0, cam: { s: 1.0 } },
-        { at: 0, dur: 9, cam: { s: 1.05, ry: 2 } },
+        { at: 0, dur: 12, cam: { s: 1.05, ry: 2 } },
       ]}
       over={
         <>
@@ -1112,7 +1112,7 @@ export function Voice({ t, frame, fps, spec }: SceneCtx) {
             ) : (
               <span style={{ color: DIM }}>&nbsp;</span>
             )}
-            {t > 2.4 && t < 5.2 ? <span style={{ color: ORANGE }}>|</span> : null}
+            {t > 3.2 && t < 5.2 ? <span style={{ color: ORANGE }}>|</span> : null}
           </div>
           <div style={{ marginTop: 22, display: 'flex', gap: 12, minHeight: 40 }}>
             {[
@@ -1120,7 +1120,7 @@ export function Voice({ t, frame, fps, spec }: SceneCtx) {
               { k: 'paddle', v: '12' },
               { k: 'conf', v: '0.92' },
             ].map((c, i) => {
-              const s = sp(t, 5.0 + i * 0.12, fps, { damping: 13, stiffness: 220 });
+              const s = sp(t, 5.4 + i * 0.12, fps, { damping: 13, stiffness: 220 });
               if (s <= 0) return null;
               return (
                 <div
@@ -1180,7 +1180,7 @@ export function Voice({ t, frame, fps, spec }: SceneCtx) {
                     alignItems: 'center',
                     justifyContent: 'center',
                     boxShadow: `3px 3px 0 ${INK}`,
-                    transform: `scale(${(1 + 0.04 * pulse(t, 6.3, 1.0)).toFixed(3)})`,
+                    transform: `scale(${(1 + 0.04 * pulse(t, 8.0, 1.0)).toFixed(3)})`,
                   }}
                 >
                   Confirm
@@ -1213,7 +1213,7 @@ export function Voice({ t, frame, fps, spec }: SceneCtx) {
       <div style={{ position: 'absolute', left: 96, top: 700 }}>
         <Mono
           t={t}
-          at={6.4}
+          at={8.0}
           text="Speech by Deepgram or Groq. The parser never accepts a bid on its own."
           size={18}
           color={DIM}

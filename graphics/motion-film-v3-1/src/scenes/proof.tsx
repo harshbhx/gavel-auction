@@ -651,7 +651,7 @@ export function BuiltWith({ t, frame, fps, sponsorLogos }: SceneCtx) {
     {
       name: 'APIMatic',
       line: 'Typed SDKs, generated with APIMatic.',
-      sub: 'TypeScript and Python clients built from the OpenAPI 3.1 spec of the host API. Beta, sandbox only.',
+      sub: 'TypeScript, Python and C# clients built from the OpenAPI 3.1 spec of the host API. Beta, sandbox only.',
       at: 5.6,
       logo: false,
     },
@@ -681,7 +681,7 @@ export function BuiltWith({ t, frame, fps, sponsorLogos }: SceneCtx) {
             world="paper"
             text="Names only, no endorsement implied. Also Cloudflare Workers, Deepgram and Groq."
           />
-          <Eyebrow t={t} world="paper" text="12  Built with" />
+          <Eyebrow t={t} world="paper" text="13  Built with" />
         </>
       }
     >

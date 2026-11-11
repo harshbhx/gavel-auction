@@ -2,12 +2,13 @@ import type { ComponentType } from 'react';
 import { AbsoluteFill, Series, useCurrentFrame, useVideoConfig } from 'remotion';
 import { useT } from './anim';
 import { Captions } from './captions';
+import { Docs } from './scenes/docs';
 import { Hook, Mechanism, Problem, Title } from './scenes/intro';
 import { BuiltWith, Judges, Open, Outro, Proof, Speed } from './scenes/proof';
 import { Bid, Hammer, Hold, Join, Voice } from './scenes/room';
 import { Receipt, Settle } from './scenes/settle';
 import table from './scenes.json';
-import { H, INK, W } from './theme';
+import { H, INK, INK_DEEP, ORANGE, W } from './theme';
 import type { FilmProps, SceneCtx, SceneSpec } from './types';
 
 const SCENES: Record<string, ComponentType<SceneCtx>> = {
@@ -25,6 +26,7 @@ const SCENES: Record<string, ComponentType<SceneCtx>> = {
   proof: Proof,
   speed: Speed,
   judges: Judges,
+  docs: Docs,
   builtWith: BuiltWith,
   open: Open,
   outro: Outro,
@@ -32,6 +34,35 @@ const SCENES: Record<string, ComponentType<SceneCtx>> = {
 
 export const SPECS = table.scenes as SceneSpec[];
 export const specOf = (id: string) => SPECS.find((s) => s.id === id);
+
+/** The cut between scenes: two curtains (orange, then ink behind it) sweep off to the right, so every scene change
+    reads as one deliberate move and the new scene is revealed by it. Not on the first scene. */
+function Wipe({ t }: { t: number }) {
+  const ease = (x: number) => 1 - Math.pow(1 - Math.min(1, Math.max(0, x)), 3);
+  const a = ease(t / 0.42);
+  const b = ease((t - 0.06) / 0.5);
+  if (b >= 1) return null;
+  return (
+    <>
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: INK_DEEP,
+          transform: `translateX(${(b * 104).toFixed(2)}%)`,
+        }}
+      />
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background: ORANGE,
+          transform: `translateX(${(a * 104).toFixed(2)}%)`,
+        }}
+      />
+    </>
+  );
+}
 
 function Scene({
   spec,
@@ -46,15 +77,18 @@ function Scene({
   const C = SCENES[spec.id];
   if (!C) return <AbsoluteFill style={{ background: INK }} />;
   return (
-    <C
-      t={t}
-      dur={spec.dur}
-      fps={fps}
-      frame={frame}
-      spec={spec}
-      letters={letters}
-      sponsorLogos={sponsorLogos}
-    />
+    <AbsoluteFill>
+      <C
+        t={t}
+        dur={spec.dur}
+        fps={fps}
+        frame={frame}
+        spec={spec}
+        letters={letters}
+        sponsorLogos={sponsorLogos}
+      />
+      {spec.id !== 'hook' ? <Wipe t={t} /> : null}
+    </AbsoluteFill>
   );
 }
 

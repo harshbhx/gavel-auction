@@ -31,11 +31,11 @@
       "caps": [
         {
           "a": 0.5,
-          "b": 4,
+          "b": 3.0,
           "text": "Join with / a **code.**"
         },
         {
-          "a": 4,
+          "a": 3.0,
           "b": 7,
           "text": "Or scan / the **QR.**"
         }
@@ -97,22 +97,27 @@
     },
     {
       "id": "voice",
-      "dur": 9,
+      "dur": 12,
       "world": "ink",
       "caps": [
         {
           "a": 0.3,
-          "b": 2.5,
+          "b": 3.4,
           "text": "Or **say** it."
         },
         {
-          "a": 2.5,
-          "b": 5.5,
+          "a": 3.4,
+          "b": 5.4,
           "text": "\"three fifty for / paddle twelve\""
         },
         {
-          "a": 5.5,
-          "b": 9,
+          "a": 5.4,
+          "b": 7.8,
+          "text": "Heard, / **then confirmed.**"
+        },
+        {
+          "a": 7.8,
+          "b": 12,
           "text": "Did you mean / **$350** for paddle 12?"
         }
       ]
@@ -232,6 +237,12 @@
           "text": "No key needed / to **try it.**"
         }
       ]
+    },
+    {
+      "id": "docs",
+      "dur": 13.5,
+      "world": "ink",
+      "caps": []
     },
     {
       "id": "builtWith",

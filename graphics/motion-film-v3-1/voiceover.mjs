@@ -1,23 +1,26 @@
 // Cuts the narration take into sentence clips, places each clip on the film timeline and writes
 //   audio/voiceover.mp3   the narration track, as long as the film
 //   src/captions.json     the burned-in caption cues (film seconds), timed from the take's word timings
-// Audio only, a few seconds of ffmpeg. Usage: node voiceover.mjs <take.mp3> [audio/words.json]
-// The take is one ElevenLabs generation of the script below (voice "Ratchet v14 Narrator"); words.json is the
-// word-level transcript of that take. Each clip starts `at` seconds into its scene; `cues` are the caption
-// lines with the number of spoken words each one covers.
+// Audio only, a few seconds of ffmpeg. Usage: node voiceover.mjs
+// Each clip is cut from one of three ElevenLabs takes (see TAKE_FILES); the word-level transcript of each take
+// gives the cut points and the caption timings. Each clip starts `at` seconds into its scene; `cues` are the
+// caption lines with the number of spoken words each one covers.
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const TAKE = process.argv[2];
-const WORDS = process.argv[3] ?? path.join(here, 'audio/words.json');
-// v3.1: the lines that changed (bid, built with) come from a second, short take of the same voice.
-const TAKE2 = process.argv[4] ?? path.join(here, 'audio/take-v31.mp3');
-const WORDS2 = process.argv[5] ?? path.join(here, 'audio/words-v31.json');
-if (!TAKE)
-  throw new Error('usage: node voiceover.mjs <take.mp3> [words.json] [take2.mp3] [words2.json]');
+// Usage: node voiceover.mjs   (reads the takes and word timings in audio/ and ~/hackathon/film-v3-1-video/vo-src)
+// v3.1 voices (ElevenLabs, model eleven_v4): 0 narrator "Ratchet v14 Narrator", 1 auctioneer "Ratchet v14 Ultra",
+// 2 the app's confirm prompt "Ratchet v14 Examiner". A plan entry says which take it is cut from (`take`, default 0).
+const SRC =
+  process.env.VO_SRC || path.join(process.env.HOME ?? '', 'hackathon/film-v3-1-video/vo-src');
+const TAKE_FILES = [
+  [path.join(SRC, 'narrator.mp3'), path.join(here, 'audio/words-narrator.json')],
+  [path.join(SRC, 'auctioneer.mp3'), path.join(here, 'audio/words-auctioneer.json')],
+  [path.join(SRC, 'confirm.mp3'), path.join(here, 'audio/words-confirm.json')],
+];
 
 const PLAN = [
   { scene: 'hook', at: 0.5, cues: [['$500, held.', 4]] },
@@ -50,7 +53,7 @@ const PLAN = [
     at: 0.6,
     cues: [
       ['Bidders join from their phone with a room code,', 9],
-      ['or by scanning the QR code.', 7],
+      ['or by scanning the QR code.', 6],
     ],
   },
   {
@@ -70,35 +73,27 @@ const PLAN = [
       ['and bids arrive in real time.', 6],
     ],
   },
-  // v3 line "The price only moves up, and every screen in the room agrees." (12 words) is replaced in v3.1.
-  { skip: 12 },
   {
     scene: 'bid',
     at: 6.3,
-    take: 1,
     cues: [
       ["The leader's phone turns green,", 5],
       ['the other says outbid,', 4],
       ['and the price only moves up.', 6],
     ],
   },
-  { scene: 'voice', at: 0.4, cues: [['The auctioneer can also call a bid out loud.', 9]] },
-  {
-    scene: 'voice',
-    at: 4.1,
-    cues: [
-      ['GAVEL hears it,', 3],
-      ['and always asks to confirm before anything counts.', 8],
-    ],
-  },
+  { scene: 'voice', at: 0.2, cues: [['The auctioneer can also call a bid out loud.', 9]] },
+  { scene: 'voice', at: 3.4, take: 1, cues: [['"three fifty for paddle twelve"', 4]] },
+  { scene: 'voice', at: 5.3, cues: [['GAVEL hears it, and asks to confirm.', 7]] },
+  { scene: 'voice', at: 7.9, take: 2, cues: [['Did you mean $350 for paddle 12?', 7]] },
   {
     scene: 'hammer',
     at: 0.3,
     cues: [['To close the lot, hold the hammer for three seconds.', 10]],
   },
-  { scene: 'hammer', at: 4.0, cues: [['Going once.', 2]] },
-  { scene: 'hammer', at: 5.0, cues: [['Going twice.', 2]] },
-  { scene: 'hammer', at: 6.0, cues: [['Sold, to paddle 12, at $350.', 10]] },
+  { scene: 'hammer', at: 4.0, take: 1, cues: [['Going once.', 2]] },
+  { scene: 'hammer', at: 5.0, take: 1, cues: [['Going twice.', 2]] },
+  { scene: 'hammer', at: 6.0, take: 1, cues: [['Sold, to paddle 12, at $350.', 6]] },
   { scene: 'settle', at: 0.3, cues: [['Settlement is a single step.', 5]] },
   {
     scene: 'settle',
@@ -129,24 +124,24 @@ const PLAN = [
     at: 0.5,
     cues: [
       ['For judges: one shared key,', 5],
-      ['in the Devpost testing instructions.', 5],
+      ['in the Devpost testing instructions.', 6],
     ],
   },
   { scene: 'judges', at: 6.4, cues: [['And the try page needs no key at all.', 9]] },
+  { scene: 'docs', at: 0.5, cues: [['GAVEL ships with a full docs site.', 7]] },
+  {
+    scene: 'docs',
+    at: 3.2,
+    cues: [
+      ['Guides for every step, from holds to settlement,', 8],
+      ['an API reference for the host API,', 7],
+      ['and typed SDKs to call it from code.', 8],
+    ],
+  },
   { scene: 'builtWith', at: 1.0, cues: [['Payments run in the PayPal sandbox.', 6]] },
-  { scene: 'builtWith', at: 3.4, cues: [['The API is hosted on Render.', 8]] },
-  {
-    scene: 'builtWith',
-    at: 5.7,
-    take: 1,
-    cues: [['Typed SDKs are generated with APIMatic.', 7]],
-  },
-  {
-    scene: 'builtWith',
-    at: 9.1,
-    take: 1,
-    cues: [['Live bid and audit tables run on AG Grid.', 9]],
-  },
+  { scene: 'builtWith', at: 3.4, cues: [['The API is hosted on Render.', 6]] },
+  { scene: 'builtWith', at: 5.7, cues: [['Typed SDKs are generated with APIMatic.', 6]] },
+  { scene: 'builtWith', at: 9.1, cues: [['Live bid and audit tables run on AG Grid.', 9]] },
   {
     scene: 'open',
     at: 0.4,
@@ -212,7 +207,7 @@ const analyze = (file, wordsFile) => {
   );
   return { file, words, dur, silences };
 };
-const TAKES = [analyze(TAKE, WORDS), analyze(TAKE2, WORDS2)];
+const TAKES = TAKE_FILES.map(([f, w]) => analyze(f, w));
 TAKES.forEach((tk, i) => {
   const planned = PLAN.filter((c) => (c.take ?? 0) === i).reduce(
     (n, c) => n + (c.skip ?? c.cues.reduce((m, q) => m + q[1], 0)),
@@ -221,7 +216,6 @@ TAKES.forEach((tk, i) => {
   if (planned !== tk.words.length)
     throw new Error(`plan covers ${planned} words of take ${i}, the take has ${tk.words.length}`);
 });
-const takeDur = TAKES[0].dur;
 
 const r3 = (x) => +x.toFixed(3);
 const wc = TAKES.map(() => 0);
@@ -323,14 +317,11 @@ const parts = clips.map((c, i) => {
 });
 // A silent bed from 0 s is the first input of the mix: without it the mix would start at the first clip and the
 // whole track would sit early by that clip's delay.
-const mix = `[2:a]${clips.map((_, i) => `[c${i}]`).join('')}amix=inputs=${clips.length + 1}:normalize=0:dropout_transition=0,apad=whole_dur=${total},atrim=0:${total},volume=3dB,alimiter=limit=0.89:level=disabled,aresample=44100[out]`;
+const mix = `[${TAKES.length}:a]${clips.map((_, i) => `[c${i}]`).join('')}amix=inputs=${clips.length + 1}:normalize=0:dropout_transition=0,apad=whole_dur=${total},atrim=0:${total},volume=3dB,alimiter=limit=0.89:level=disabled,aresample=44100[out]`;
 const out = path.join(here, 'audio/voiceover.mp3');
 run([
   '-y',
-  '-i',
-  TAKE,
-  '-i',
-  TAKE2,
+  ...TAKES.flatMap((tk) => ['-i', tk.file]),
   '-f',
   'lavfi',
   '-t',
@@ -350,9 +341,7 @@ run([
   out,
 ]);
 
-console.log(
-  `film ${total} s, take ${takeDur.toFixed(2)} s, ${clips.length} clips, ${cues.length} caption cues`,
-);
+console.log(`film ${total} s, ${clips.length} clips, ${cues.length} caption cues`);
 for (const c of clips)
   console.log(
     `${c.abs.toFixed(2).padStart(7)} -> ${(c.abs + c.len).toFixed(2).padStart(7)}  [${c.scene}] take ${c.from.toFixed(2)}-${c.to.toFixed(2)}  ${c.cues.map((q) => q.text).join(' | ')}`,
