@@ -1535,3 +1535,44 @@ body {
     transform: rotate(0deg);
   }
 }
+
+/* sidebar footer: a labelled GitHub button, full ink, hard shadow like the page action buttons */
+.hl-gh-button {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 2.5rem;
+  padding: 0.45rem 0.75rem;
+  border: 1.5px solid var(--hl-fg);
+  border-radius: 2px;
+  background: var(--hl-panel);
+  color: var(--hl-fg);
+  font-family: var(--font-martian);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: 2px 2px 0 var(--hl-shadow);
+  transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 0.1s ease;
+}
+.hl-gh-button:hover {
+  background: var(--hl-signal);
+  color: var(--hl-on-signal);
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 var(--hl-shadow);
+}
+.hl-gh-button:active {
+  transform: translate(1px, 1px);
+  box-shadow: 0 0 0 var(--hl-shadow);
+}
+.hl-gh-button:focus-visible {
+  outline: 2px solid var(--hl-focus);
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hl-gh-button,
+  .hl-gh-button:hover,
+  .hl-gh-button:active {
+    transition: none;
+    transform: none;
+  }
+}

@@ -132,6 +132,34 @@ button.ui-link {
   stroke: var(--color-on-danger);
 }
 
+/* Fill variant (dialogs): the whole button fills left to right while held. Newsprint ink on paper,
+   signal orange as the button. Colours come from tokens only. */
+.ui-hold__btn[data-fill='true'] {
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.ui-hold__bar {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--color-fg);
+  opacity: 0.4;
+  transform: scaleX(var(--ui-hold-p, 0));
+  transform-origin: left center;
+  transition: transform 60ms linear;
+}
+
+.ui-hold__btn[data-fill='true'][data-phase='done'] {
+  background: var(--color-action);
+  color: var(--color-on-action);
+}
+
+.ui-hold__btn[data-fill='true'][data-tone='danger'] .ui-hold__bar {
+  background: var(--color-on-danger);
+  opacity: 0.35;
+}
+
 .ui-hold__text small {
   display: block;
   font-size: var(--font-size-2);
@@ -629,6 +657,7 @@ button.ui-link {
   }
 
   .ui-hold__btn,
+  .ui-hold__bar,
   .ui-slider__knob {
     transition: none;
   }
