@@ -195,7 +195,7 @@ export const en = {
     'The public screen in cream and ink: a large price of 350 dollars, paddle number 12, a countdown, a list of latest bids and a QR code.',
   'mk.shots.receipt.cap': 'Receipt: the winning amount and the rest of the hold, released.',
   'mk.shots.receipt.alt':
-    'The receipt page: sandbox notice, item, winning price 350 dollars, a charged amount, a bar with a solid part for the amount taken and a dashed part for the amount released.',
+    'The receipt page: sandbox notice, item, winning price 350 dollars, the amount taken, a bar with a solid part for the amount taken and a dashed part for the amount released.',
   'mk.shots.console.cap':
     'Auctioneer console: lot controls, the bid stream, bidders and their holds.',
   'mk.shots.console.alt':
