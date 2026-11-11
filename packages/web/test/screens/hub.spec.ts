@@ -217,6 +217,14 @@ test.describe('scripted demo in Newsprint', () => {
       /\/demo\/scripted\/join$/,
     );
     await expect(page.locator('html')).not.toHaveAttribute('data-theme', 'projector');
+    // One slim header, and a step panel that fits without its own scrollbar.
+    await expect(page.getByText(t('prov.scripted'))).toHaveCount(1);
+    const bar = await page.locator('.gv-scripted-bar').boundingBox();
+    expect(bar?.height ?? 999).toBeLessThanOrEqual(96);
+    const fits = await page
+      .locator('.gv-player')
+      .evaluate((el) => el.scrollHeight - el.clientHeight);
+    expect(fits).toBeLessThanOrEqual(1);
     await shoot('scripted', 'screen');
   });
 

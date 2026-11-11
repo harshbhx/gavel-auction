@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { QrCode, encodeQr } from '../../src/screens/join/QrCode';
+import { QrCode, encodeQr, snapSize } from '../../src/screens/join/QrCode';
 
 const URL_TEXT = 'https://gavel.example/join/room-123?c=ABC123';
 
@@ -126,5 +126,25 @@ describe('QrCode (R-WEB-051)', () => {
       expect(encodeQr('x'.repeat(bytes)).length).toBe(modules);
     }
     expect(() => encodeQr('x'.repeat(363))).toThrow(RangeError);
+  });
+});
+
+describe('QR snapping (UIX-73)', () => {
+  it('draws whole pixels per module, inside 130 to 170 px when a multiple fits', () => {
+    for (const span of [37, 41, 45, 49, 53]) {
+      const px = snapSize(span, 170, 130);
+      expect(px % span).toBe(0);
+      expect(px).toBeGreaterThanOrEqual(130);
+      expect(px).toBeLessThanOrEqual(180);
+    }
+  });
+
+  it('keeps the four module quiet zone and renders at the snapped width', () => {
+    const rows = encodeQr(URL_TEXT);
+    const span = rows.length + 8;
+    render(<QrCode url={URL_TEXT} size={170} snapMin={130} />);
+    const svg = screen.getByRole('img');
+    expect(svg.getAttribute('viewBox')).toBe(`0 0 ${span} ${span}`);
+    expect(Number(svg.getAttribute('width')) % span).toBe(0);
   });
 });

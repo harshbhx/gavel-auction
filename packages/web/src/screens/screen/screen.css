@@ -216,12 +216,58 @@
 .gv-screen__side {
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  gap: var(--space-4);
   min-width: 0;
+  /* The ticker fills what is left and scrolls inside; the panel itself never grows with it. */
+  min-height: 0;
+}
+
+/* The QR code sits first: a white card with the quiet zone inside the symbol, drawn at whole
+ * pixels per module. */
+.gv-screen__join {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  align-items: center;
+  min-width: 0;
+  padding: var(--space-3);
+  border: var(--border-width-strong) solid var(--color-fg);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-2);
+  text-align: center;
+}
+
+.gv-screen__join svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  image-rendering: pixelated;
+}
+
+.gv-screen__join p {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: clamp(18px, calc(var(--sv) * 3), 32px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  overflow-wrap: anywhere;
+}
+
+.gv-screen__join .gv-screen__scan {
+  font-size: clamp(14px, calc(var(--sv) * 2.2), 24px);
+  color: var(--color-fg-muted);
+  text-transform: uppercase;
 }
 
 .gv-screen__ticker {
+  display: flex;
+  flex: 1 1 0;
+  flex-direction: column;
   min-width: 0;
+  min-height: 12rem;
 }
 
 .gv-screen__ticker-title {
@@ -234,56 +280,57 @@
   color: var(--color-fg-muted);
 }
 
-.gv-screen__ticker ol {
+/* The list is absolutely placed in a flex slot, so new bids never change the slot's size. */
+.gv-screen__ticker-body {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.gv-screen__ticker-list {
+  position: absolute;
+  inset: 0;
   display: flex;
   flex-direction: column;
   margin: 0;
-  padding: 0;
+  padding: 0 var(--space-2) var(--space-5) 0;
   list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-snap-type: y proximity;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-fg-muted) transparent;
   font-family: var(--font-mono);
   font-size: clamp(18px, calc(var(--sv) * 3.34), 36px);
+  /* A soft edge at the foot says there is more below. */
+  mask-image: linear-gradient(to bottom, black calc(100% - var(--space-5)), transparent);
+}
+
+.gv-screen__ticker-list:focus-visible {
+  outline: var(--border-width-strong) solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+.gv-screen__ticker-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.gv-screen__ticker-list::-webkit-scrollbar-thumb {
+  border-radius: var(--radius-pill);
+  background: var(--color-fg-muted);
 }
 
 .gv-screen__ticker li {
+  flex: 0 0 auto;
   padding-block: clamp(2px, calc(var(--sv) * 0.75), var(--space-2));
   border-block-end: var(--border-width) solid var(--color-rule);
   color: var(--color-fg-muted);
+  scroll-snap-align: start;
 }
 
 .gv-screen__ticker li:first-child {
   color: var(--color-fg);
   font-weight: 700;
-}
-
-.gv-screen__join {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  align-items: center;
-  margin-block-start: auto;
-  min-width: 0;
-  padding: var(--space-4);
-  border: var(--border-width-strong) solid var(--color-fg);
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-2);
-  text-align: center;
-}
-
-.gv-screen__join p {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: clamp(22px, calc(var(--sv) * 4.1), 44px);
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  overflow-wrap: anywhere;
-}
-
-/* The code is drawn at 260 px; the slot scales it with the screen height so it is never cut. */
-.gv-screen__join svg {
-  width: clamp(132px, calc(var(--sv) * 22), 260px);
-  height: auto;
-  aspect-ratio: 1;
 }
 
 @media (forced-colors: active) {
@@ -504,7 +551,12 @@
     font-size: 20px;
   }
 
-  .gv-screen:not(.gv-screen--preview) .gv-screen__ticker ol {
+  .gv-screen:not(.gv-screen--preview) .gv-screen__ticker {
+    flex: 0 0 auto;
+    height: 16rem;
+  }
+
+  .gv-screen:not(.gv-screen--preview) .gv-screen__ticker-list {
     font-size: 24px;
   }
 
@@ -512,16 +564,8 @@
     font-size: 18px;
   }
 
-  .gv-screen:not(.gv-screen--preview) .gv-screen__join {
-    margin-block-start: 0;
-  }
-
   .gv-screen:not(.gv-screen--preview) .gv-screen__join p {
-    font-size: 28px;
-  }
-
-  .gv-screen:not(.gv-screen--preview) .gv-screen__join svg {
-    width: clamp(160px, 50vw, 240px);
+    font-size: 24px;
   }
 
   .gv-screen:not(.gv-screen--preview) .gv-story__label {

@@ -521,7 +521,7 @@ export const en = {
   'scriptedJoin.liveHint': 'The live demo makes a real sandbox room with its own join code and QR.',
   'scriptedDemo.barLabel': 'Scripted demo notice',
   'scriptedDemo.banner':
-    'Simulated demo. Every name, bid and amount is made up and plays in this tab; nothing here is live and no PayPal call is made.',
+    'Simulated demo: every name, bid and amount is made up and plays in this tab.',
   'scriptedDemo.player': 'Scripted demo player',
   'scriptedDemo.caption': 'What is happening',
   'scriptedDemo.progress': 'Step {n} of {total}',
@@ -1066,6 +1066,8 @@ export const en = {
   'screen.passed': 'No sale',
   'screen.passedNoBids': 'Closed with no bids.',
   'screen.join': 'Join: {code}',
+  'screen.scan': 'Scan to join',
+  'screen.latestLabel': 'Latest bids, scrollable',
   'screen.settleSummary': '{c} charged, {r} released',
   'screen.wonReview': 'Paddle {n} won at {amount}',
   'screen.wonReviewUnknown': 'Won at {amount}',
