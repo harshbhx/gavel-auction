@@ -11,6 +11,7 @@ brand colours from `brand/`.
 | `readme`  | `docs/assets/readme/`  | README on GitHub                 |
 | `devpost` | `docs/assets/devpost/` | Devpost gallery, thumbnail, GIFs |
 | `social`  | `docs/assets/social/`  | Social cards, YouTube assets     |
+| `motion-readme-set` | `brand/readme/` | README banner, flow, stats, partners, footer GIFs and PNG posters |
 
 `motion-silent` (the silent product video) has no `render.mjs`: it is recorded and composed by
 [`silent-video.yml`](../.github/workflows/silent-video.yml) and committed to `brand/video/silent-cut/`.
