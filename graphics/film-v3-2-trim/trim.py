@@ -42,9 +42,9 @@ def filt(total, video, audio, fps):
     parts, vlab, alab = [], [], []
     for i, (s, e) in enumerate(segs):
         if video:
-            parts.append(f"[0:v]trim={s:.3f}:{e:.3f},setpts=PTS-STARTPTS[v{i}]")
+            parts.append(f"[{i}:v]setpts=PTS-STARTPTS[v{i}]")
         if audio:
-            parts.append(f"[0:a]atrim={s:.3f}:{e:.3f},asetpts=PTS-STARTPTS[a{i}]")
+            parts.append(f"[{i}:a]asetpts=PTS-STARTPTS[a{i}]")
     lens = [e - s for s, e in segs]
     if video:
         cur, acc = "v0", lens[0]
@@ -73,11 +73,14 @@ def has_audio(path):
 def encode(src, dst, fps, hd):
     total = probe(src, "duration")
     aud = has_audio(src)
-    args = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-i", src,
-            "-filter_complex", filt(total, True, aud, fps), "-map", "[vout]"]
+    # one seeked input per kept segment, so ffmpeg never buffers the whole film for the trim filters
+    args = ["ffmpeg", "-hide_banner", "-loglevel", "error", "-y"]
+    for s0, e0 in keep_segments(total):
+        args += ["-ss", f"{s0:.3f}", "-t", f"{e0 - s0:.3f}", "-i", src]
+    args += ["-filter_complex", filt(total, True, aud, fps), "-map", "[vout]"]
     if aud:
         args += ["-map", "[aout]", "-c:a", "aac", "-b:a", "160k"]
-    args += ["-c:v", "libx264", "-preset", "slow" if hd else "medium", "-crf", "19" if hd else "22",
+    args += ["-c:v", "libx264", "-preset", "medium", "-crf", "19" if hd else "22",
              "-maxrate", "3500k" if hd else "1800k", "-bufsize", "7000k" if hd else "3600k",
              "-movflags", "+faststart", dst]
     sh(*args)
