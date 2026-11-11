@@ -87,22 +87,22 @@ ${hr(0.05, 56, 44, 1168, '.9s')}
 ${mono(0.1, 'left:56px;top:16px', 'Gavel')}${mono(0.1, 'right:56px;top:16px', 'PayPal sandbox only')}
 <div class="abs" style="left:56px;top:66px;width:610px">${logoSvg({ variant: 'color', start: 0.15 })}</div>
 ${vr(1.9, 716, 76, 170)}
-${rev(2.1, 'Every bid is a hold.', 'left:748px;top:84px;font-size:50px;white-space:nowrap;font-family:var(--display);font-weight:800;text-transform:uppercase;line-height:1.05')}
-${rev(2.45, 'The hammer is the payment.', 'left:748px;top:150px;font-size:50px;white-space:nowrap;font-family:var(--display);font-weight:800;text-transform:uppercase;line-height:1.05;color:var(--orange)')}
+${rev(2.1, 'Every bid is a hold.', 'left:744px;top:92px;font-size:44px;white-space:nowrap;font-family:var(--display);font-weight:800;text-transform:uppercase;line-height:1.05')}
+${rev(2.45, 'The hammer is the payment.', 'left:744px;top:150px;font-size:44px;white-space:nowrap;font-family:var(--display);font-weight:800;text-transform:uppercase;line-height:1.05;color:var(--orange)')}
 ${hr(2.9, 56, 276, 1168, '.8s')}
 ${mono(3.1, 'left:56px;top:288px', 'Hold &nbsp;/&nbsp; Bid &nbsp;/&nbsp; Hammer &nbsp;/&nbsp; Receipt')}`,
 });
 
 /* ---------- flow 1200x500, 9 s ---------- */
 {
-  const COL = (i) => 56 + i * 290;
+  const COL = (i) => 56 + i * 272;
   const TH = 4.8; // the hammer lands, the winner is captured, the rest released
   const step = (i, n, name, t) => `
 ${mono(t, `left:${COL(i)}px;top:34px`, 'Step ' + n)}
-${rev(t + 0.05, name, `left:${COL(i)}px;top:52px;width:260px;height:62px;font-size:56px;font-family:var(--display);font-weight:800;text-transform:uppercase;line-height:1.05;${i === 2 ? 'color:var(--orange);' : ''}`, '.6s')}
-${hr(t + 0.1, COL(i), 124, 260, '.6s')}`;
+${rev(t + 0.05, name, `left:${COL(i)}px;top:52px;width:240px;height:62px;font-size:56px;font-family:var(--display);font-weight:800;text-transform:uppercase;line-height:1.05;${i === 2 ? 'color:var(--orange);' : ''}`, '.6s')}
+${hr(t + 0.1, COL(i), 124, 240, '.6s')}`;
   const cap = (i, t, html) =>
-    `<div class="abs m14 fade" style="--d:${t}s;left:${COL(i)}px;top:352px;width:260px">${html}</div>`;
+    `<div class="abs m14 fade" style="--d:${t}s;left:${COL(i)}px;top:352px;width:240px">${html}</div>`;
   const pad = (k, label, amt, t, win) => {
     const x = COL(0) + k * 90;
     return `
@@ -117,8 +117,8 @@ ${hr(t + 0.1, COL(i), 124, 260, '.6s')}`;
 <div class="abs m14 fade" style="--d:${TH}s;left:${x}px;top:282px;width:84px;font-weight:700;${win ? 'color:var(--orange)' : 'color:var(--muted)'}">${win ? 'captured' : 'released'}</div>`;
   };
   const rrow = (k, l, r, t, big) => `
-${hr(t, COL(3), 150 + k * 54, 260, '.5s', 2)}
-<div class="abs fade" style="--d:${t + 0.1}s;left:${COL(3)}px;top:${164 + k * 54}px;width:260px;display:flex;justify-content:space-between;align-items:baseline">
+${hr(t, COL(3), 150 + k * 60, 240, '.5s', 2)}
+<div class="abs fade" style="--d:${t + 0.1}s;left:${COL(3)}px;top:${166 + k * 60}px;width:240px;display:flex;justify-content:space-between;align-items:baseline">
   <span class="m14" style="font-weight:700">${l}</span>${r}</div>`;
   const body = `
 ${step(0, '01', 'Hold', 0.1)}${step(1, '02', 'Bid', 1.5)}${step(2, '03', 'Hammer', 3.4)}${step(3, '04', 'Receipt', 5.2)}
@@ -131,7 +131,7 @@ ${cap(2, 3.9, 'The hammer strikes once. Only the winning price is captured.')}
 ${rrow(0, 'Paddle 2', `<span class="D" style="font-size:34px;color:var(--orange)">$35.00</span>`, 5.5)}
 ${rrow(1, 'Paddle 1', `<span class="m14" style="color:var(--muted)">hold released</span>`, 5.85)}
 ${rrow(2, 'Paddle 3', `<span class="m14" style="color:var(--muted)">hold released</span>`, 6.2)}
-${hr(6.5, COL(3), 150 + 3 * 54, 260, '.5s', 2)}
+${hr(6.5, COL(3), 150 + 3 * 60, 240, '.5s', 2)}
 ${cap(3, 6.7, 'The winner pays. Every other hold is released.')}
 ${hr(0.2, 56, 436, 1088, '1s')}
 ${mono(0.4, 'left:56px;top:452px', 'Simulated auction')}${mono(0.4, 'right:56px;top:452px', 'PayPal sandbox only')}`;
@@ -152,15 +152,15 @@ ${mono(0.4, 'left:56px;top:452px', 'Simulated auction')}${mono(0.4, 'right:56px;
     const t = 0.2 + i * 0.18;
     return `
 ${i ? vr(t, x - 14, 70, 160) : ''}
-<div class="abs D" style="left:${x}px;top:76px;font-size:92px;white-space:nowrap;${s.or ? 'color:var(--orange);' : ''}"><span data-to="${s.to}" data-start="${t}" data-dur="1.5" data-suf="${s.suf.replace(/"/g, '&quot;')}">0</span></div>
-<div class="abs m14 fade" style="--d:${t + 0.5}s;left:${x}px;top:176px;width:190px">${s.label}</div>`;
+<div class="abs D" style="left:${x}px;top:92px;font-size:74px;white-space:nowrap;${s.or ? 'color:var(--orange);' : ''}"><span data-to="${s.to}" data-start="${t}" data-dur="1.5" data-suf="${s.suf.replace(/"/g, '&quot;')}">0</span></div>
+<div class="abs m14 fade" style="--d:${t + 0.5}s;left:${x}px;top:182px;width:190px">${s.label}</div>`;
   };
   await make('stats', {
     w: 1200,
     h: 260,
     secs: 5,
     limit: 800 * 1024,
-    css: '.D small{font-size:44px;letter-spacing:.01em}',
+    css: '.D small{font-size:34px;letter-spacing:.01em}',
     body: `
 ${hr(0, 48, 52, 1104, '1s')}
 ${mono(0.05, 'left:48px;top:20px', 'Built and proven')}${mono(0.05, 'right:48px;top:20px', 'PayPal sandbox only')}
@@ -194,7 +194,7 @@ ${mono(2.4, 'left:56px;top:174px', 'Names set in type. The PayPal wordmark is Pa
 /* ---------- footer 1200x160, 4 s ---------- */
 {
   const seg = (t, s, or) =>
-    `<span class="D fade" style="--d:${t}s;font-size:44px;white-space:nowrap;${or ? 'color:var(--orange)' : ''}">${s}</span>`;
+    `<span class="D fade" style="--d:${t}s;font-size:40px;white-space:nowrap;${or ? 'color:var(--orange)' : ''}">${s}</span>`;
   await make('footer', {
     w: 1200,
     h: 160,
