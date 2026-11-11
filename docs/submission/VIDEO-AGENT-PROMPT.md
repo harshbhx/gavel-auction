@@ -56,7 +56,7 @@ Read these files in this order:
 | Full multi-bidder settlement                                                         | not run end to end on the sandbox; shown on the fake PayPal                                                                                                                             |
 | Crash recovery                                                                       | shown on the fake PayPal, plus one in-process crash on the sandbox                                                                                                                      |
 | Latency                                                                              | both targets missed on run 42563147792 (n=49, INCOMPLETE): hammer to SETTLED p95 6.9 s against 6 s, hammer to CAPTURED p95 3.8 s against 2.5 s; an earlier n=20 run had 5.6 s and 3.0 s |
-| APIMatic SDK                                                                         | not generated yet; only the OpenAPI spec is ready                                                                                                                                       |
+| APIMatic SDK                                                                         | generated and published as a GitHub release (sdk-v0.0.5); the portal is not hosted                                                                                                      |
 | Money                                                                                | PayPal sandbox only. No real money moves.                                                                                                                                               |
 
 **Sponsors and tools (name them only as the repo supports).**
@@ -64,7 +64,7 @@ Read these files in this order:
 - PayPal: Orders v2, Payments v2 (authorize, capture, void, reauthorize), Webhooks verify-webhook-signature, JS SDK v6, all in the sandbox.
 - Render: hosts the API with a persistent disk (see the Render write-up in the docs site).
 - AG Grid: used for the ledger, bids and holds tables. Check that the AG Grid ledger PR is merged and live before you show or name it; if it is not, do not mention it.
-- APIMatic: only the OpenAPI spec is ready; the generated SDK is pending. Say that, or say nothing.
+- APIMatic: SDKs (TypeScript, Python, C#) are a GitHub release, sdk-v0.0.5; the portal is not hosted. Never claim a portal or npm, PyPI or NuGet packages.
 - Hugging Face: a collection of synthetic datasets and evidence, https://huggingface.co/collections/harshbhx/gavel-evidence-auction-holds-hammer-and-receipts-6af0afebebb37eb4c9184504 . Synthetic by design.
 
 ## 2. Length and structure (hard limit 3:00, target 2:50)
@@ -169,7 +169,7 @@ Never say or show:
 - Fake PayPal behaviour as if it were the real sandbox. Label it "Fake PayPal, test run".
 - A recording as if it were live. Label it.
 - The API domain `api.gavel.dualmindlab.tech` as live (pending DNS).
-- A generated APIMatic SDK (not generated yet).
+- An APIMatic developer portal (generated, not hosted); the SDKs are a GitHub release only.
 - Sandbox buyer passwords, tokens, API keys or emails on screen. Blur or cut. Never put them in the video description.
 - PayPal, AG Grid, Render or APIMatic logos as decoration. Name the sponsors in voice or text only where the repo supports the claim.
 

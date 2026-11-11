@@ -32,6 +32,8 @@ export interface HoldButtonProps {
   confirmAlternative?: boolean;
   /** Red variant for destructive confirms such as stopping the auction. Same hold, same keys. */
   tone?: 'default' | 'danger';
+  /** Dialog style: a bar fills the button while held, instead of the ring. Same hold, same keys. */
+  fill?: boolean;
   id?: string;
 }
 
@@ -49,6 +51,7 @@ export function HoldButton({
   disabledReason,
   confirmAlternative = true,
   tone = 'default',
+  fill = false,
   id,
 }: HoldButtonProps) {
   const [phase, setPhase] = useState<HoldPhase>('idle');
@@ -163,6 +166,7 @@ export function HoldButton({
         className="ui-hold__btn"
         data-phase={phase}
         data-tone={tone}
+        data-fill={fill ? 'true' : undefined}
         aria-disabled={disabled ? true : undefined}
         aria-describedby={noteId}
         style={{ '--ui-hold-p': progress } as CSSProperties}
@@ -184,6 +188,7 @@ export function HoldButton({
           e.preventDefault();
         }}
       >
+        {fill && <span className="ui-hold__bar" aria-hidden="true" />}
         <svg className="ui-hold__ring" viewBox="0 0 40 40" aria-hidden="true">
           <circle className="ui-hold__track" cx="20" cy="20" r="16" />
           <circle className="ui-hold__fill" cx="20" cy="20" r="16" pathLength="100" />

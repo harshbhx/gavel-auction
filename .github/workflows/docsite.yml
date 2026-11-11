@@ -87,6 +87,11 @@ jobs:
         working-directory: docsite
         run: node scripts/check-size.mjs out
 
+      # Every page needs Open Graph and Twitter tags and an image that is in the export.
+      - name: Check the link previews
+        working-directory: docsite
+        run: node scripts/check-meta.mjs out
+
       - name: Check the export
         working-directory: docsite
         run: |
@@ -120,6 +125,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: ./.github/actions/apt-resilient
 
       - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
         with:
@@ -163,6 +169,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: ./.github/actions/apt-resilient
 
       - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
         with:

@@ -482,37 +482,6 @@ ul.clean li::marker {
   margin-right: 1.5mm;
 }
 
-/* ---------- placeholders ---------- */
-
-.ph {
-  display: inline-block;
-  font-family: var(--mono);
-  font-size: 7.8pt;
-  font-weight: 700;
-  color: var(--accent);
-  background: #fff1e4;
-  border: 1pt dashed var(--orange);
-  padding: 0.6mm 1.8mm;
-  line-height: 1.35;
-}
-
-.ph.filled {
-  color: var(--ink);
-  background: #ffffff;
-  border: 1pt solid var(--ink);
-  font-weight: 500;
-}
-
-.card--ink .ph {
-  background: #2c231c;
-  color: #ffb27f;
-}
-
-.card--ink .ph.filled {
-  background: #ffffff;
-  color: var(--ink);
-}
-
 /* ---------- tables ---------- */
 
 table {

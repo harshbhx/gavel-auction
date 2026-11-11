@@ -157,9 +157,13 @@ describe('one word per concept (copy glossary)', () => {
 
   it('uses limit, not ceiling, in user-facing text and keeps the hold gesture apart from the hold', () => {
     expect(viewer.filter(([, v]) => /ceiling/i.test(v) && !/\{ceiling\}/.test(v))).toEqual([]);
-    expect(viewer.filter(([, v]) => /\bHold (to|the|\d)|\bvoided\b|\bcaptured,/.test(v))).toEqual(
-      [],
-    );
+    // The two press-and-hold gesture labels on the console name the gesture, not a payment hold.
+    const gestureLabels = new Set(['console.hammerHold', 'kill.hold']);
+    expect(
+      viewer.filter(
+        ([k, v]) => !gestureLabels.has(k) && /\bHold (to|the|\d)|\bvoided\b|\bcaptured,/.test(v),
+      ),
+    ).toEqual([]);
   });
 });
 

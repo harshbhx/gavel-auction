@@ -592,7 +592,7 @@ export const en = {
   'reg.sessionNotSaved':
     'Your browser blocked storage. Keep this tab open: reloading will end this session.',
   'reg.customHint': 'Type your own limit in whole dollars, from {min} to {max}.',
-  'reg.overCap': 'The most a limit can be in this room is {max}.',
+  'reg.overCap': 'This room takes limits up to {max}. Lower the amount to continue.',
   'reg.customRange': 'Enter a whole dollar amount from {min} to {max}.',
   'reg.heldNotCharged': 'Held, not charged.',
   'reg.heldExplain':
@@ -912,7 +912,7 @@ export const en = {
   'console.ladder.held': 'Hold in place',
   'console.ladder.high': 'High {amount}',
   'console.ladder.ceiling': 'Limit {amount}',
-  'console.hammerHold': 'Press and hold to hammer',
+  'console.hammerHold': 'Hold 3 seconds to hammer',
   'console.hammerDesk': 'Press and hold {s} seconds to close the lot',
   'console.hammerDeskHint': 'Falls at the current price. Release early to cancel.',
   'console.hammerDialogHint': 'Cannot hold? Use the Hammer button to confirm in a dialog.',
@@ -925,7 +925,7 @@ export const en = {
   'kill.consequence':
     'Bidding ends for everyone now. No winner is chosen. Holds will be released. This cannot be undone.',
   'kill.type': 'Type STOP to continue',
-  'kill.hold': 'Press and hold to stop',
+  'kill.hold': 'Hold 3 seconds to stop',
   'kill.stopped': 'Auction stopped',
   'kill.deskHold': 'Press and hold 3 seconds to stop the auction',
   'kill.deskHint': 'No winner is named. Release early to cancel.',
@@ -977,10 +977,11 @@ export const en = {
   'instructor.try.2': 'On the hub, put the screen up and share the join ticket.',
   'instructor.try.3': 'Bid from a second tab, hold the hammer in the console, open the receipt.',
   'kill.failed': 'The stop request was not accepted. The auction is still running.',
-  'kill.holdHint': 'Press and hold the button, or press Enter on it, to stop the auction.',
+  'kill.holdHint':
+    'Press and hold the button for {s} seconds, or hold Enter or Space on it, to stop the auction. Release early to cancel.',
   'common.cancel': 'Cancel',
   'console.hammerHint':
-    'Press and hold the button for {s} seconds, or hold Enter on it, to confirm. Release early to cancel.',
+    'Press and hold the button for {s} seconds, or hold Enter or Space on it, to confirm. Release early to cancel.',
   'console.roster': 'Bidders',
   'console.guide.title': 'Lot status',
   'console.guide.state.scheduled': 'Ready, not open yet',
@@ -1429,7 +1430,7 @@ export const en = {
   'ui.hold.altArmed': 'Tap again to confirm',
   'ui.hold.statusHoldingOne': 'Holding. 1 second to go.',
   'ui.hold.statusHoldingMany': 'Holding. {left} seconds to go.',
-  'ui.hold.statusDone': 'Done.',
+  'ui.hold.statusDone': 'Held. Confirming.',
   'ui.hold.statusCancelled': 'Released too early. Nothing happened.',
   'ui.hold.statusArmed': 'Tap confirm again to finish.',
   'ui.hold.aria': 'Your hold',
@@ -1683,6 +1684,22 @@ export const en = {
   'end.join': 'Join room',
   'end.home': 'Go home',
   'end.announce': 'You won the lot at {amount}. Choose join room, go home, or view the receipt.',
+  // Pop-up for everyone in the room when the lot ends: lost, never in the bidding, and no sale.
+  'end.title.lost': 'You did not win this lot',
+  'end.title.sold': 'The lot is sold',
+  'end.title.noSale': 'Lot closed, no sale',
+  'end.sold.lot': '{lot} sold at {amount}.',
+  'end.sold.price': 'Sold at {amount}.',
+  'end.sold.paddle': 'Paddle {n} won it.',
+  'end.money.lost': 'Your hold is released. This is a sandbox, so no real money moves.',
+  'end.noSale.lot': '{lot} closed with no sale.',
+  'end.noSale.body': 'No bid won the lot, so nobody owes anything.',
+  'end.noSale.hold': 'No hold is taken. A hold you registered is released.',
+  'end.announce.lost':
+    'The lot sold at {amount}. You did not win. Choose join room, go home, or view the receipt.',
+  'end.announce.sold': 'The lot sold at {amount}. Choose join room or go home.',
+  'end.announce.noSale': 'The lot closed with no sale. Choose join room or go home.',
+  'bid.position.title': 'Your position',
 } as const;
 
 export type CopyKey = keyof typeof en;

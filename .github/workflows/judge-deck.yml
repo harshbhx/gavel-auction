@@ -32,6 +32,7 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
+      - uses: ./.github/actions/apt-resilient
       - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
         with:
           node-version-file: .nvmrc
@@ -40,8 +41,13 @@ jobs:
           python-version: '3.12'
       - name: Install LibreOffice, fonts and the build tools
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq --no-install-recommends libreoffice-impress fonts-liberation poppler-utils imagemagick libraqm0 >/dev/null
+          # The runner mirrors are sometimes slow: bound each try and retry.
+          APT='-o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30'
+          for try in 1 2 3; do
+            sudo timeout 300 apt-get $APT update -qq || true
+            sudo timeout 420 apt-get $APT install -y -qq --no-install-recommends libreoffice-impress fonts-liberation poppler-utils imagemagick libraqm0 >/dev/null && break
+            [ "$try" = 3 ] && exit 1
+          done
           python -m pip install --quiet pillow==12.0.0 python-pptx==1.0.2
           mkdir -p "$RUNNER_TEMP/deps" && cd "$RUNNER_TEMP/deps"
           npm init -y >/dev/null && npm install --no-audit --no-fund pptxgenjs@3.12.0 >/dev/null
@@ -56,6 +62,51 @@ jobs:
         run: |
           python -m pip install --quiet weasyprint brotli
           python brand/devpost/judges/build.py --out "$OUT/GAVEL-judge-guide.pdf" --png "$OUT/guide-png"
+      - name: Test the credentials fill with dummy values
+        run: |
+          printf '%s' '{"JUDGE_KEY":"DUMMY-KEY","BUYER_A_EMAIL":"a@dummy.test","BUYER_A_PASSWORD":"DUMMY-PW","BUYER_B_EMAIL":"b@dummy.test","BUYER_B_PASSWORD":"DUMMY-PW","BUYER_C_EMAIL":"c@dummy.test","BUYER_C_PASSWORD":"DUMMY-PW","BUYER_D_EMAIL":"d@dummy.test","BUYER_D_PASSWORD":"DUMMY-PW"}' > "$RUNNER_TEMP/dummy-fill.json"
+          python brand/devpost/judges/build.py --fill "$RUNNER_TEMP/dummy-fill.json" --out "$RUNNER_TEMP/dummy.pdf"
+          pdftotext -layout "$RUNNER_TEMP/dummy.pdf" - | grep -c 'DUMMY-KEY'
+          pdftotext -layout "$RUNNER_TEMP/dummy.pdf" - | grep -E 'DUMMY-PW|a@dummy.test' | head -3
+          # a fill file must be refused when the output is inside the repository
+          ! python brand/devpost/judges/build.py --fill "$RUNNER_TEMP/dummy-fill.json" --out brand/devpost/judges/x.pdf
+      - name: Check the rebuilt deck structure and the guide text
+        run: |
+          python - <<'PY' | tee "$OUT/motion-report.txt"
+          import re, subprocess, zipfile
+          from xml.dom import minidom
+          from pptx import Presentation
+          path = '${{ env.OUT }}/build/rebuilt.pptx'
+          z = zipfile.ZipFile(path)
+          for n in z.namelist():
+              if n.endswith('.xml') or n.endswith('.rels'):
+                  minidom.parseString(z.read(n))  # well-formed
+          print('size MB', round(__import__('os').path.getsize(path) / 1e6, 2))
+          assert __import__('os').path.getsize(path) < 10e6
+          deck = Presentation(path)
+          deck.save('${{ env.OUT }}/build/roundtrip.pptx')
+          Presentation('${{ env.OUT }}/build/roundtrip.pptx')
+          print('slide | transition | timing nodes | effects (entr/emph/exit)')
+          for i in range(1, len(deck.slides) + 1):
+              x = z.read(f'ppt/slides/slide{i}.xml').decode()
+              tr = re.findall(r'<p:(push|pull|cover|fade|cut|wipe)\b([^>]*)>', x)
+              morph = 'morph' in x
+              name = ('morph' if morph else '') + ' ' + ' '.join(t + (' thruBlk' if 'thruBlk' in a else '') for t, a in tr[:1])
+              nodes = len(re.findall(r'<p:cTn\b', x))
+              k = [len(re.findall(f'presetClass="{c}"', x)) for c in ('entr', 'emph', 'exit')]
+              print(f'{i} | {name.strip()} | {nodes} | {k}')
+          for pdf in ('${{ env.OUT }}/GAVEL-judge-guide.pdf',):
+              txt = subprocess.run(['pdftotext', '-layout', pdf, '-'], capture_output=True, text=True).stdout
+              bad = re.findall(r'\[[A-Z][A-Z0-9 ]+:[^\]]*\]|Harsh pastes|PLACEHOLDER|OWNER', txt)
+              assert not bad, bad
+              assert 'bhanushaliharsh434@gmail.com' in txt
+              assert 'Devpost Testing instructions' in txt and 'DUMMY' not in txt
+              print('guide text: no brackets or placeholders;', len(txt), 'chars')
+          deck_txt = ' '.join(sh.text_frame.text for s in deck.slides for sh in s.shapes if sh.has_text_frame)
+          deck_txt += ' '.join(s.notes_slide.notes_text_frame.text for s in deck.slides)
+          assert not re.search(r'Harsh pastes|PLACEHOLDER|OWNER|\[[A-Z ]+:', deck_txt)
+          print('deck text: no placeholders')
+          PY
       - name: Check the committed deck
         run: |
           python - <<'PY'
@@ -108,5 +159,6 @@ jobs:
             out/guide-png/
             out/contact-sheet.png
             out/animations.txt
+            out/motion-report.txt
             out/png/
           retention-days: 14

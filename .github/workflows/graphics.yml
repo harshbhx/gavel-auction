@@ -50,6 +50,7 @@ jobs:
         set: ${{ fromJson(needs.discover.outputs.sets) }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: ./.github/actions/apt-resilient
       - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
         with:
           node-version: 22

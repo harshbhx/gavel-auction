@@ -37,7 +37,7 @@ Online auctions usually make a bidder pay first or trust the bidder to pay later
 
 ## At a glance
 
-|                                   |                                                                                                                                                                                                                                                                                            |
+| Feature                           | What it does                                                                                                                                                                                                                                                                               |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Hold, not charge**              | Every bid is backed by a PayPal authorization hold. Only the winner pays, and only the hammer price.                                                                                                                                                                                       |
 | **Crash-safe settlement**         | A real server process killed mid-capture: one capture, two losers voided, 0 differences between the journal and PayPal ([evidence](docs/evidence/server-kill)).                                                                                                                            |
@@ -77,6 +77,12 @@ Online auctions usually make a bidder pay first or trust the bidder to pay later
 | Open data   | [Hugging Face collection](https://huggingface.co/collections/harshbhx/gavel-evidence-auction-holds-hammer-and-receipts-6af0afebebb37eb4c9184504): five datasets and an Evidence Explorer Space                                     |
 | Source      | [github.com/harshbhx/gavel-auction](https://github.com/harshbhx/gavel-auction), MIT                                                                                                                                                |
 
+When you share a link, it unfurls as a card like this one (web app, docs, the judge panel and the ledger each have their own). How to refresh the cards: [brand/og/README.md](brand/og/README.md).
+
+<p align="center">
+  <img src="packages/web/public/og/og-landing.png" alt="The GAVEL link preview card: Every bid is a hold. The hammer is the payment. PayPal sandbox only. Partners: Render, APIMatic, AG Grid." width="600">
+</p>
+
 ## Judge path in 60 seconds
 
 No login and no PayPal account needed. Do not use a personal PayPal account anywhere.
@@ -86,7 +92,7 @@ No login and no PayPal account needed. Do not use a personal PayPal account anyw
 3. **Verify it.** Open the audit trail of the room, or the [ledger lab](https://gavel.dualmindlab.tech/ledger): every entry is hashed with the one before it, and an edited entry is marked as such.
 4. **Call it.** The same flow runs over plain HTTP with the shared judge key from the Devpost testing instructions (optional; the rooms above need no key): see [Call the API](#call-the-api).
 
-Sandbox buyer logins are in the Devpost testing instructions, not in this repository ([placeholders](docs/judges/DEVPOST-TESTING.md)). The demo room uses demo holds unless you log in with a sandbox buyer. Whether a judge can start a key-less room depends on the host flag `JUDGE_ROOMS` (see [docs/DEPLOY.md](docs/DEPLOY.md)); [docs/DEMO.md](docs/DEMO.md) says what is verified. More paths, a rubric map and the evidence: [For judges](https://docs.gavel.dualmindlab.tech/docs/judges), [Trust and FAQ](https://docs.gavel.dualmindlab.tech/docs/judges/trust-and-faq) and the [judge walkthrough](docs/JUDGES.md).
+Sandbox buyer logins are in the Devpost testing instructions, not in this repository ([testing instructions](docs/judges/DEVPOST-TESTING.md)). The demo room uses demo holds unless you log in with a sandbox buyer. Whether a judge can start a key-less room depends on the host flag `JUDGE_ROOMS` (see [docs/DEPLOY.md](docs/DEPLOY.md)); [docs/DEMO.md](docs/DEMO.md) says what is verified. More paths, a rubric map and the evidence: [For judges](https://docs.gavel.dualmindlab.tech/docs/judges), [Trust and FAQ](https://docs.gavel.dualmindlab.tech/docs/judges/trust-and-faq) and the [judge walkthrough](docs/JUDGES.md).
 
 ## What is proven
 
