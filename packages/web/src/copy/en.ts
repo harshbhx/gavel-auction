@@ -1654,6 +1654,9 @@ export const en = {
   'home.footer.sandbox': 'Sandbox. No real money moves.',
   'home.footer.local': 'Your history stays in this browser.',
   'home.footer.clear': 'Clear my history',
+  'end.join': 'Join room',
+  'end.home': 'Go home',
+  'end.announce': 'You won the lot at {amount}. Choose join room, go home, or view the receipt.',
 } as const;
 
 export type CopyKey = keyof typeof en;

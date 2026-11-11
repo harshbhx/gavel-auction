@@ -66,16 +66,16 @@ describe('winner pop-up (UIX-60)', () => {
     expect(dialog.textContent).toContain(t('win.money', { amount: '$400.00' }));
     expect(screen.getByRole('button', { name: t('win.receipt') })).toBeTruthy();
     expect(
-      announce.mock.calls.some((c) => String(c[1]) === t('win.announce', { amount: '$400.00' })),
+      announce.mock.calls.some((c) => String(c[1]) === t('end.announce', { amount: '$400.00' })),
     ).toBe(true);
-    fireEvent.click(screen.getByRole('button', { name: t('win.joinCode') }));
+    fireEvent.click(screen.getByRole('button', { name: t('end.join') }));
     expect(onJoinCode).toHaveBeenCalledTimes(1);
     expect(onHome).not.toHaveBeenCalled();
   });
 
   it('routes home and to the receipt, then stays gone for the same lot', async () => {
     const { onHome, onReceipt, unmount } = renderBid(closedStore(12));
-    fireEvent.click(await screen.findByRole('button', { name: t('win.home') }));
+    fireEvent.click(await screen.findByRole('button', { name: t('end.home') }));
     expect(onHome).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('dialog')).toBeNull();
     unmount();

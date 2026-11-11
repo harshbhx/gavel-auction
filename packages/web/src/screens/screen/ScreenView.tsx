@@ -44,7 +44,7 @@ export interface ScreenViewProps {
   /** Address encoded in the QR code. */
   joinUrl: string;
   store?: RoomStore;
-  /** `projector` is the dark big screen theme; `newsprint` keeps the page theme (scripted demo). */
+  /** `projector` is the cream and ink big screen theme; `newsprint` keeps the page theme (scripted demo). */
   theme?: 'projector' | 'newsprint';
   /** A small, silent copy inside another page (the room hub): no sound, no theme change, no offline chip. */
   preview?: boolean;
