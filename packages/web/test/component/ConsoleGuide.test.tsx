@@ -21,4 +21,10 @@ describe('ConsoleGuide', () => {
     expect(screen.getByText(t('console.guide.state.stopped'))).toBeTruthy();
     expect(screen.queryByRole('link')).toBeNull();
   });
+
+  it('says no sale, not stopped, after a hammer with no bids', () => {
+    render(<ConsoleGuide status="DONE" stopped noSale roomId={null} />);
+    expect(screen.getByText(t('console.guide.state.noSale'))).toBeTruthy();
+    expect(screen.queryByText(t('console.guide.state.stopped'))).toBeNull();
+  });
 });

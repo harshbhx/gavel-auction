@@ -991,6 +991,7 @@ export const en = {
   'console.guide.state.settling': 'Settling holds',
   'console.guide.state.done': 'Done',
   'console.guide.state.stopped': 'Stopped, no winner',
+  'console.guide.state.noSale': 'No sale. Closed with no bids.',
   'console.guide.next.scheduled': 'Next: press Open lot to start taking bids.',
   'console.guide.next.open':
     'Next: bids arrive by voice, QR or manual entry. When you are ready, hold the hammer to close at the current price.',
@@ -999,6 +1000,7 @@ export const en = {
   'console.guide.next.settling':
     'Next: the winning hold is taken and every other hold is released. This takes a few seconds.',
   'console.guide.next.done': 'Next: open the receipt to see what was settled.',
+  'console.guide.next.noSale': 'The lot was hammered with no bids. No hold was taken.',
   'console.guide.next.stopped': 'The auction was stopped by the auctioneer. No hold was taken.',
   'console.guide.audit': 'Every action on this desk is written to the audit trail.',
   'console.guide.auditLink': 'View the audit trail',
@@ -1062,7 +1064,8 @@ export const en = {
   'screen.latest': 'Latest',
   'screen.sold': 'SOLD to paddle {n} for {amount}',
   'screen.soldUnknown': 'SOLD for {amount}',
-  'screen.passed': 'Passed',
+  'screen.passed': 'No sale',
+  'screen.passedNoBids': 'Closed with no bids.',
   'screen.join': 'Join: {code}',
   'screen.settleSummary': '{c} charged, {r} released',
   'screen.wonReview': 'Paddle {n} won at {amount}',
