@@ -87,7 +87,7 @@ describe('the start page', () => {
     const url = calls.map((c) => c[0]).find((u) => u.includes('/api/auctions/roomA'));
     expect(url).toBeDefined();
     expect(calls.every((c) => c[1]?.method === undefined || c[1].method === 'GET')).toBe(true);
-    expect(await screen.findByText(/This room is deleted/)).toBeTruthy();
+    expect(await screen.findByText(/Room deleted after 30 minutes/)).toBeTruthy();
   });
 });
 

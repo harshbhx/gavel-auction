@@ -38,6 +38,15 @@ export interface HomeScreenProps {
 
 const CODE_LENGTH = 6;
 const ROOM_MS = ROOM_MINUTES * 60_000;
+const EARLIER_SHOWN = 4;
+const DOCS_URL = 'https://docs.gavel.dualmindlab.tech';
+/** The four ways on, under the two main actions. Internal ones route in-app; Docs leaves for the docs site. */
+const TILES = [
+  { id: 'demo', href: '/demo/scripted', internal: true },
+  { id: 'judge', href: '/try', internal: true },
+  { id: 'ledger', href: '/ledger', internal: true },
+  { id: 'docs', href: DOCS_URL, internal: false },
+] as const;
 const JOIN_PATH = /\/join\/([A-Za-z0-9_-]+)/;
 
 function wantsJoin(): boolean {
@@ -143,10 +152,12 @@ function Price({ cents }: { cents: number }) {
 function RouteLink({
   to,
   onNavigate,
+  className = 'gv-home__link',
   children,
 }: {
   to: string;
   onNavigate: (to: string) => void;
+  className?: string;
   children: string;
 }) {
   const click = (e: MouseEvent<HTMLAnchorElement>): void => {
@@ -155,15 +166,16 @@ function RouteLink({
     onNavigate(to);
   };
   return (
-    <a className="gv-home__link" href={to} onClick={click}>
+    <a className={className} href={to} onClick={click}>
       {children}
     </a>
   );
 }
 
 /**
- * The Home screen for a visitor who has been here before: a greeting, the last auction set like a
- * lot record, the earlier rooms as ruled rows, and the two ways in. Light Newsprint only.
+ * The Home screen for a visitor who has been here before: one hero row (the greeting and the two
+ * ways in), the last auction as a lot record beside the earlier rooms from this browser's history,
+ * and four tiles. Light Newsprint only.
  */
 export function HomeScreen({
   rooms,
@@ -239,7 +251,7 @@ export function HomeScreen({
 
   if (last === undefined) return null;
   const result = effectiveResult(last, now);
-  const greeting = pickGreeting(last, result, now);
+  const greeting = pickGreeting(last);
   const recent = rooms
     .filter((r) => r.code !== null && !expiredByTime(r, now))
     .slice(0, 3)
@@ -247,13 +259,23 @@ export function HomeScreen({
     .filter((c): c is string => c !== null);
   const reachable = check === 'live';
 
+  const badge = shortResult(result);
+  const shown = earlier.slice(0, EARLIER_SHOWN);
+
   return (
     <div className="gv-home">
       <header className="gv-home__bar">
         <a className="gv-home__brand" href="/" aria-label={t('home.logoLabel')} aria-current="page">
-          <Logo variant="wordmark" height={22} decorative />
+          <Logo variant="wordmark" height={28} decorative />
         </a>
-        <nav aria-label={t('home.nav')}>
+        <nav aria-label={t('home.nav')} className="gv-home__nav">
+          <RouteLink
+            to="/try"
+            onNavigate={onNavigate}
+            className="gv-home__link gv-home__link--judge"
+          >
+            {t('home.judge')}
+          </RouteLink>
           <a className="gv-home__link" href="/about">
             {t('home.about')}
           </a>
@@ -262,97 +284,12 @@ export function HomeScreen({
 
       <main className="gv-home__main">
         <section className="gv-home__hero" aria-labelledby="home-hello">
-          <div className="gv-home__kickrow">
-            <span className="gv-home__mark" aria-hidden="true">
-              <Logo variant="mark" height={28} decorative motion="load" />
-            </span>
-            <p className="ui-kicker gv-home__kicker">{t('home.kicker')}</p>
-          </div>
           <h1 id="home-hello" className="gv-home__hello">
             <span className="gv-home__mask">
               <span className="gv-home__strike">{greeting.hello}</span>
             </span>
           </h1>
-          <p className="gv-home__sub">{greeting.sub}</p>
-          <span className="gv-home__rule" aria-hidden="true" />
-        </section>
-
-        <section className="gv-home__last" aria-labelledby="home-last">
-          <h2 id="home-last" className="ui-kicker gv-home__label">
-            {t('home.last.kicker')}
-          </h2>
-          <div className="gv-home__record">
-            <div className="gv-home__lot">
-              <p className="ui-kicker">{t('home.last.lot')}</p>
-              <p className="gv-home__lot-title">{last.lotTitle ?? t('home.last.untitled')}</p>
-              <p className="gv-home__meta">
-                {roleLine(last)}
-                <span aria-hidden="true">{' / '}</span>
-                <span>{timeAgo(last.lastSeenAt, now)}</span>
-              </p>
-            </div>
-            <div className="gv-home__fig">
-              <p className="ui-kicker">
-                {result === 'open' ? t('home.last.priceOpen') : t('home.last.priceFinal')}
-              </p>
-              {last.lastPriceCents === null ? (
-                <p className="gv-home__nobids">{t('home.last.noBids')}</p>
-              ) : (
-                <Price cents={last.lastPriceCents} />
-              )}
-            </div>
-            <p className="gv-home__result" data-result={result}>
-              {resultLine(last, result)}
-            </p>
-          </div>
-          <div className="gv-home__room" aria-label={t('home.links.label')} role="group">
-            {check === 'checking' && <p className="gv-home__note">{t('home.room.checking')}</p>}
-            {check === 'gone' && (
-              <p className="gv-home__note">{t('home.room.gone', { minutes: ROOM_MINUTES })}</p>
-            )}
-            {check === 'unknown' && <p className="gv-home__note">{t('home.room.unknown')}</p>}
-            {reachable && (
-              <ul className="gv-home__links">
-                {result === 'open' && (
-                  <li>
-                    <RouteLink to={returnPath(last)} onNavigate={onNavigate}>
-                      {t('home.link.return')}
-                    </RouteLink>
-                  </li>
-                )}
-                {last.receipt && (
-                  <li>
-                    <RouteLink
-                      to={`/r/${encodeURIComponent(last.roomId)}/receipt`}
-                      onNavigate={onNavigate}
-                    >
-                      {t('home.link.receipt')}
-                    </RouteLink>
-                  </li>
-                )}
-                <li>
-                  <RouteLink
-                    to={`/r/${encodeURIComponent(last.roomId)}/audit`}
-                    onNavigate={onNavigate}
-                  >
-                    {t('home.link.ledger')}
-                  </RouteLink>
-                </li>
-                <li>
-                  <RouteLink to="/verify" onNavigate={onNavigate}>
-                    {t('home.link.verify')}
-                  </RouteLink>
-                </li>
-              </ul>
-            )}
-          </div>
-        </section>
-
-        <section className="gv-home__actions" aria-labelledby="home-next">
-          <h2 id="home-next" className="gv-home__sr">
-            {t('home.actions.title')}
-          </h2>
-          <div className="gv-home__pair">
+          <div className="gv-home__pair" role="group" aria-label={t('home.actions.title')}>
             <button
               type="button"
               className="gv-home__act"
@@ -368,6 +305,7 @@ export function HomeScreen({
               <span className="gv-home__act-hint">{t('home.create.hint')}</span>
             </button>
           </div>
+          <span className="gv-home__rule" aria-hidden="true" />
           <div id="home-join" className="gv-home__join" ref={joinRef} hidden={!joinOpen}>
             <form onSubmit={submit} onPasteCapture={paste} aria-label={t('home.join.codeLabel')}>
               <p className="ui-kicker">{t('home.join.codeLabel')}</p>
@@ -413,46 +351,150 @@ export function HomeScreen({
           </div>
         </section>
 
-        {earlier.length > 0 && (
-          <section className="gv-home__earlier" aria-labelledby="home-earlier">
-            <h2 id="home-earlier" className="ui-kicker gv-home__label">
-              {t('home.earlier.kicker')}
-            </h2>
-            <ol className="gv-home__rows">
-              {earlier.map((room) => {
-                const r = effectiveResult(room, now);
-                return (
-                  <li key={room.roomId} className="gv-home__row">
-                    <span className="gv-home__row-title">
-                      {room.lotTitle ?? t('home.last.untitled')}
-                    </span>
-                    <span className="gv-home__row-result">
-                      {shortResult(r)}
-                      {expiredByTime(room, now) && (
-                        <span className="gv-home__row-gone">
-                          {' / '}
-                          {t('home.earlier.deleted')}
-                        </span>
-                      )}
-                    </span>
-                    <span className="gv-home__row-price">
-                      {room.lastPriceCents === null ? '' : formatUsd(room.lastPriceCents)}
-                    </span>
-                    <span className="gv-home__row-ago">{timeAgo(room.lastSeenAt, now)}</span>
-                  </li>
-                );
-              })}
-            </ol>
+        <div className={shown.length > 0 ? 'gv-home__deck' : 'gv-home__deck gv-home__deck--solo'}>
+          <section className="gv-home__last" aria-labelledby="home-last">
+            <div className="gv-home__lasthead">
+              <h2 id="home-last" className="ui-kicker gv-home__label">
+                {t('home.last.kicker')}
+              </h2>
+              <span className="gv-home__badge" data-result={result}>
+                {badge}
+              </span>
+            </div>
+            <div className="gv-home__record">
+              <div className="gv-home__lot">
+                <p className="ui-kicker">{t('home.last.lot')}</p>
+                <p className="gv-home__lot-title">{last.lotTitle ?? t('home.last.untitled')}</p>
+                <p className="gv-home__meta">
+                  {roleLine(last)}
+                  <span aria-hidden="true">{' / '}</span>
+                  <span>{timeAgo(last.lastSeenAt, now)}</span>
+                </p>
+              </div>
+              <div className="gv-home__fig">
+                <p className="ui-kicker">
+                  {result === 'open' ? t('home.last.priceOpen') : t('home.last.priceFinal')}
+                </p>
+                {last.lastPriceCents === null ? (
+                  <p className="gv-home__nobids">{t('home.last.noBids')}</p>
+                ) : (
+                  <Price cents={last.lastPriceCents} />
+                )}
+              </div>
+            </div>
+            <div className="gv-home__foot-row">
+              <p className="gv-home__result" data-result={result}>
+                {resultLine(last, result)}
+              </p>
+              <div className="gv-home__room" aria-label={t('home.links.label')} role="group">
+                {check === 'checking' && <p className="gv-home__note">{t('home.room.checking')}</p>}
+                {check === 'unknown' && <p className="gv-home__note">{t('home.room.unknown')}</p>}
+                {reachable && (
+                  <ul className="gv-home__links">
+                    {result === 'open' && (
+                      <li>
+                        <RouteLink to={returnPath(last)} onNavigate={onNavigate}>
+                          {t('home.link.return')}
+                        </RouteLink>
+                      </li>
+                    )}
+                    {last.receipt && (
+                      <li>
+                        <RouteLink
+                          to={`/r/${encodeURIComponent(last.roomId)}/receipt`}
+                          onNavigate={onNavigate}
+                        >
+                          {t('home.link.receipt')}
+                        </RouteLink>
+                      </li>
+                    )}
+                    <li>
+                      <RouteLink
+                        to={`/r/${encodeURIComponent(last.roomId)}/audit`}
+                        onNavigate={onNavigate}
+                      >
+                        {t('home.link.ledger')}
+                      </RouteLink>
+                    </li>
+                    <li>
+                      <RouteLink to="/verify" onNavigate={onNavigate}>
+                        {t('home.link.verify')}
+                      </RouteLink>
+                    </li>
+                  </ul>
+                )}
+              </div>
+            </div>
+            <p className="gv-home__caption">{t('home.last.caption', { minutes: ROOM_MINUTES })}</p>
           </section>
-        )}
+
+          {shown.length > 0 && (
+            <section className="gv-home__earlier" aria-labelledby="home-earlier">
+              <h2 id="home-earlier" className="ui-kicker gv-home__label">
+                {t('home.earlier.kicker')}
+              </h2>
+              <ol className="gv-home__rows">
+                {shown.map((room) => {
+                  const r = effectiveResult(room, now);
+                  return (
+                    <li key={room.roomId} className="gv-home__row">
+                      <span className="gv-home__row-title">
+                        {room.lotTitle ?? t('home.last.untitled')}
+                      </span>
+                      <span className="gv-home__row-result">{shortResult(r)}</span>
+                      <span className="gv-home__row-ago">
+                        {timeAgo(room.lastSeenAt, now)}
+                        {expiredByTime(room, now) && (
+                          <span className="gv-home__row-gone">
+                            {' / '}
+                            {t('home.earlier.deleted')}
+                          </span>
+                        )}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ol>
+            </section>
+          )}
+        </div>
+
+        <section className="gv-home__tiles" aria-labelledby="home-tiles">
+          <h2 id="home-tiles" className="gv-home__sr">
+            {t('home.tiles.title')}
+          </h2>
+          <ul className="gv-home__tilelist">
+            {TILES.map((tile) => (
+              <li key={tile.id}>
+                <a
+                  className="gv-home__tile"
+                  href={tile.href}
+                  onClick={(e) => {
+                    if (!tile.internal || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) {
+                      return;
+                    }
+                    e.preventDefault();
+                    onNavigate(tile.href);
+                  }}
+                >
+                  <h3 className="gv-home__tile-title">{t(`home.tile.${tile.id}.title`)}</h3>
+                  <p className="gv-home__tile-hint">{t(`home.tile.${tile.id}.hint`)}</p>
+                  <p className="gv-home__tile-tag">{t(`home.tile.${tile.id}.tag`)}</p>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
       </main>
 
       <footer className="gv-home__foot">
         <p>{t('home.footer.sandbox')}</p>
-        <p>{t('home.footer.local')}</p>
-        <button type="button" className="gv-home__clear" onClick={onClear}>
-          {t('home.footer.clear')}
-        </button>
+        <p className="gv-home__foot-local">
+          {t('home.footer.local')}{' '}
+          <button type="button" className="gv-home__clear" onClick={onClear}>
+            {t('home.footer.clear')}
+          </button>
+        </p>
       </footer>
     </div>
   );

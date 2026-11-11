@@ -2,13 +2,12 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import axe from 'axe-core';
 import { describe, expect, it, vi } from 'vitest';
 import { t } from '../../src/copy/t';
-import { dayPart, pickGreeting, timeAgo } from '../../src/home/greeting';
+import { pickGreeting, timeAgo } from '../../src/home/greeting';
 import type { HistoryRoom } from '../../src/home/history';
 import { HomeScreen, type HomeScreenProps } from '../../src/home/HomeScreen';
 import { ApiError } from '../../src/net/apiError';
 
-const at = (hour: number): number => new Date(2026, 10, 9, hour, 30).getTime();
-const NOW = at(19);
+const NOW = new Date(2026, 10, 9, 19, 30).getTime();
 const MINUTE = 60_000;
 
 function room(over: Partial<HistoryRoom> = {}): HistoryRoom {
@@ -45,32 +44,11 @@ function setup(rooms: HistoryRoom[], over: Partial<HomeScreenProps> = {}) {
 }
 
 describe('greeting', () => {
-  it('splits the day by the visitor clock', () => {
-    expect([2, 9, 14, 20].map((h) => dayPart(at(h)))).toEqual([
-      'night',
-      'morning',
-      'afternoon',
-      'evening',
-    ]);
-  });
-
   it('welcomes by name first, then by paddle, then plainly', () => {
-    expect(pickGreeting({ name: 'Asha', paddle: 7 }, 'won', NOW).hello).toBe('Welcome back, Asha.');
-    expect(pickGreeting({ name: null, paddle: 7 }, 'won', NOW).hello).toBe(
-      'Welcome back, Paddle 7.',
-    );
-    expect(pickGreeting({ name: null, paddle: null }, 'won', NOW).hello).toBe('Welcome back.');
-  });
-
-  it('chooses the second line by time of day and by how the last auction ended', () => {
-    const none = { name: null, paddle: null };
-    expect(pickGreeting(none, 'open', at(20)).sub).toBe('Good evening. Your last lot is waiting.');
-    expect(pickGreeting(none, 'lost', at(9)).sub).toBe('Good morning. Back for another round?');
-    expect(pickGreeting(none, 'stopped', at(14)).sub).toBe(
-      'Good afternoon. Back for another round?',
-    );
-    expect(pickGreeting(none, 'closed', at(2)).sub).toBe('Still up? Back for another round?');
-    expect(pickGreeting(none, 'won', at(9)).sub).toContain('Good morning.');
+    expect(pickGreeting({ name: 'Asha', paddle: 7 }).hello).toBe('Welcome back, Asha.');
+    expect(pickGreeting({ name: null, paddle: 7 }).hello).toBe('Welcome back, Paddle 7.');
+    expect(pickGreeting({ name: null, paddle: null }).hello).toBe('Welcome back.');
+    expect(pickGreeting(null).hello).toBe('Welcome back.');
   });
 
   it('says how long ago in plain words', () => {
@@ -86,21 +64,24 @@ describe('greeting', () => {
 });
 
 describe('Home screen: structure', () => {
-  it('has a banner, a main landmark, a footer and one h1 before the h2 sections', () => {
+  it('has a banner, a main landmark, a footer and one h1 before the h2 sections and h3 tiles', () => {
     setup([room(), room({ roomId: 'room2' })]);
     expect(screen.getByRole('banner')).toBeTruthy();
     expect(screen.getByRole('main')).toBeTruthy();
     expect(screen.getByRole('contentinfo')).toBeTruthy();
     const levels = screen.getAllByRole('heading').map((h) => h.tagName);
     expect(levels[0]).toBe('H1');
-    expect(levels.slice(1).every((l) => l === 'H2')).toBe(true);
+    expect(levels.slice(1).every((l) => l === 'H2' || l === 'H3')).toBe(true);
+    expect(levels.indexOf('H3')).toBeGreaterThan(levels.lastIndexOf('H2') - 1);
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
   });
 
-  it('greets with the paddle and the time of day', () => {
-    setup([room({ result: 'open' })]);
+  it('greets with the paddle, with no sentence or eyebrow around it', () => {
+    const { container } = setup([room({ result: 'open' })]);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Welcome back, Paddle 7.');
-    expect(screen.getByText('Good evening. Your last lot is waiting.')).toBeTruthy();
+    expect(container.textContent).not.toMatch(
+      /Good (morning|afternoon|evening)|Still up|sale room/i,
+    );
   });
 
   it('marks the logo as the way home and as the current page', () => {
@@ -110,9 +91,28 @@ describe('Home screen: structure', () => {
     expect(logo.getAttribute('aria-current')).toBe('page');
   });
 
-  it('links to About GAVEL at /about', () => {
-    setup([room()]);
+  it('links to About GAVEL at /about and to the Judge guide', () => {
+    const { props } = setup([room()]);
     expect(screen.getByRole('link', { name: t('home.about') }).getAttribute('href')).toBe('/about');
+    const nav = within(screen.getByRole('navigation', { name: t('home.nav') }));
+    const judge = nav.getByRole('link', { name: 'Judge guide' });
+    expect(judge.getAttribute('href')).toBe('/try');
+    fireEvent.click(judge);
+    expect(props.onNavigate).toHaveBeenCalledWith('/try');
+  });
+
+  it('offers four tiles: scripted demo, judge guide, public ledger and docs', () => {
+    const { props } = setup([room()]);
+    const tiles = within(screen.getByRole('region', { name: t('home.tiles.title') }));
+    const hrefs = tiles.getAllByRole('link').map((a) => a.getAttribute('href'));
+    expect(hrefs).toEqual([
+      '/demo/scripted',
+      '/try',
+      '/ledger',
+      'https://docs.gavel.dualmindlab.tech',
+    ]);
+    fireEvent.click(tiles.getByRole('link', { name: /Public ledger/ }));
+    expect(props.onNavigate).toHaveBeenCalledWith('/ledger');
   });
 
   it('is honest in the footer and offers Clear', () => {
@@ -135,17 +135,19 @@ describe('Home screen: structure', () => {
 
 describe('Home screen: the last auction', () => {
   it('won: the price, the hold and the plain-words result', () => {
-    setup([room()]);
+    const { container } = setup([room()]);
     expect(screen.getByText('Signed print, edition of 20')).toBeTruthy();
     expect(screen.getAllByText('$540.00').length).toBeGreaterThan(0);
     expect(screen.getByText('You held $960 and won at $540')).toBeTruthy();
     expect(screen.getByText('2 hours ago')).toBeTruthy();
     expect(screen.getByText('As a bidder, Paddle 7')).toBeTruthy();
+    expect(container.querySelector('.gv-home__badge')?.textContent).toBe('Won');
   });
 
   it('lost', () => {
     setup([room({ result: 'lost' })]);
     expect(screen.getByText('You held $960. Someone else won at $540')).toBeTruthy();
+    expect(document.querySelector('.gv-home__badge')?.textContent).toBe('Lost');
   });
 
   it('stopped', () => {
@@ -158,6 +160,7 @@ describe('Home screen: the last auction', () => {
     setup([room({ result: 'closed', roles: ['auctioneer'] })]);
     expect(screen.getByText('Room closed')).toBeTruthy();
     expect(screen.getByText('As the auctioneer')).toBeTruthy();
+    expect(document.querySelector('.gv-home__badge')?.textContent).toBe('Closed');
   });
 
   it('open, and no price yet', () => {
@@ -197,8 +200,8 @@ describe('Home screen: the last auction', () => {
 
   it('a deleted room (host says 404): keeps the summary and says so, with no links', async () => {
     setup([room()], { checkRoom: () => Promise.resolve('gone') });
-    expect(await screen.findByText(/This room is deleted/)).toBeTruthy();
-    expect(screen.getByText(/30 minutes after they are made/)).toBeTruthy();
+    await waitFor(() => expect(screen.queryByText(t('home.room.checking'))).toBeNull());
+    expect(screen.getByText(/Room deleted after 30 minutes; only this summary stays/)).toBeTruthy();
     expect(screen.getByText('You held $960 and won at $540')).toBeTruthy();
     expect(screen.queryByRole('link', { name: 'Open receipt' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Verify the ledger' })).toBeNull();
@@ -207,9 +210,9 @@ describe('Home screen: the last auction', () => {
   it('a room past its end time is deleted without asking the host, and is not "waiting"', () => {
     const checkRoom = vi.fn(() => Promise.resolve<'live'>('live'));
     setup([room({ result: 'open', expiresAt: NOW - MINUTE })], { checkRoom });
-    expect(screen.getByText(/This room is deleted/)).toBeTruthy();
     expect(checkRoom).not.toHaveBeenCalled();
-    expect(screen.getByText('Good evening. Back for another round?')).toBeTruthy();
+    expect(screen.queryByRole('link', { name: 'Open ledger' })).toBeNull();
+    expect(document.querySelector('.gv-home__badge')?.textContent).toBe('Closed');
     expect(screen.getByText('Room closed')).toBeTruthy();
   });
 
@@ -250,14 +253,35 @@ describe('Home screen: the last auction', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]?.textContent).toContain('Vinyl');
     expect(rows[0]?.textContent).toContain('Lost');
-    expect(rows[0]?.textContent).toContain('$120.00');
     expect(rows[0]?.textContent).toContain('3 days ago');
     expect(rows[0]?.textContent).toContain(t('home.earlier.deleted'));
   });
 
-  it('shows no earlier section when there is only one room', () => {
-    setup([room()]);
+  it('shows no earlier section when there is only one room, and the last card spans the row', () => {
+    const { container } = setup([room()]);
     expect(screen.queryByText(t('home.earlier.kicker'))).toBeNull();
+    expect(container.querySelector('.gv-home__deck--solo')).not.toBeNull();
+  });
+
+  it('keeps the caption about deleted rooms inside the last auction card', () => {
+    setup([room()]);
+    const card = screen.getByRole('region', { name: t('home.last.kicker') });
+    expect(within(card).getByText(t('home.last.caption', { minutes: 30 }))).toBeTruthy();
+  });
+
+  it('lists the real earlier rooms from the history, newest first, at most four', () => {
+    const rooms = [room()];
+    for (let i = 0; i < 6; i += 1) {
+      rooms.push(
+        room({ roomId: `old${i}`, lotTitle: `Lot ${i}`, lastSeenAt: NOW - (i + 3) * 60 * MINUTE }),
+      );
+    }
+    const { container } = setup(rooms);
+    const titles = Array.from(container.querySelectorAll('.gv-home__row-title')).map(
+      (el) => el.textContent,
+    );
+    expect(titles).toEqual(['Lot 0', 'Lot 1', 'Lot 2', 'Lot 3']);
+    expect(container.querySelector('.gv-home__deck--solo')).toBeNull();
   });
 });
 

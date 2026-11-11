@@ -1,11 +1,13 @@
-/* Home screen for a returning visitor. Newsprint and auction-catalogue: ink on paper, hairline rules,
- * big display type, one orange accent (the primary action and the drawn rule). No cards, chips,
- * pills, glows or gradients. Tokens only; motion ends inside about a second and switches off under
+/* Home screen for a returning visitor. Newsprint and Signal: ink on paper, hard-shadow panels, big
+ * display type, one orange accent (the primary action and the drawn rule). No pills, glows or
+ * gradients. Tokens only; motion ends inside about a second and switches off under
  * prefers-reduced-motion. Nothing here changes size after first paint: the price reserves the width
- * of its final figure and the room note reserves its line. */
+ * of its final figure and the room note reserves its line. At 1440 x 900 the whole screen is above
+ * the fold; narrower screens stack. */
 
 .gv-home {
-  min-height: 100vh;
+  --gv-home-shadow: 6px 6px 0 var(--color-shadow);
+  --gv-home-gap: var(--space-4);
   background: var(--color-bg);
   color: var(--color-fg);
   display: flex;
@@ -25,15 +27,29 @@
 }
 
 /* ---- Bar ---- */
+.gv-home__bar,
+.gv-home__main,
+.gv-home__foot {
+  width: 100%;
+  max-width: 1240px;
+  margin: 0 auto;
+  padding-left: var(--space-4);
+  padding-right: var(--space-4);
+}
+
 .gv-home__bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
-  max-width: 1040px;
-  width: 100%;
-  margin: 0 auto;
-  padding: var(--space-2) var(--space-4);
+  padding-top: var(--space-1);
+  padding-bottom: var(--space-1);
+}
+
+.gv-home__nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
 }
 
 .gv-home__brand {
@@ -49,15 +65,21 @@
   align-items: center;
   min-height: 44px;
   color: var(--color-fg);
+  font-family: var(--font-mono);
   font-size: var(--font-size-2);
   font-weight: 600;
+  letter-spacing: 0.04em;
   text-decoration: underline;
   text-underline-offset: 4px;
-  text-decoration-thickness: 1px;
+  text-decoration-thickness: 2px;
 }
 
 .gv-home__link:hover {
-  text-decoration-thickness: 2px;
+  text-decoration-color: var(--color-action);
+}
+
+.gv-home__link--judge {
+  display: none;
 }
 
 .gv-home__brand:focus-visible,
@@ -65,6 +87,7 @@
 .gv-home__act:focus-visible,
 .gv-home__go:focus-visible,
 .gv-home__clear:focus-visible,
+.gv-home__tile:focus-visible,
 .gv-home__recent-code:focus-visible {
   outline: var(--border-width-strong) solid var(--color-focus);
   outline-offset: 3px;
@@ -73,41 +96,29 @@
 /* ---- Page frame ---- */
 .gv-home__main {
   flex: 1;
-  width: 100%;
-  max-width: 1040px;
-  margin: 0 auto;
-  padding: 0 var(--space-4) var(--space-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding-bottom: var(--space-4);
 }
 
 .gv-home__main:focus {
   outline: none;
 }
 
-/* ---- Hero ---- */
+/* ---- Hero row: the greeting left, the two ways in right, one orange rule under both ---- */
 .gv-home__hero {
-  position: relative;
-  padding: var(--space-6) 0 var(--space-5);
-}
-
-.gv-home__kickrow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin: 0 0 var(--space-3);
-}
-
-.gv-home__mark {
-  display: inline-flex;
-}
-
-.gv-home__kicker {
-  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-4);
+  padding-top: var(--space-3);
 }
 
 .gv-home__hello {
   margin: 0;
+  align-self: end;
   font-family: var(--font-display);
-  font-size: clamp(52px, 13vw, 128px);
+  font-size: clamp(48px, 13vw, 96px);
   font-weight: 800;
   line-height: 0.92;
   letter-spacing: 0.005em;
@@ -132,132 +143,12 @@
   animation: gv-home-strike 560ms cubic-bezier(0.2, 0.9, 0.25, 1) both;
 }
 
-.gv-home__sub {
-  margin: var(--space-4) 0 var(--space-5);
-  max-width: 34ch;
-  font-size: var(--font-size-4);
-  line-height: 1.35;
-  color: var(--color-fg-muted);
-  animation: gv-home-rise 360ms ease-out 320ms both;
-}
-
-.gv-home__rule {
-  display: block;
-  height: var(--border-width-strong);
-  background: var(--color-action);
-  transform-origin: left center;
-  animation: gv-home-draw 520ms cubic-bezier(0.3, 0.7, 0.2, 1) 180ms both;
-}
-
-/* ---- Last auction, set like a lot record ---- */
-.gv-home__last {
-  padding-top: var(--space-5);
-  animation: gv-home-rise 380ms ease-out 480ms both;
-}
-
-.gv-home__label {
-  margin: 0 0 var(--space-3);
-}
-
-.gv-home__record {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-4);
-  padding: var(--space-4) 0;
-  border-top: var(--border-width) solid var(--color-fg);
-  border-bottom: 1px solid var(--color-rule);
-}
-
-.gv-home__record .ui-kicker {
-  margin: 0 0 var(--space-1);
-}
-
-.gv-home__lot-title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: clamp(28px, 6vw, 44px);
-  font-weight: 700;
-  line-height: 1.02;
-  text-transform: uppercase;
-  overflow-wrap: anywhere;
-}
-
-.gv-home__meta {
-  margin: var(--space-2) 0 0;
-  color: var(--color-fg-muted);
-  font-size: var(--font-size-2);
-}
-
-.gv-home__price {
-  position: relative;
-  display: inline-block;
-  font-family: var(--font-display);
-  font-size: clamp(56px, 14vw, 120px);
-  font-weight: 800;
-  line-height: 0.95;
-  font-variant-numeric: tabular-nums;
-}
-
-.gv-home__price-size {
-  visibility: hidden;
-}
-
-.gv-home__price-live {
-  position: absolute;
-  inset: 0 auto auto 0;
-  white-space: nowrap;
-}
-
-.gv-home__nobids {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: clamp(28px, 6vw, 44px);
-  font-weight: 700;
-  text-transform: uppercase;
-  color: var(--color-fg-muted);
-}
-
-.gv-home__result {
-  margin: 0;
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--color-rule);
-  font-size: var(--font-size-4);
-  font-weight: 600;
-  line-height: 1.3;
-}
-
-.gv-home__room {
-  min-height: calc(var(--space-7) + var(--space-2));
-  padding: var(--space-2) 0 0;
-}
-
-.gv-home__note {
-  margin: var(--space-2) 0 0;
-  max-width: 56ch;
-  color: var(--color-fg-muted);
-  font-size: var(--font-size-2);
-  line-height: 1.45;
-}
-
-.gv-home__links {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 var(--space-5);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-/* ---- The two ways in ---- */
-.gv-home__actions {
-  padding-top: var(--space-5);
-  animation: gv-home-rise 380ms ease-out 600ms both;
-}
-
 .gv-home__pair {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--space-3);
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  padding-right: 6px;
+  padding-bottom: 6px;
 }
 
 .gv-home__act {
@@ -266,12 +157,14 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-2);
+  position: relative;
   width: 100%;
-  min-height: 96px;
-  padding: var(--space-4) var(--space-5);
+  min-height: 132px;
+  padding: var(--space-4);
   border: var(--border-width-strong) solid var(--color-fg);
   border-radius: 0;
-  background: transparent;
+  background: var(--color-bg);
+  box-shadow: var(--gv-home-shadow);
   color: var(--color-fg);
   font: inherit;
   text-align: left;
@@ -279,7 +172,23 @@
   transition:
     background-color var(--duration-micro),
     color var(--duration-micro),
-    transform var(--duration-micro);
+    transform var(--duration-micro),
+    box-shadow var(--duration-micro);
+}
+
+.gv-home__act::after {
+  content: '\2192';
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-4);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-4);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.gv-home__act--primary::after {
+  content: '+';
 }
 
 .gv-home__act:hover {
@@ -288,7 +197,8 @@
 }
 
 .gv-home__act:active {
-  transform: translateY(2px);
+  transform: translate(3px, 3px);
+  box-shadow: 3px 3px 0 var(--color-shadow);
 }
 
 .gv-home__act--primary {
@@ -302,22 +212,31 @@
 }
 
 .gv-home__act-title {
+  max-width: calc(100% - var(--space-5));
   font-family: var(--font-display);
-  font-size: clamp(34px, 7vw, 52px);
+  font-size: clamp(28px, 7vw, 40px);
   font-weight: 800;
   line-height: 1;
   text-transform: uppercase;
 }
 
 .gv-home__act-hint {
-  font-size: var(--font-size-3);
+  font-size: var(--font-size-2);
   line-height: 1.35;
 }
 
+.gv-home__rule {
+  display: block;
+  grid-column: 1 / -1;
+  height: var(--border-width-strong);
+  background: var(--color-action);
+  transform-origin: left center;
+  animation: gv-home-draw 520ms cubic-bezier(0.3, 0.7, 0.2, 1) 180ms both;
+}
+
 .gv-home__join {
-  margin-top: var(--space-3);
-  padding: var(--space-4) 0 0;
-  border-top: var(--border-width) solid var(--color-fg);
+  grid-column: 1 / -1;
+  padding: var(--space-2) 0 0;
 }
 
 .gv-home__join[hidden] {
@@ -353,6 +272,10 @@
   cursor: progress;
 }
 
+.gv-home__recent {
+  margin-top: var(--space-3);
+}
+
 .gv-home__recent ul {
   display: flex;
   flex-wrap: wrap;
@@ -360,10 +283,6 @@
   margin: 0;
   padding: 0;
   list-style: none;
-}
-
-.gv-home__recent {
-  margin-top: var(--space-3);
 }
 
 .gv-home__recent-code {
@@ -382,58 +301,290 @@
   cursor: pointer;
 }
 
-/* ---- Earlier rooms: ruled rows ---- */
-.gv-home__earlier {
-  padding-top: var(--space-6);
-  animation: gv-home-rise 380ms ease-out 720ms both;
+.gv-home__note {
+  margin: var(--space-2) 0 0;
+  max-width: 56ch;
+  color: var(--color-fg-muted);
+  font-size: var(--font-size-2);
+  line-height: 1.45;
 }
 
+/* ---- Last auction beside the earlier rooms ---- */
+.gv-home__deck {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-5);
+  padding-right: 6px;
+  padding-bottom: 6px;
+}
+
+.gv-home__last,
+.gv-home__earlier {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4) var(--space-5);
+  border: var(--border-width-strong) solid var(--color-fg);
+  background: var(--color-bg);
+  box-shadow: var(--gv-home-shadow);
+  animation: gv-home-rise 380ms ease-out 400ms both;
+}
+
+.gv-home__earlier {
+  animation-delay: 520ms;
+}
+
+.gv-home__lasthead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding-bottom: var(--space-3);
+  border-bottom: var(--border-width) solid var(--color-fg);
+}
+
+.gv-home__label {
+  margin: 0;
+}
+
+.gv-home__earlier .gv-home__label {
+  padding-bottom: var(--space-3);
+  border-bottom: var(--border-width) solid var(--color-fg);
+}
+
+.gv-home__badge {
+  padding: 2px var(--space-3);
+  border: var(--border-width) solid var(--color-fg);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-1);
+  font-weight: 700;
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+  color: var(--color-fg);
+}
+
+.gv-home__badge[data-result='won'] {
+  border-color: var(--color-win);
+  background: var(--color-win);
+  color: var(--color-on-win);
+}
+
+.gv-home__badge[data-result='lost'] {
+  border-color: var(--color-out);
+  background: var(--color-out);
+  color: var(--color-on-out);
+}
+
+.gv-home__record {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+}
+
+.gv-home__record .ui-kicker {
+  margin: 0 0 var(--space-1);
+}
+
+.gv-home__lot-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(32px, 8vw, 52px);
+  font-weight: 800;
+  line-height: 0.95;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+.gv-home__meta {
+  margin: var(--space-2) 0 0;
+  color: var(--color-fg-muted);
+  font-size: var(--font-size-2);
+}
+
+.gv-home__price {
+  position: relative;
+  display: inline-block;
+  font-family: var(--font-display);
+  font-size: clamp(56px, 15vw, 96px);
+  font-weight: 800;
+  line-height: 0.95;
+  font-variant-numeric: tabular-nums;
+}
+
+.gv-home__price-size {
+  visibility: hidden;
+}
+
+.gv-home__price-live {
+  position: absolute;
+  inset: 0 auto auto 0;
+  white-space: nowrap;
+}
+
+.gv-home__nobids {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(28px, 6vw, 44px);
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
+}
+
+.gv-home__foot-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-5);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-rule);
+}
+
+.gv-home__result {
+  margin: 0;
+  font-size: var(--font-size-4);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.gv-home__result[data-result='won'] {
+  color: var(--color-win);
+}
+
+.gv-home__room {
+  min-height: 44px;
+}
+
+.gv-home__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gv-home__caption {
+  margin: var(--space-2) 0 0;
+  color: var(--color-fg-muted);
+  font-size: var(--font-size-1);
+  line-height: 1.4;
+}
+
+/* ---- Earlier rooms: ruled rows ---- */
 .gv-home__rows {
   margin: 0;
   padding: 0;
   list-style: none;
-  border-top: var(--border-width) solid var(--color-fg);
 }
 
 .gv-home__row {
   display: grid;
-  grid-template-columns: 1fr auto;
-  gap: var(--space-1) var(--space-4);
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2px var(--space-3);
   padding: var(--space-3) 0;
   border-bottom: 1px solid var(--color-rule);
-  font-size: var(--font-size-2);
+}
+
+.gv-home__row:last-child {
+  border-bottom: 0;
 }
 
 .gv-home__row-title {
   grid-column: 1;
-  font-weight: 700;
   font-size: var(--font-size-3);
   overflow-wrap: anywhere;
 }
 
-.gv-home__row-price {
-  grid-column: 2;
-  grid-row: 1;
-  font-family: var(--font-display);
-  font-size: var(--font-size-5);
-  font-weight: 700;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
+.gv-home__row-ago {
+  grid-column: 1;
+  color: var(--color-fg-muted);
+  font-size: var(--font-size-2);
 }
 
 .gv-home__row-result {
-  grid-column: 1;
-}
-
-.gv-home__row-ago {
   grid-column: 2;
-  text-align: right;
-  color: var(--color-fg-muted);
+  grid-row: 1 / span 2;
+  align-self: center;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-2);
+  font-weight: 700;
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
 }
 
-.gv-home__row-gone {
+/* ---- Four tiles ---- */
+.gv-home__tilelist {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0 6px 6px 0;
+  list-style: none;
+}
+
+.gv-home__tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 112px;
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-width-strong) solid var(--color-fg);
+  background: var(--color-raised);
+  box-shadow: var(--gv-home-shadow);
+  color: var(--color-fg);
+  text-decoration: none;
+  transition:
+    background-color var(--duration-micro),
+    transform var(--duration-micro),
+    box-shadow var(--duration-micro);
+}
+
+.gv-home__tile::after {
+  content: '\2192';
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-4);
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.gv-home__tile:hover {
+  background: var(--color-surface);
+}
+
+.gv-home__tile:active {
+  transform: translate(3px, 3px);
+  box-shadow: 3px 3px 0 var(--color-shadow);
+}
+
+.gv-home__tile-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-5);
+  font-weight: 800;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.gv-home__tile-hint {
+  margin: var(--space-2) 0 0;
   color: var(--color-fg-muted);
+  font-size: var(--font-size-2);
+  line-height: 1.35;
+}
+
+.gv-home__tile-tag {
+  margin: auto 0 0;
+  padding-top: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-1);
+  font-weight: 700;
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
 }
 
 /* ---- Footer ---- */
@@ -441,14 +592,12 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
   gap: var(--space-1) var(--space-5);
-  max-width: 1040px;
-  width: 100%;
-  margin: 0 auto;
-  padding: var(--space-3) var(--space-4) var(--space-5);
-  border-top: 1px solid var(--color-rule);
+  padding-bottom: var(--space-3);
   color: var(--color-fg-muted);
-  font-size: var(--font-size-2);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-1);
 }
 
 .gv-home__foot p {
@@ -469,7 +618,7 @@
   cursor: pointer;
 }
 
-/* ---- Wider screens ---- */
+/* ---- Tablet ---- */
 @media (min-width: 720px) {
   .gv-home__bar,
   .gv-home__main,
@@ -478,49 +627,68 @@
     padding-right: var(--space-6);
   }
 
-  .gv-home__hero {
-    padding-top: var(--space-7);
+  .gv-home__link--judge {
+    display: inline-flex;
+  }
+
+  .gv-home__tilelist {
+    grid-template-columns: repeat(4, 1fr);
   }
 
   .gv-home__record {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: end;
     gap: var(--space-4) var(--space-6);
-  }
-
-  .gv-home__result {
-    grid-column: 1 / -1;
   }
 
   .gv-home__fig {
     text-align: right;
   }
+}
 
-  .gv-home__act {
-    min-height: 132px;
-    gap: var(--space-3);
+/* ---- Desktop: the whole screen above the fold at 1440 x 900 ---- */
+@media (min-width: 1100px) {
+  .gv-home {
+    --gv-home-shadow: 8px 8px 0 var(--color-shadow);
   }
 
-  .gv-home__pair {
-    grid-template-columns: 1fr 1fr;
+  .gv-home__main {
     gap: var(--space-4);
   }
 
-  .gv-home__row {
-    grid-template-columns: 2fr 1fr 1fr 1fr;
-    align-items: baseline;
+  .gv-home__pair,
+  .gv-home__deck,
+  .gv-home__tilelist {
+    padding-right: 8px;
+    padding-bottom: 8px;
   }
 
-  .gv-home__row-title,
-  .gv-home__row-result,
-  .gv-home__row-price,
-  .gv-home__row-ago {
-    grid-column: auto;
-    grid-row: auto;
+  .gv-home__hero {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 520px);
+    column-gap: var(--space-6);
+    row-gap: var(--space-4);
+    padding-top: var(--space-2);
   }
 
-  .gv-home__foot {
-    gap: var(--space-1) var(--space-6);
+  .gv-home__hello {
+    font-size: clamp(56px, 5.6vw, 88px);
+  }
+
+  .gv-home__deck {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 380px);
+    align-items: stretch;
+  }
+
+  .gv-home__deck--solo {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .gv-home__act {
+    min-height: 112px;
+  }
+
+  .gv-home__tile {
+    min-height: 104px;
   }
 }
 
@@ -563,15 +731,14 @@
 
 @media (prefers-reduced-motion: reduce) {
   .gv-home__strike,
-  .gv-home__sub,
   .gv-home__rule,
   .gv-home__last,
-  .gv-home__actions,
   .gv-home__earlier {
     animation: none;
   }
 
-  .gv-home__act {
+  .gv-home__act,
+  .gv-home__tile {
     transition: none;
   }
 }

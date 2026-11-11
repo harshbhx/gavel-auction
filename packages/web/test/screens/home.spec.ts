@@ -79,11 +79,45 @@ test.describe('home', () => {
     await shoot('home', 'won-live');
   });
 
+  test('the whole screen is above the fold on a desktop', async ({ page }) => {
+    const size = page.viewportSize();
+    test.skip(
+      size === null || size.width !== 1440 || size.height !== 900,
+      'desktop 1440 x 900 only',
+    );
+    await remember(page, [entry({}), ...EARLIER]);
+    await mockApi(page, () => ({
+      status: 200,
+      json: { auctionId: 'room-home-1', status: 'DONE' },
+    }));
+    await page.goto('/');
+    await ready(page);
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollHeight - window.innerHeight,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await expect(page.getByRole('link', { name: /Docs/ })).toBeInViewport();
+  });
+
+  test('lost, only one room: the last auction spans the full width', async ({ page, shoot }) => {
+    await remember(page, [entry({ result: 'lost' })]);
+    await mockApi(page, () => ({
+      status: 200,
+      json: { auctionId: 'room-home-1', status: 'DONE' },
+    }));
+    await page.goto('/');
+    await ready(page);
+    await expect(page.getByRole('heading', { name: t('home.earlier.kicker') })).toHaveCount(0);
+    await shoot('home', 'lost-solo');
+  });
+
   test('room deleted, summary kept', async ({ page, shoot }) => {
     await remember(page, [entry({ result: 'lost' })]);
     await mockApi(page, () => ({ status: 404 }));
     await page.goto('/');
-    await expect(page.getByText(/This room is deleted/)).toBeVisible();
+    await expect(page.getByText(/Room deleted after 30 minutes/)).toBeVisible();
+    await expect(page.getByRole('link', { name: t('home.link.receipt') })).toHaveCount(0);
     await shoot('home', 'room-deleted');
   });
 
