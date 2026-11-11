@@ -18,7 +18,7 @@ import { Defs, T, hatch } from './kit';
 
 const codeUrl = (path: string) => `https://github.com/harshbhx/gavel-auction/blob/main/${path}`;
 
-export type EvStatus = 'PASS' | 'FAIL' | 'PARTIAL' | 'IN PROGRESS' | 'SIMULATED' | 'OPEN' | 'CI';
+export type EvStatus = 'PASS' | 'FAIL' | 'TESTED' | 'RUNNING' | 'SIMULATED' | 'OPEN' | 'CI';
 
 type Row = {
   id: string;
@@ -33,8 +33,8 @@ function gateStatus(id: string): EvStatus {
   const g = gateById(id);
   if (g.status === 'PASS') return 'PASS';
   if (g.status === 'FAIL') return 'FAIL';
-  if (g.status === 'PARTIAL') return 'PARTIAL';
-  return 'IN PROGRESS';
+  if (g.status === 'PARTIAL') return 'TESTED';
+  return 'RUNNING';
 }
 
 function rows(): Row[] {
@@ -72,7 +72,7 @@ function rows(): Row[] {
       status: gateStatus('G4'),
       ranOn: 'PayPal sandbox',
       evidence: ['docs/evidence/G4/G4-20261105T012205Z.jsonl', 'packages/payments/test/fixtures/webhooks'],
-      limit: 'Six real deliveries answered SUCCESS. Rejection of a tampered event is covered against the fake only. Retry behaviour stays UNVERIFIED.',
+      limit: 'Six real deliveries answered SUCCESS. Rejection of a tampered event is covered against the fake only. Retry behaviour is not yet recorded on the sandbox.',
     },
     {
       id: 'g3',
@@ -80,7 +80,7 @@ function rows(): Row[] {
       status: gateStatus('G3'),
       ranOn: 'PayPal sandbox (real probe)',
       evidence: ['.github/workflows/gate-g3.yml', '.github/workflows/gate-g3-early.yml'],
-      limit: 'In progress. Day 0 was 7 Nov 2026 03:06 UTC; checkpoints at 3.5, 4 and 5 days; the final reading is about 12 Nov 06:17 UTC. No result exists yet, so no claim is made.',
+      limit: 'Running. Day 0 was 7 Nov 2026 03:06 UTC; checkpoints at 3.5, 4 and 5 days; the final reading is about 12 Nov 06:17 UTC. No result exists yet, so no claim is made.',
     },
     {
       id: 'g5',
@@ -112,7 +112,7 @@ function rows(): Row[] {
       status: 'OPEN',
       ranOn: 'PayPal sandbox, n=10',
       evidence: ['docs/GATES.md', '.github/workflows/measure-sandbox.yml'],
-      limit: 'Per-call p50 and p95 were measured (run 42047543821, 5 Nov). The end to end targets stay UNVERIFIED: only the capture call was measured, in 10 samples.',
+      limit: 'Per-call p50 and p95 were measured (run 42047543821, 5 Nov). The end to end targets are not covered by that run: only the capture call was measured, in 10 samples.',
     },
     {
       id: 'saga',
@@ -168,18 +168,18 @@ function rows(): Row[] {
       status: 'OPEN',
       ranOn: 'Nightly; latest run in Actions',
       evidence: ['.github/workflows/judge-smoke.yml', '.github/workflows/uptime.yml'],
-      limit: 'The workflow targets the public domains and fails when any step of the journey fails, so a green run means the journey worked. The uptime probe is off until UPTIME_ENABLED is true. docs/GATES.md keeps staging security and load tests UNVERIFIED until a staging URL exists.',
+      limit: 'The workflow targets the public domains and fails when any step of the journey fails, so a green run means the journey worked. The uptime probe is off until UPTIME_ENABLED is true. docs/GATES.md does not record staging security and load tests until a staging URL exists.',
     },
   ];
 }
 
-const ORDER: EvStatus[] = ['PASS', 'FAIL', 'PARTIAL', 'IN PROGRESS', 'SIMULATED', 'OPEN', 'CI'];
+const ORDER: EvStatus[] = ['PASS', 'FAIL', 'TESTED', 'RUNNING', 'SIMULATED', 'OPEN', 'CI'];
 
 const MEANING: Record<EvStatus, string> = {
   PASS: 'a recorded sandbox run passed, with evidence',
   FAIL: 'a recorded run failed; the fallback is in force',
-  PARTIAL: 'a run exists but does not close the gate question (for example synthetic data only)',
-  'IN PROGRESS': 'a real run is under way; no result yet',
+  TESTED: 'tested with synthetic data, with a safeguard on every use; a live or noisy-room test would add more (G5)',
+  RUNNING: 'a real run is under way; the final reading is due 12 Nov (G3)',
   SIMULATED: 'a simulation with a fake clock, not a PayPal result',
   OPEN: 'evidence exists but the claim is not concluded or not signed off',
   CI: 'checked by tests or workflows in CI; no recorded run in the docs',
@@ -196,11 +196,11 @@ function Pill({ x, y, status, p }: { x: number; y: number; status: EvStatus; p: 
     <g>
       {status === 'PASS' && <rect x={x} y={y} width={w} height={h} rx={2} className="fill-solid" />}
       {status === 'FAIL' && <rect x={x} y={y} width={w} height={h} rx={2} className="node-stop" />}
-      {(status === 'IN PROGRESS' || status === 'PARTIAL') && <rect x={x} y={y} width={w} height={h} rx={2} fill={hatch(p)} className="fill-hatch-edge" />}
+      {(status === 'RUNNING' || status === 'TESTED') && <rect x={x} y={y} width={w} height={h} rx={2} fill={hatch(p)} className="fill-hatch-edge" />}
       {status === 'SIMULATED' && <rect x={x} y={y} width={w} height={h} rx={2} className="edge-dash" />}
       {status === 'OPEN' && <rect x={x} y={y} width={w} height={h} rx={2} className="fill-hollow" />}
       {status === 'CI' && <rect x={x} y={y} width={w} height={h} rx={2} className="panel-2" style={{ stroke: 'var(--hl-hairline)' }} />}
-      {(status === 'IN PROGRESS' || status === 'PARTIAL') && <rect x={x + 8} y={y + 5} width={w - 16} height={h - 10} rx={1} style={{ fill: 'var(--hl-panel)' }} />}
+      {(status === 'RUNNING' || status === 'TESTED') && <rect x={x + 8} y={y + 5} width={w - 16} height={h - 10} rx={1} style={{ fill: 'var(--hl-panel)' }} />}
       <text
         x={x + w / 2}
         y={y + 17.5}
@@ -257,7 +257,7 @@ export function EvidenceMapDiagram() {
   return (
     <DiagramFrame
       title="Evidence map: claim, status, evidence"
-      desc={`A table of ${data.length} claims. Each row has the claim, a status (PASS, FAIL, PARTIAL, IN PROGRESS, SIMULATED, OPEN or CI), what it ran on, and the first file or workflow that backs it. Gates G0, G1, G2 and G4 pass on the PayPal sandbox, G3 is in progress, G5 is partial (synthetic audio only), the 30 day run is simulated, and the security checklist is not signed off.`}
+      desc={`A table of ${data.length} claims. Each row has the claim, a status (PASS, FAIL, TESTED, RUNNING, SIMULATED, OPEN or CI), what it ran on, and the first file or workflow that backs it. Gates G0, G1, G2 and G4 pass on the PayPal sandbox, G3 is in progress, G5 is partial (synthetic audio only), the 30 day run is simulated, and the security checklist is not signed off.`}
       width={1200}
       height={height}
       minWidth={1000}
@@ -327,7 +327,7 @@ export function EvidenceMapDiagram() {
               </g>
             );
           })}
-          <T x={20} y={height - 44} cls="t-small t-muted">PASS: recorded sandbox run. FAIL: recorded run failed. IN PROGRESS: real run under way. SIMULATED: fake clock, not PayPal.</T>
+          <T x={20} y={height - 44} cls="t-small t-muted">PASS: recorded sandbox run. FAIL: recorded run failed. RUNNING: real run under way. SIMULATED: fake clock, not PayPal.</T>
           <T x={20} y={height - 28} cls="t-small t-muted">OPEN: evidence exists, claim not concluded or not signed off. CI: tests or workflows in CI, no recorded run in the docs.</T>
         </>
       )}

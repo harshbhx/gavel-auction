@@ -10,7 +10,7 @@ import { useRoom } from '../../store/roomStore';
 import { selectors } from '../../store/selectors';
 import type { AuctionStatus } from '../../wire';
 import { ChunkBoundary, lazyWithRetry } from '../states/ChunkBoundary';
-import { Controls, controlStatus } from './Controls';
+import { Controls, controlStatus, extendsLeft } from './Controls';
 import { ConsoleScreen } from './ConsoleScreen';
 import { KillSwitch } from './KillSwitch';
 import { ManualEntry, type ManualSendResult } from './ManualEntry';
@@ -80,6 +80,10 @@ export function LiveConsole({
   const lotPaused = useRoom((s) => s.snapshot?.paused === true);
   const status = controlStatus(rawStatus, lotPaused);
   const priceCents = useRoom((s) => s.snapshot?.price ?? 0);
+  // The extend limit comes from the room config and the current end of the lot.
+  const extendsRemaining = useRoom((s) =>
+    s.snapshot === null ? null : extendsLeft(s.snapshot.config, s.snapshot.endTs),
+  );
   const roomState = useRoom((s) => s);
   const settlementView = useMemo(() => publicSource(roomState, true), [roomState]);
   const roster = useRoom((s) => s.snapshot?.roster);
@@ -151,6 +155,7 @@ export function LiveConsole({
       status={status}
       online={online}
       stopped={stopped}
+      extendsLeft={extendsRemaining}
       leader={leader}
       priceCents={priceCents}
       seq={seq}

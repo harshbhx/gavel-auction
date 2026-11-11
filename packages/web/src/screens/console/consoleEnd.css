@@ -1,0 +1,48 @@
+/* The pop-up shown when the lot closes, is won or is stopped. Tokens only. */
+
+.gv-console-end {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  border: var(--border-width, 2px) solid var(--color-fg);
+  background: var(--color-surface);
+  color: var(--color-fg);
+}
+
+.gv-console-end__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-6);
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.gv-console-end__body {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.gv-console-end__body p {
+  margin: 0;
+  color: var(--color-fg);
+  overflow-wrap: anywhere;
+}
+
+/* Two equal buttons side by side; one per row on a narrow screen. */
+.gv-console-end__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.gv-console-end__actions > .gv-btn {
+  min-width: 0;
+  text-align: center;
+  text-decoration: none;
+}
+
+@media (max-width: 479px) {
+  .gv-console-end__actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

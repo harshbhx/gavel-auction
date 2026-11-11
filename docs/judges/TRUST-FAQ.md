@@ -29,18 +29,18 @@ The hosted API keeps its data on a 1 GB persistent disk, and rooms are read back
 ## What is real, simulated and recorded?
 
 - Real on the PayPal sandbox: gates G0, G1, G2 and G4, and the nightly specs R7, R8 and R10 (see `docs/GATES.md`).
-- In progress: gate G3 (how long a hold stays capturable) is a real probe that started 7 Nov 2026 03:06 UTC; no result yet.
-- Partial: gate G5 (speech accuracy) is PARTIAL on synthetic, noise-free clips, so a spoken bid always goes through a confirm prompt.
+- Running: gate G3 (how long a hold stays capturable) is a real probe that started 7 Nov 2026 03:06 UTC; final reading 12 Nov.
+- Tested with synthetic voice clips: gate G5 (speech accuracy) is measured on synthetic, noise-free clips, so a spoken bid always goes through a confirm prompt.
 - Simulated: the 30-day run on a fake clock.
 - Recorded: the scripted demo and the replay. They make no PayPal calls and are labelled as such on screen.
 
-## What is not proven?
+## What is still open?
 
 Whole-auction settlement through the hosted server, a real process kill on the sandbox, guest-card capture, release of the remainder as seen on a buyer balance (inferred from PayPal's answers, not read), real-room voice accuracy, and the PayPal hold window beyond the G3 readings so far. `docs/JUDGES.md` has the full status list.
 
 ## Time limits that affect you
 
-A judge room lasts about thirty minutes. Register, bid and hammer in one sitting: PayPal's honor period for a hold is unproven (G3), and a hold older than two hours at settlement is flagged stale in the audit trail.
+A judge room lasts about thirty minutes. Register, bid and hammer in one sitting: PayPal's honor period for a hold is still being measured (G3), and a hold older than two hours at settlement is flagged stale in the audit trail.
 
 ## Something is not working. What next?
 

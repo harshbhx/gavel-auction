@@ -17,9 +17,9 @@ What is built and proven:
 
 Scope and limits:
 
-- Latency is measured on the sandbox: hammer to settled p95 6.93 s against a 6 s target and hammer to captured p95 3.77 s against 2.5 s (run 42563147792, 49 of 50 completed, INCOMPLETE: 1 timeout and 3 failed capture calls); the earlier n=20 run measured 5591 ms and 3010 ms. Owner decision open: keep the targets, raise them with a reason, or reduce latency. Status PARTIAL in `docs/GATES.md`.
-- G5 (speech accuracy) is PARTIAL and measured on synthetic audio: wrong accept 0.000 on 24 noise-free clips per set (tuned on those clips), and 0.058 (Groq) and 0.092 (Deepgram) on a held-out noisy set measured once (120 clips) against a pre-registered 0.05. Spoken bids always use the confirm prompt; the next step is a live or noisy room.
-- G3 is a timed sandbox probe in progress since 7 Nov 2026 03:06 UTC. Day 0 is recorded and the final reading is about 12 Nov 06:17 UTC, so the result is reported then. The 30-day run is a simulation on a fake clock (`docs/evidence/SIM/SIM-MULTIDAY.md`).
+- Latency is measured on the sandbox: hammer to settled p95 6.93 s against a 6 s target and hammer to captured p95 3.77 s against 2.5 s (run 42563147792, 49 of 50 completed, INCOMPLETE: 1 timeout and 3 failed capture calls); the earlier n=20 run measured 5591 ms and 3010 ms. Owner decision open: keep the targets, raise them with a reason, or reduce latency. Both targets are missed; the gate record is `docs/GATES.md`.
+- G5 (speech accuracy) is tested with synthetic voice clips, with a confirm step on every voice bid: wrong accept 0.000 on 24 noise-free clips per set (tuned on those clips), and 0.058 (Groq) and 0.092 (Deepgram) on a held-out noisy set measured once (120 clips) against a pre-registered 0.05. Spoken bids always use the confirm prompt; the next step is a live or noisy room.
+- G3 is a timed sandbox probe, running since 7 Nov 2026 03:06 UTC. Day 0 is recorded and the final reading is about 12 Nov 06:17 UTC, so the result is reported then. The 30-day run is a simulation on a fake clock (`docs/evidence/SIM/SIM-MULTIDAY.md`).
 - The kill ran on a CI runner, not the deployed host; the live socket run used the fake PayPal and synthetic clips. The web console now has an auctioneer microphone (enabled only when the server reports a live speech provider, and every spoken bid still asks for a confirm).
 - The Hugging Face datasets are published and use synthetic data by design (privacy by design).
 - Next steps, with owners and dates where known, are on `docs/LIMITATIONS.md`. What changed and when is in `CHANGELOG.md`.
@@ -71,7 +71,7 @@ Where to look afterwards:
 - Version: `GET /version` on the API host returns the deployed commit; compare it with the commit the report names.
 - Audit export: the audit trail link in step 5, and the verification steps below.
 
-Steps 3 and 4 depend on the web UI; the nightly smoke exercises the hub, join, bid and hammer path, and the spec `judge-walkthrough.spec.ts` covers steps 1 and 2 only.
+Steps 3 and 4 depend on the web UI; the nightly smoke exercises the hub, join, bid and hammer path, and the spec `judge-walkthrough.spec.ts` covers steps 1 and 2 from the landing page, then steps 3 to 5 on a seeded room of the fake stack (console, bidder view, big screen before and after the hammer, audit trail) inside the same 300 second budget. It does not place a bid through the UI; the scripted tests in `happy-path.spec.ts` and the nightly smoke do.
 
 ## Run the fake-PayPal demo
 
@@ -83,7 +83,7 @@ The fake PayPal is a test double. Behaviour seen there says nothing about the re
 
 ## Read the evidence
 
-- `docs/GATES.md`: the gates, what each proves, and its result (PASS, FAIL or NOT RUN).
+- `docs/GATES.md`: the gates, what each proves, and its result (PASS, FAIL, or still running with the final reading date).
 - `docs/evidence/<gate>/`: raw sandbox run logs as JSON lines. Tokens, buyer emails and payer IDs are replaced by `[REDACTED]`.
 - `docs/PUBLIC-REPO-CHECKLIST.md`: what was checked before the repository was made public, and the known limits.
 

@@ -12,17 +12,17 @@ A claim without a file behind it is an opinion. This page lists the claims GAVEL
 
 ## How to read the statuses
 
-<Tabs items={['PASS', 'FAIL', 'PARTIAL', 'IN PROGRESS', 'SIMULATED', 'OPEN', 'CI']}>
+<Tabs items={['PASS', 'FAIL', 'TESTED', 'RUNNING', 'SIMULATED', 'OPEN', 'CI']}>
   <Tab value="PASS">
     A recorded run on the PayPal <Term id="sandbox">sandbox</Term> passed and the evidence is in the repository or in a named run. The limit of each pass is stated on its row. A pass on one buyer type says nothing about another.
   </Tab>
   <Tab value="FAIL">
-    A recorded run failed and the stated fallback is in force. No gate reads FAIL today; <Term id="gate-g5">G5</Term> failed on its first run and now reads PARTIAL.
+    A recorded run failed and the stated fallback is in force. No gate reads FAIL today; <Term id="gate-g5">G5</Term> failed on its first run and now reads TESTED (synthetic clips, confirm prompt on every bid).
   </Tab>
-  <Tab value="PARTIAL">
+  <Tab value="TESTED">
     A recorded run exists but does not close the question. Today that is G5: wrong accept is 0.000 on synthetic, noise-free clips, but the fixes were chosen on those same clips; a synthetic held-out noisy set measured once read above the thresholds (run 42567832671). The confirm prompt protects every voice bid: spoken bids always go through the <Term id="confirm-prompt">confirm prompt</Term>.
   </Tab>
-  <Tab value="IN PROGRESS">
+  <Tab value="RUNNING">
     A real run is under way and has no result. Today that is <Term id="gate-g3">G3</Term>, the <Term id="honor-period">honor period</Term> and reauthorize probe on the sandbox. Day 0 was 7 November 2026 at 03:06 UTC, the checkpoints are at 3.5, 4 and 5 days, and the final reading is about 12 November at 06:17 UTC. Nothing is claimed until those readings exist.
   </Tab>
   <Tab value="SIMULATED">
@@ -72,7 +72,7 @@ A claim without a file behind it is an opinion. This page lists the claims GAVEL
   <Card title="Gates G0 to G5" href="/docs/proof/gates" description="Each gate, its result and its caveat." />
   <Card title="The 30 day simulation" href="/docs/proof/simulation" description="Eight scenarios, labelled SIMULATED." />
   <Card title="Latency" href="/docs/proof/latency" description="Measured sandbox numbers and the targets they do not meet." />
-  <Card title="Security review" href="/docs/safety/security-review" description="The SEC-01 to SEC-24 checklist and its open and partial items." />
+  <Card title="Security review" href="/docs/safety/security-review" description="The SEC-01 to SEC-24 checklist and its open items and the items checked with a named residual." />
 </Cards>
 
 ## Where this lives in the code

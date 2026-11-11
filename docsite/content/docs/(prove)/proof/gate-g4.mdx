@@ -41,8 +41,8 @@ Six sanitized fixtures were written to `packages/payments/test/fixtures/webhooks
 <NotVerified title="What G4 did not show">
 
 - Tampered-event rejection was not part of this run. It is covered against the fake only.
-- The retry schedule and the shapes of `PAYMENT.CAPTURE.DENIED` and `PAYMENT.CAPTURE.PENDING` are UNVERIFIED.
-- Only first deliveries were recorded, so whether a PayPal retry keeps the original `PAYPAL-TRANSMISSION-ID` and time is UNVERIFIED (assumption W06). Until a run records a retry, the <Term id="verifier">verifier</Term> sends an old transmission time (within seven days) to the verify endpoint instead of refusing it (decision D-0033), and event ids are deduplicated.
+- The retry schedule and the shapes of `PAYMENT.CAPTURE.DENIED` and `PAYMENT.CAPTURE.PENDING` are not yet recorded.
+- Only first deliveries were recorded, so whether a PayPal retry keeps the original `PAYPAL-TRANSMISSION-ID` and time is not yet recorded (assumption W06). Until a run records a retry, the <Term id="verifier">verifier</Term> sends an old transmission time (within seven days) to the verify endpoint instead of refusing it (decision D-0033), and event ids are deduplicated.
 
 </NotVerified>
 

@@ -2,14 +2,14 @@
 title: Security review
 description: "The checklist and where it stands: all eight P0 items pass, and the log scan plus the two judge-room items are next."
 icon: ClipboardCheck
-status: in progress
+status: ongoing
 ---
 
-Checklist SEC-01 to SEC-24, the same 24 rows as `docs/SECURITY-REVIEW.md`. Each item is PASS, PARTIAL (the check passes and a named residual is still open), FAIL (with an issue link), ACCEPTED (a risk kept on purpose, with a justification) or N/A. A P0 FAIL blocks submission. The reviewer of an item is never its author. **Status OPEN means nobody has signed the item off yet.** Rows marked agent-only were reviewed by an agent from the code and tests, with no human reviewer yet.
+Checklist SEC-01 to SEC-24, the same 24 rows as `docs/SECURITY-REVIEW.md`. Each item is PASS, CHECKED (the check passes and a named residual is still open; `docs/SECURITY-REVIEW.md` words this PARTIAL), FAIL (with an issue link), ACCEPTED (a risk kept on purpose, with a justification) or N/A. A P0 FAIL blocks submission. The reviewer of an item is never its author. **Status OPEN means nobody has signed the item off yet.** Rows marked agent-only were reviewed by an agent from the code and tests, with no human reviewer yet.
 
 <NotVerified title="Reviewed independently of the authors, not yet signed by the owner">
 
-All eight P0 items (SEC-01 to SEC-07 and SEC-18) are PASS as of 2026-11-07, reviewed by someone who did not write the code, from the code, CI and read-only requests to the live hosts. SEC-10 and SEC-17 are PASS since the web headers were deployed and checked, and SEC-15 (log scan) has a recorded scan of one S01 server log (run 42566851766, 0 findings, PARTIAL). SEC-19 (judge rooms) and SEC-20 (receipt link) were added later and are OPEN, waiting for an independent reviewer. SEC-21 to SEC-24 (judge key, reviewer token, simulated holds, docs host headers) were added on 9 Nov, are PARTIAL and agent-only. SEC-09, SEC-10 and SEC-14 are PARTIAL with a named residual in `docs/SECURITY-REVIEW.md`. SEC-11 is an accepted risk (speech vendor retention unverified, see the privacy notice). No FAIL is recorded. A human second look at the P0 rows is still advisable.
+All eight P0 items (SEC-01 to SEC-07 and SEC-18) are PASS as of 2026-11-07, reviewed by someone who did not write the code, from the code, CI and read-only requests to the live hosts. SEC-10 and SEC-17 are PASS since the web headers were deployed and checked, and SEC-15 (log scan) has a recorded scan of one S01 server log (run 42566851766, 0 findings, CHECKED). SEC-19 (judge rooms) and SEC-20 (receipt link) were added later and are OPEN, waiting for an independent reviewer. SEC-21 to SEC-24 (judge key, reviewer token, simulated holds, docs host headers) were added on 9 Nov, are CHECKED with a named residual and agent-only. SEC-09, SEC-10 and SEC-14 are CHECKED with a named residual in `docs/SECURITY-REVIEW.md`. SEC-11 is an accepted risk (speech vendor retention unverified, see the privacy notice). No FAIL is recorded. A human second look at the P0 rows is still advisable.
 
 </NotVerified>
 
@@ -23,21 +23,21 @@ All eight P0 items (SEC-01 to SEC-07 and SEC-18) are PASS as of 2026-11-07, revi
 | SEC-06 | P0 | Money integrity (integer cents, <Term id="ledger">ledger</Term>) | PASS | engine and payments tests |
 | SEC-07 | P0 | Injection and rendering of untrusted text | PASS | `fuzz.test.ts` |
 | SEC-08 | P1 | Abusive input caps | PASS | `abuse.test.ts` |
-| SEC-09 | P1 | CORS and origin allowlist | PARTIAL | T-QA-075 |
-| SEC-10 | P1 | Transport and security headers, CSP | PARTIAL | `headers.test.ts`, web `network.spec.ts` |
+| SEC-09 | P1 | CORS and origin allowlist | CHECKED | T-QA-075 |
+| SEC-10 | P1 | Transport and security headers, CSP | CHECKED | `headers.test.ts`, web `network.spec.ts` |
 | SEC-11 | P1 | Audio and personal data | ACCEPTED | manual review |
 | SEC-12 | P1 | Dependency risk | PASS | `audit.yml`, `audit-waivers.json` |
 | SEC-13 | P1 | SSRF | PASS | `webhook.test.ts` (certificate URL host allowlist) |
-| SEC-14 | P1 | Denial of service on the parse path | PARTIAL | `dos.test.ts`, proxy hops probe (2 hops on Render, checked once on 9 Nov) |
-| SEC-15 | P2 | Logging hygiene | PARTIAL | log scan after scenario S01 (run 42566851766) |
+| SEC-14 | P1 | Denial of service on the parse path | CHECKED | `dos.test.ts`, proxy hops probe (2 hops on Render, checked once on 9 Nov) |
+| SEC-15 | P2 | Logging hygiene | CHECKED | log scan after scenario S01 (run 42566851766) |
 | SEC-16 | P2 | Admin and ops pages | PASS | manual review |
 | SEC-17 | P2 | Clickjacking and PayPal return URL redirect | PASS | manual review |
 | SEC-18 | P0 | Server time is authoritative | PASS | T-QA-079 |
 | SEC-19 | P1 | Key-less judge rooms | OPEN | `http-judge-rooms.test.ts` (agent-only) |
 | SEC-20 | P1 | Shareable receipt link | OPEN | `http-receipt.test.ts`, `token.test.ts` (agent-only) |
-| SEC-21 | P1 | Judge key and lockout (`x-judge-key`) | PARTIAL | `http-judge-key.test.ts`, `config-judge-key.test.ts` (agent-only) |
-| SEC-22 | P1 | Reviewer token and ledger route | PARTIAL | `http-judge-key.test.ts`, `token.test.ts` (agent-only) |
-| SEC-23 | P1 | Simulated holds in judge rooms | PARTIAL | `http-judge-sim-hold.test.ts`, `sim-holds.test.ts` (agent-only) |
-| SEC-24 | P2 | Docs host and custom-domain headers | PARTIAL | `docsite/public/_headers`, `docsite` workflow, `docs/evidence/security/live-checks-20261109.md` (agent-only) |
+| SEC-21 | P1 | Judge key and lockout (`x-judge-key`) | CHECKED | `http-judge-key.test.ts`, `config-judge-key.test.ts` (agent-only) |
+| SEC-22 | P1 | Reviewer token and ledger route | CHECKED | `http-judge-key.test.ts`, `token.test.ts` (agent-only) |
+| SEC-23 | P1 | Simulated holds in judge rooms | CHECKED | `http-judge-sim-hold.test.ts`, `sim-holds.test.ts` (agent-only) |
+| SEC-24 | P2 | Docs host and custom-domain headers | CHECKED | `docsite/public/_headers`, `docsite` workflow, `docs/evidence/security/live-checks-20261109.md` (agent-only) |
 
 <CodePaths paths={[{ path: 'docs/SECURITY-REVIEW.md', note: 'the checklist and how to record a result' }]} />

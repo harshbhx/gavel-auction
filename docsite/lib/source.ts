@@ -13,7 +13,7 @@ import { StatusBadge } from './status-badge';
 const docs = defineDocs({
   dir: 'content/docs',
   docs: {
-    // `status: verified | code-checked | simulated | in progress | unverified | fail | planned` adds a
+    // `status: verified | code-checked | simulated | running | ongoing | measured | tested | described | fail | planned` adds a
     // sidebar badge. `verified` needs a real run or committed evidence; `code-checked` means the page was
     // read against the code it describes (nothing was run); `evidence` says which.
     schema: pageSchema.extend({

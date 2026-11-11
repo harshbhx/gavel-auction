@@ -3,8 +3,7 @@ import { t } from '../../copy/t';
 import { Button, type ButtonTone } from '../../design/primitives/Button';
 import { Dialog } from '../../design/primitives/Dialog';
 import { formatUsd } from '../../util/money';
-
-export const HAMMER_HOLD_MS = 800;
+import { HAMMER_HOLD_MS, HAMMER_HOLD_SECONDS } from './hammerHold';
 
 export interface HoldButtonProps {
   readonly label: string;
@@ -104,7 +103,7 @@ export function HammerDialog({ open, leader, priceCents, onConfirm, onCancel }: 
     <Dialog open={open} onClose={onCancel} title={t('console.hammer')}>
       <div className="gv-console-dialog">
         <p>{question}</p>
-        <p>{t('console.hammerHint')}</p>
+        <p>{t('console.hammerHint', { s: HAMMER_HOLD_SECONDS })}</p>
         {/* Cancel comes first so the dialog focuses it, never the destructive control. */}
         <Button variant="outline" tone="neutral" onClick={onCancel}>
           {t('common.cancel')}

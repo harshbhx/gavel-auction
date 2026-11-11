@@ -15,7 +15,7 @@ This is the label sheet from `docs/submission/VIDEO-SCRIPT.md`, with each row li
 | <Term id="webhook">Webhook</Term> verification | Real sandbox, 6 events | <Term id="gate-g4">G4</Term> PASS; tampered-event rejection is fake only |
 | Full multi-bidder <Term id="settlement">settlement</Term> | Fake PayPal | Shown on the fake PayPal. On the sandbox one lot of three holds and a 20-settlement measurement have run; a whole auction through a server is the next step |
 | Crash and resume | Fake PayPal, test hook | In-process hook on the fake PayPal, and one in-process crash recovered on the sandbox; a trigger on a hosted server is the next step |
-| Voice bid | Recorded replay | <Term id="gate-g5">G5</Term> PARTIAL: tested with synthetic speech clips, confirm prompt on every spoken bid |
+| Voice bid | Recorded replay | <Term id="gate-g5">G5</Term> tested with synthetic speech clips, confirm prompt on every spoken bid |
 | <Term id="honor-period">Honor period</Term> and reauthorize | Not shown as a result | <Term id="gate-g3">G3</Term> timed probe in progress, final reading about 12 Nov |
 | Any money | Never a live charge | Sandbox only |
 
@@ -49,7 +49,7 @@ This is the label sheet from `docs/submission/VIDEO-SCRIPT.md`, with each row li
 | Settlement of a whole auction | Fake, plus one lot of three holds and a 20-settlement measurement on the sandbox | [Settlement saga](/docs/how-it-works/settlement-saga) |
 | Crash recovery | Fake, plus one in-process crash on the sandbox | [Crash recovery](/docs/how-it-works/crash-recovery) |
 | Honor period | Timed sandbox probe running (G3, final reading about 12 Nov); the 30-day run is simulated | [Gate G3](/docs/proof/gate-g3), [simulation](/docs/proof/simulation) |
-| Voice | Recorded transcripts and cached provider outputs; G5 PARTIAL | [Gate G5](/docs/proof/gate-g5) |
+| Voice | Recorded transcripts and cached provider outputs; G5 tested with synthetic voice clips | [Gate G5](/docs/proof/gate-g5) |
 | <Term id="replay">Replay</Term> | Recorded events, read only, labelled on screen | [Demo](/docs/start/demo) |
 | Hosted demo | Hosted in sandbox mode with a persistent disk; a recorded walk is the next step | [Demo](/docs/start/demo) |
 
