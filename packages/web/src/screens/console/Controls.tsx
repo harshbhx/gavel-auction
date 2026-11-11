@@ -6,11 +6,40 @@ import { Button } from '../../design/primitives/Button';
 import { HoldButton as DeskHold } from '../../ui';
 import { ControlError, ControlTimeoutError } from '../../net/controlPort';
 import type { ControlPort } from '../../net/transport';
-import type { AuctionStatus } from '../../wire';
+import type { AuctionConfig, AuctionStatus } from '../../wire';
 import { HammerDialog, type HammerLeader } from './HammerDialog';
+import { HAMMER_HOLD_MS, HAMMER_HOLD_SECONDS } from './hammerHold';
 import { SHORTCUTS, ShortcutHelp, useShortcuts, type ShortcutHandlers } from './ShortcutHelp';
 
 export const DEFAULT_EXTEND_MS = 30_000;
+
+/**
+ * The server never lets a lot run more than this far past its configured end, whatever the
+ * soft-close settings say. Mirrors the hard-close margin the server applies when it opens a lot.
+ */
+export const HARD_CLOSE_MARGIN_MS = 3_600_000;
+
+/** The room config fields the extend limit is worked out from, as plain numbers. */
+export type ExtendLimitConfig = Readonly<
+  Record<keyof Pick<AuctionConfig, 'endTs' | 'softCloseExtensionMs' | 'maxExtensions'>, number>
+>;
+
+/**
+ * How many more times Extend can add `extendMs` before the server refuses it. The limit is the
+ * hard close the room config already carries: the configured end plus the time the soft-close
+ * extensions could add. `endTs` is the current end of the lot, so time already added by bids or
+ * by earlier extends counts against the same limit.
+ */
+export function extendsLeft(
+  config: ExtendLimitConfig,
+  endTs: number,
+  extendMs: number = DEFAULT_EXTEND_MS,
+): number {
+  if (extendMs <= 0) return 0;
+  const margin = Math.min(config.maxExtensions * config.softCloseExtensionMs, HARD_CLOSE_MARGIN_MS);
+  const roomMs = config.endTs + margin - endTs;
+  return Math.max(0, Math.floor(roomMs / extendMs));
+}
 
 export type ControlName = 'open' | 'pause' | 'resume' | 'extend' | 'hammer';
 
@@ -58,6 +87,8 @@ export interface ControlState {
   readonly online: boolean;
   readonly stopped: boolean;
   readonly busy: boolean;
+  /** Extends still allowed on this lot; absent or null when the limit is not known. */
+  readonly extendsLeft?: number | null;
 }
 
 /**
@@ -76,21 +107,47 @@ export function disabledReason(name: ControlName, s: ControlState): ReasonKey | 
   // A slow request never blocks the hammer: the lot clock keeps running meanwhile.
   if (s.busy && name !== 'hammer') return 'controls.reason.busy';
   if (s.status !== REQUIRED_STATUS[name]) return wrongState(name, s.status);
+  if (name === 'extend' && s.extendsLeft === 0) return 'controls.reason.noExtends';
   return null;
 }
 
-/** The reason that holds for the whole lot, shown when no single control is being pointed at. */
-function firstReason(s: ControlState): ReasonKey | null {
-  for (const name of CONTROL_ORDER) {
-    // The hammer is exempt from busy, so the lot-wide line follows the others.
-    const r = disabledReason(name, s);
-    if (r === 'controls.reason.stopped' || r === 'controls.reason.offline') return r;
-    if (r === 'controls.reason.busy') return r;
-  }
-  if (s.status === 'SCHEDULED') return 'controls.reason.openFirst';
-  if (s.status === 'PAUSED') return 'controls.reason.paused';
-  if (s.status === 'OPEN') return 'controls.reason.alreadyOpen';
-  return 'controls.reason.ended';
+/**
+ * Open lot is a button only before the lot opens. After that its slot holds a short note of the
+ * lot state, so the bar never shows a button that can not be used again.
+ */
+export function showsOpenButton(status: AuctionStatus): boolean {
+  return status === 'SCHEDULED';
+}
+
+/** The buttons the bar shows in this state, in slot order. */
+export function shownControls(status: AuctionStatus): readonly ControlName[] {
+  return CONTROL_ORDER.filter((name) => name !== 'open' || showsOpenButton(status));
+}
+
+/**
+ * The reason that holds for the whole lot, shown when no single control is being pointed at. It
+ * comes from the predicate that disables the buttons: a reason is given only when every shown
+ * button is off for it, so the line never contradicts a button that can be pressed.
+ */
+export function lotReason(s: ControlState): ReasonKey | null {
+  // The hammer is exempt from busy, so the waiting line follows the other controls.
+  if (s.busy && s.online && !s.stopped) return 'controls.reason.busy';
+  const reasons = shownControls(s.status).map((name) => disabledReason(name, s));
+  const first = reasons[0] ?? null;
+  return first !== null && reasons.every((r) => r === first) ? first : null;
+}
+
+const NOTE_KEY = {
+  open: 'controls.lot.open',
+  paused: 'controls.lot.paused',
+  closed: 'controls.lot.closed',
+} as const;
+
+/** The note that takes the Open lot slot once the lot has opened. */
+function lotNote(status: AuctionStatus): string {
+  if (status === 'OPEN') return t(NOTE_KEY.open);
+  if (status === 'PAUSED') return t(NOTE_KEY.paused);
+  return t(NOTE_KEY.closed);
 }
 
 /** The words for a refused hammer: a new price, a new leader, or a generic change. */
@@ -108,6 +165,8 @@ export interface ControlsProps {
   readonly stopped: boolean;
   /** Extra time per extend, in milliseconds. */
   readonly extendMs?: number;
+  /** Extends still allowed on this lot, from `extendsLeft`; null when the limit is not known. */
+  readonly extendsLeft?: number | null;
   readonly leader: HammerLeader | null;
   readonly priceCents: number;
   /** Highest message seq the console has applied. Sent with the hammer so a late bid is refused. */
@@ -121,6 +180,7 @@ export function Controls({
   online,
   stopped,
   extendMs = DEFAULT_EXTEND_MS,
+  extendsLeft: left = null,
   leader,
   priceCents,
   seq = 0,
@@ -140,7 +200,7 @@ export function Controls({
   // The desk hold stays done after it completes; a new key makes it usable again.
   const [holdRound, setHoldRound] = useState(0);
   const baseId = useId();
-  const state: ControlState = { status, online, stopped, busy };
+  const state: ControlState = { status, online, stopped, busy, extendsLeft: left };
   const hammerReason = disabledReason('hammer', state);
 
   const run = async (
@@ -256,9 +316,24 @@ export function Controls({
 
   // One line under the bar, always the same height: the reason for the control the user is on,
   // else the reason that holds for the lot as a whole. Never one line per button.
+  // An enabled control says what it will do; it never borrows a reason from another control.
+  const effect: Readonly<Record<ControlName, string>> = {
+    open: t('controls.does.open'),
+    pause: t('controls.does.pause'),
+    resume: t('controls.does.resume'),
+    extend: t('controls.does.extend', { s: Math.round(extendMs / 1000) }),
+    hammer: t('controls.does.hammer'),
+  };
+  const wholeLot = lotReason(state);
   const aimedReason = aimed === null ? null : disabledReason(aimed, state);
-  const lotReason = firstReason(state);
-  const reasonLine = aimedReason ?? lotReason;
+  const reasonLine =
+    aimed === null
+      ? wholeLot === null
+        ? ''
+        : t(wholeLot)
+      : aimedReason === null
+        ? effect[aimed]
+        : t(aimedReason);
 
   return (
     <div className="gv-console-controls">
@@ -266,6 +341,15 @@ export function Controls({
         {items.map((item) => {
           const reason = disabledReason(item.name, state);
           const reasonId = `${baseId}-${item.name}`;
+          if (item.name === 'open' && !showsOpenButton(status)) {
+            return (
+              <div key={item.name} className="gv-console-controls__item" data-control={item.name}>
+                <span className="gv-console-controls__note" data-slot="lot-note">
+                  {lotNote(status)}
+                </span>
+              </div>
+            );
+          }
           return (
             <div key={item.name} className="gv-console-controls__item" data-control={item.name}>
               <Button
@@ -294,16 +378,26 @@ export function Controls({
         })}
       </div>
       <p className="gv-console-controls__reason" data-slot="control-reason">
-        {reasonLine === null ? '' : t(reasonLine)}
+        {reasonLine}
       </p>
       <p className="gv-console-controls__result" role="status">
         {result}
       </p>
+      {left !== null && status === 'OPEN' && !stopped && (
+        <p className="gv-console-controls__limit" data-slot="extends-left">
+          {left === 0
+            ? t('controls.reason.noExtends')
+            : left === 1
+              ? t('controls.extendsLeftOne')
+              : t('controls.extendsLeft', { n: left })}
+        </p>
+      )}
       {status !== 'CLOSING' && status !== 'SETTLING' && status !== 'DONE' && (
         <div className="gv-console-hammer">
           <DeskHold
             key={holdRound}
-            label={t('console.hammerDesk')}
+            label={t('console.hammerDesk', { s: HAMMER_HOLD_SECONDS })}
+            holdMs={HAMMER_HOLD_MS}
             hint={t('console.hammerDeskHint')}
             disabled={hammerReason !== null}
             confirmAlternative={false}

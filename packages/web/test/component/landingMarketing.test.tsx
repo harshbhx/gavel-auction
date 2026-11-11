@@ -152,9 +152,9 @@ describe('marketing landing', () => {
     expect(screen.getByText(t('mk.trust.note'))).toBeTruthy();
   });
 
-  it('keeps the open gates honest: partial stays partial, G3 stays a running probe', () => {
-    expect(t('mk.trust.partial')).toMatch(/partial/i);
-    expect(t('mk.trust.progress')).toMatch(/in progress/i);
+  it('keeps the open gates honest: measured stays measured, G3 stays a running probe', () => {
+    expect(t('mk.trust.partial')).toMatch(/measured/i);
+    expect(t('mk.trust.progress')).toMatch(/running/i);
     for (const key of ['mk.trust.g3.body', 'mk.trust.g5.body', 'mk.trust.lat.body'] as const) {
       expect(t(key), key).not.toMatch(/\b(full|fully|passed|complete)\b/i);
     }

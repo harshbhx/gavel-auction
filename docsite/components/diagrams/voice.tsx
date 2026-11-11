@@ -41,7 +41,7 @@ export function VoiceDiagram() {
             <li>The engine accepts or rejects the bid and an accepted bid is appended to the hash-chained ledger.</li>
           </ol>
           <p>
-            Gate G5 is PARTIAL: wrong-accept {lo} to {hi} on 24 synthetic, noise-free clips per set (limit 0.05), after fixes chosen on those same clips. Tested with synthetic speech clips, and the confirm prompt protects every spoken bid.
+            Gate G5 was tested with synthetic voice clips: wrong-accept {lo} to {hi} on 24 synthetic, noise-free clips per set (limit 0.05), after fixes chosen on those same clips. Tested with synthetic speech clips, and the confirm prompt protects every spoken bid.
           </p>
         </>
       }
