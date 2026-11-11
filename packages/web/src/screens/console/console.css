@@ -821,21 +821,14 @@
 
 /* Control bar: five equal slots in one row when there is room, else two per row with the
  * hammer on its own full row. The order of the slots never changes. */
-.gv-console-controls {
-  container-type: inline-size;
-}
-
 .gv-console-controls__item > .gv-btn {
   min-height: 48px;
 }
 
-@media (max-width: 639px) {
-  .gv-console-controls__item[data-control='hammer'] {
-    grid-column: 1 / -1;
-  }
-}
-
-@container (max-width: 34rem) {
+/* The lot panel is narrow on a phone and again in the two-column desk up to 1359 px. The
+ * widths are named here, not queried from the panel: a query container would also trap the
+ * dialogs this block opens. */
+@media (max-width: 639px), (min-width: 1000px) and (max-width: 1359px) {
   .gv-console-controls__bar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
