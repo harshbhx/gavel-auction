@@ -87,7 +87,7 @@ DISPLAY = {
     "proof_n2": {"size": 80, "lines": [[("24/24", "orange")]]},
     "proof_n3": {"size": 80, "lines": [[("17/17", "orange")]]},
     "proof_n4": {"size": 80, "lines": [[("4,500+", "orange")]]},
-    "proof_u1": {"size": 26, "lines": [[("DIFFS", "paper")]]},
+    "proof_u1": {"size": 20, "lines": [[("MISMATCHES", "paper")], [("WITH PAYPAL", "paper")]]},
     "proof_u2": {"size": 26, "lines": [[("VOICE CLIPS", "paper")]]},
     "proof_u3": {"size": 26, "lines": [[("JUDGE STEPS", "paper")]]},
     "proof_u4": {"size": 26, "lines": [[("TEST CASES", "paper")]]},
