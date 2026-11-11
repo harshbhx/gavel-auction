@@ -13,6 +13,8 @@ export interface CustomBidProps {
   incrementCents?: number;
   /** The guarded send. */
   onBid: (cents: number) => void;
+  /** Opens the raise-limit screen; when set, an over-limit amount offers it next to the message. */
+  onRaise?: () => void;
 }
 
 /** Hint text for an amount, or undefined when it looks fine. The server stays authoritative. */
@@ -85,12 +87,15 @@ export function CustomBid({
   ceilingCents,
   incrementCents = 100,
   onBid,
+  onRaise,
 }: CustomBidProps) {
   const [text, setText] = useState('');
   const [attempted, setAttempted] = useState(false);
   const cents = parseUsdToCents(text);
   const reason = customReason(text, nextMinCents, ceilingCents);
   const live = text.trim() === '' ? undefined : reason;
+  const message = attempted && reason !== undefined ? reason : live;
+  const overLimit = ceilingCents !== null && cents !== null && cents > ceilingCents;
 
   const inc = incrementCents > 0 ? incrementCents : 100;
   const top = sliderMax(nextMinCents, inc, ceilingCents);
@@ -132,12 +137,14 @@ export function CustomBid({
           className="bid__stepbtn"
           aria-label={t('bid.step.down', { amount: formatUsdCompact(inc) })}
           disabled={atMin}
+          title={atMin ? t('bid.stepAtMin') : undefined}
           onClick={() => step(-1)}
         >
           {t('bid.minus', { amount: formatUsdCompact(inc) })}
         </Button>
         <Field
           label={t('bid.custom')}
+          placeholder={t('bid.amountPlaceholder', { min: formatUsd(nextMinCents) })}
           value={text}
           inputMode="numeric"
           autoComplete="off"
@@ -146,22 +153,30 @@ export function CustomBid({
             setText(e.target.value);
             setAttempted(false);
           }}
-          {...(attempted && reason !== undefined
-            ? { error: reason }
-            : live === undefined
-              ? {}
-              : { hint: live })}
         />
         <Button
           type="button"
           className="bid__stepbtn"
           aria-label={t('bid.step.up', { amount: formatUsdCompact(inc) })}
           disabled={atMax}
+          title={atMax ? t('bid.stepAtMax') : undefined}
           onClick={() => step(1)}
         >
           {t('bid.plus', { amount: formatUsdCompact(inc) })}
         </Button>
       </div>
+      {message !== undefined && (
+        <div className="bid__fieldmsg" data-kind={attempted ? 'error' : 'hint'}>
+          <p role={attempted ? 'alert' : 'status'} data-testid="bid-custom-message">
+            {message}
+          </p>
+          {overLimit && onRaise !== undefined && (
+            <Button type="button" variant="outline" onClick={onRaise}>
+              {t('bid.raiseFromError')}
+            </Button>
+          )}
+        </div>
+      )}
       {top !== null && top > nextMinCents && (
         <input
           type="range"

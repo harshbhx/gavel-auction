@@ -473,7 +473,7 @@ describe('register route', () => {
     act(() => socket.receive(stateMsg(1, snapshot({ status: 'DONE' }))));
     expect(screen.getByText(t('reg.closed'))).toBeTruthy();
     expect(screen.getByRole('link', { name: t('reg.watch') }).getAttribute('href')).toBe(
-      `/r/${ROOM}/screen`,
+      `/r/${ROOM}/bid`,
     );
   });
 
@@ -515,7 +515,7 @@ describe('register route', () => {
     act(() => socket.receive(stateMsg(2, { ...snapshot(), registrationClosed: true })));
     expect(screen.getByText(t('reg.closed'))).toBeTruthy();
     expect(screen.getByRole('link', { name: t('reg.watch') }).getAttribute('href')).toBe(
-      `/r/${ROOM}/screen`,
+      `/r/${ROOM}/bid`,
     );
   });
 

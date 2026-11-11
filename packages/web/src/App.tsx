@@ -283,6 +283,23 @@ function LiveRoute({
           { apiBase: api.apiBase, clientId: api.paypalClientId, token },
         );
   }, [api, bidderId, scripted, roomId, token]);
+  // The lot name from the public summary, for the bid screen while its snapshot has none.
+  const [summaryTitle, setSummaryTitle] = useState<string | null>(null);
+  useEffect(() => {
+    if (api === undefined || scripted !== undefined || role !== 'bidder') return undefined;
+    let live = true;
+    fetchJson(`${api.apiBase}/api/auctions/${encodeURIComponent(roomId)}`)
+      .then((body) => {
+        const got = (body ?? {}) as { title?: unknown };
+        if (live && typeof got.title === 'string' && got.title.trim() !== '') {
+          setSummaryTitle(got.title);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [api, scripted, role, roomId]);
   const respond = (confirmId: string, accept: boolean): void =>
     transport?.send({ v: PROTOCOL_VERSION, t: 'confirm_response', confirmId, accept });
   if (connection.superseded === true) {
@@ -342,6 +359,7 @@ function LiveRoute({
             }}
             stopped={stopped}
             onJoin={() => navigate(`/r/${encodeURIComponent(roomId)}/register`)}
+            lotTitleFallback={summaryTitle}
             {...(scripted?.attach === undefined ? {} : { recorded: true })}
             onHome={() => navigate('/')}
             onJoinCode={() => navigate('/?join=1')}
@@ -810,7 +828,7 @@ function RegisterRoute({
         return (
           <main data-route="register" aria-busy="true">
             <h1 tabIndex={-1}>{t('reg.checkingTitle')}</h1>
-            <p role="status">{t('reg.confirming')}</p>
+            <p role="status">{t('reg.checking')}</p>
           </main>
         );
       }
@@ -844,7 +862,7 @@ function RegisterRoute({
             <TokenHelp roomId={roomId} kind="register" />
           </>
         ) : (
-          <p>{t('reg.confirming')}</p>
+          <p>{t('reg.checking')}</p>
         )}
       </main>
     );
@@ -856,7 +874,7 @@ function RegisterRoute({
       <main data-route="register">
         <h1 tabIndex={-1}>{t('reg.step1')}</h1>
         {roomError === null ? (
-          <p role="status">{t('reg.confirming')}</p>
+          <p role="status">{t('reg.checking')}</p>
         ) : (
           <RoomError
             error={roomError}
@@ -876,7 +894,7 @@ function RegisterRoute({
           result={null}
           ceilingCents={0}
           closed
-          watchHref={`/r/${encodeURIComponent(roomId)}/screen`}
+          watchHref={`/r/${encodeURIComponent(roomId)}/bid`}
           onBackToCeiling={() => undefined}
           onRetry={() => undefined}
           onContinue={() => undefined}
@@ -960,7 +978,7 @@ function ApproveRoute(props: {
   }, [start, ceilingCents, name]);
   return (
     <main data-route="register">
-      <h1 tabIndex={-1}>{t('reg.step1')}</h1>
+      <h1 tabIndex={-1}>{approval.state === 'held' ? t('reg.heldTitle') : t('reg.step3')}</h1>
       <Approve
         state={approval.state}
         result={approval.result}
@@ -1006,7 +1024,7 @@ function ReturnRoute({ roomId, api }: { roomId: string; api: Api }) {
   if (ceilingCents === undefined) {
     return (
       <main data-route="return">
-        <p role="status">{t('reg.confirming')}</p>
+        <p role="status">{t('reg.checking')}</p>
       </main>
     );
   }

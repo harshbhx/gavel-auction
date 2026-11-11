@@ -216,13 +216,14 @@ describe('/try judge panel: the Ledger front page', () => {
     expect(openRoom).toHaveBeenCalledWith('/join/K7M2QX');
   });
 
-  it('does not look a code up until one is typed', () => {
+  it('does not look a code up until one is typed, and says what to type', () => {
     const joinByCode = vi.fn(() => Promise.resolve(true));
     render(panel({ joinByCode }));
-    expect(screen.getByRole('button', { name: t('try.a2.go') }).getAttribute('aria-disabled')).toBe(
-      'true',
-    );
+    const find = screen.getByRole('button', { name: t('try.a2.go') });
+    expect(find.getAttribute('aria-disabled')).not.toBe('true');
+    fireEvent.click(find);
     expect(joinByCode).not.toHaveBeenCalled();
+    expect(screen.getByText(t('try.a2.typeCode', { n: 6 }))).toBeTruthy();
   });
 
   it('shows the room it already holds, from this tab', () => {

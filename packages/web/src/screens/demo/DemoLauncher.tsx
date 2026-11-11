@@ -231,6 +231,7 @@ export function DemoLauncher({
         {goalField && mode === 'live' && <GoalField value={goal} onChange={setGoal} />}
         <Button
           size="bid"
+          className="gv-btn--main"
           disabled={phase === 'busy' || (mode === 'live' && !goalOk)}
           onClick={start}
         >

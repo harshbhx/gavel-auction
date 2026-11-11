@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { WideAside } from '../WideAside';
+import { t } from '../../copy/t';
 import type { ApprovalResult, ApprovalState } from '../../payments/port';
 import { completeApprovalReturn } from '../../payments/useApproval';
 import '../flows.css';
@@ -46,6 +47,7 @@ export function Return({
 
   return (
     <main className="gv-flow" data-route="return">
+      <h1 tabIndex={-1}>{state === 'held' ? t('reg.heldTitle') : t('reg.step3')}</h1>
       <Approve
         state={state}
         result={result}
