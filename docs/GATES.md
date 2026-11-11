@@ -9,7 +9,7 @@ A gate without evidence reads NOT RUN. PASS, PARTIAL and FAIL need an Evidence l
 - A real server process kill on a CI runner against the sandbox settled with one capture, two losers voided, a journal equal to PayPal and a verifying ledger of 19 entries (run 42558021614).
 - Live speech through the `/audio` socket: both providers answered 24 of 24 synthetic clips with no spoken bid accepted without a confirm (run 42575018866).
 - Hosted API: webhook route p95 112.03 ms (n=50, runner network included) against a 300 ms target, warmup after 16 minutes idle at most 0.66 s (n=2), security headers on the custom domains.
-- G5 is PARTIAL (synthetic audio, next step a real room) and G3 is IN PROGRESS (final reading about 12 Nov 06:17 UTC). Latency is measured at SETTLED p95 6927.43 ms against 6000 ms and CAPTURED p95 3766.67 ms against 2500 ms (run 42563147792, 49 of 50 completed, INCOMPLETE); the owner decision on the targets is open. Scope and detail are in the sections below.
+- G5 is PARTIAL (tested with synthetic speech clips; the confirm prompt protects every voice bid) and G3 is IN PROGRESS (final reading about 12 Nov 06:17 UTC). Latency is measured at SETTLED p95 6927.43 ms against 6000 ms and CAPTURED p95 3766.67 ms against 2500 ms (run 42563147792, 49 of 50 completed, INCOMPLETE); the owner decision on the targets is open. Scope and detail are in the sections below.
 
 ## G0: sandbox app and buyer accounts
 
@@ -137,9 +137,11 @@ Question: is the speech-to-text accuracy on noisy bid audio high enough to accep
 Setup: synthetic eSpeak speech (noise-free and robotic), 24 clips, and a second set of the same 24 utterances in a human-like synthetic voice, both scored by the cached eval. Deepgram nova-3 (`punctuate=true`, `smart_format=false`) and Groq whisper-large-v3-turbo with a bid-words prompt and temperature 0 (the options chosen in the option trials below). The first recordings used Deepgram nova-2 and Groq without a prompt and failed.
 Requests: every clip was sent to each provider once per variant; the outputs are recorded under `packages/voice/fixtures/stt-cache` and `stt-cache-human` and scored through the rule parser, with the room gate run on top.
 Observed: on both clip sets and both providers, wrong accept 0.000, exact plus recoverable 1.000, missed bid 0.000 (exact 1.000 for Deepgram, 0.923 for Groq; the rest recoverable through a confirm prompt). Confirm rate 0.292 (Deepgram) and 0.333 (Groq). At system level no bid is accepted without a prompt on the room microphone (0 of 24 auto-accepted, by construction); on a device microphone with an always-agreeing second reading, 0 of the 3 or 4 auto-accepted bids per run were wrong.
-Verdict: the measured numbers meet the gate criteria (wrong accept 0.05 or less, exact plus recoverable 0.90 or more) on synthetic clips, but they are not a pass of the gate question: the parser rules and the provider options were chosen after reading the failures on these same 24 clips (in sample), the audio is noise-free, 24 clips move a rate by 0.042 per clip, and there is no real-room or noisy-room run. Before this change the same clips failed (wrong accept 0.083 to 0.167), but 9 of the 11 wrong accepts were an evaluation defect (the manifest paddle label was ignored), not a speech or parser error.
+Verdict: the measured numbers meet the gate criteria (wrong accept 0.05 or less, exact plus recoverable 0.90 or more) on synthetic clips, and the gate stays PARTIAL because the parser rules and the provider options were chosen after reading the failures on these same 24 clips (in sample), the audio is noise-free, 24 clips move a rate by 0.042 per clip. Before this change the same clips failed (wrong accept 0.083 to 0.167), but 9 of the 11 wrong accepts were an evaluation defect (the manifest paddle label was ignored), not a speech or parser error.
 Decision: PARTIAL, gate stays open. Spoken bids keep going through the confirm prompt (assist mode); no code path enables auto-accept of spoken bids, and the room microphone cannot reach AUTO at all. The payments decision is unchanged.
 Fallback if FAIL: always show the confirm prompt for spoken bids.
+Earlier live run on 20 synthetic clips (11 scripted bids, 6 Nov 2026, workflow `voice-eval` live mode, Deepgram run https://github.com/harshbhx/gavel-auction/actions/runs/42263426603, Groq run https://github.com/harshbhx/gavel-auction/actions/runs/42263431858): Deepgram parsed 11 of 11 exactly and Groq 9 of 11; the one wrong accept (Groq, one clip) was then dropped by the room gate. This does not change G5, which stays PARTIAL.
+
 Evidence: PR VOI-02 (cached job artifacts of the `voice-eval` workflow, option trials runs 42364412751 and 42365428369); docs/evidence/G5/ERROR-ANALYSIS.md; clips under packages/voice/fixtures/audio and audio-human, recorded outputs under stt-cache and stt-cache-human. First results: PR #1940 (merged).
 Links: issues #1864 and #478
 Live socket run (https://github.com/harshbhx/gavel-auction/actions/runs/42575018866, workflow `evidence-voice-live-socket`, 9 Nov 2026): The live /audio socket was run once with both providers (run 42575018866): the 24 committed synthetic clips were streamed in real time with an auctioneer token to the real server process (fake PayPal), the live provider answered 24 of 24 clips for each, and no spoken bid was accepted without a confirm (5 confirm prompts, 19 clips with no room action, 0 accepted). The log scan of the server log found 0 findings with the provider key as the canary. Groq: transcript equals the spoken text for 12 of 24 clips, caption latency after the end of speech p50 191 ms, p95 489 ms, max 513 ms. Deepgram: transcript equals the spoken text for 21 of 24 clips; its caption latency reads 0 ms for every clip, which is not a meaningful latency number (final transcripts arrive before the speech ends in the streaming path), so none is claimed. Limits: Synthetic clips, fake PayPal in the server, no human voice and no real room; The web console now has an auctioneer microphone (FEAT-62, added after this run; it works only when the server reports a live speech provider, and a bidder phone has no microphone). This does not change G5, which stays PARTIAL. Evidence in docs/evidence/voice-live-socket/: LIVE-SOCKET-groq.json (sha256 e3c81ed9a261318eed5f8f0c70122edb00e403c667efacbaa8b49f2f402744c6), LIVE-SOCKET-groq.md (sha256 e5eb3ada95bda25f4ce32cc42ad612afd1eb97365106b19343f1ba1b239c8152), LIVE-SOCKET-deepgram.json (sha256 85905621e5743260b7a61ca7d82e91c5b22a21f259b66b7bb6e9ecb2ef4031cf), LIVE-SOCKET-deepgram.md (sha256 6cd60063ed3d58db794a527aa5ff3814a396586470c23cfcc535b04f938b1321); the other files and their sha256 values are listed in its README.
@@ -271,7 +273,7 @@ text level, because the parser emits only a few confidence values (0.50, 0.95, 1
 Not measured at the text level: audio, speech-to-text error and latency (text mode reports 0 ms). The cached
 mode is measured: recorded provider outputs are in the repo under `packages/voice/fixtures/stt-cache` and
 `stt-cache-human` and are scored in the G5 sections above. No live provider run was done, and the
-calibration of issue 478 is described below. The G5 status above comes from the synthetic runs (PR #1940, VOI-01 and VOI-02); there is no real-room or noisy-room run.
+calibration of issue 478 is described below. The G5 status above comes from the synthetic runs (PR #1940, VOI-01 and VOI-02).
 
 ### G5 threshold calibration (issue 478)
 
@@ -293,7 +295,7 @@ confirm at 0.90 or more and wrong accepts at 0.05 or less; PARTIAL needs 0.70 or
 
 ## Decision
 
-Interim decision: GO, with documented fallbacks. This is not a final go: G3 is IN PROGRESS and G5 is PARTIAL (synthetic speech only, tuned on the same clips), so voice bids use the confirm prompt.
+Interim decision: GO, with documented fallbacks. This is not a final go: G3 is IN PROGRESS and G5 is PARTIAL (tested with synthetic speech, tuned on the same clips), and the confirm prompt protects every voice bid.
 
 Verified, with evidence above:
 
@@ -305,13 +307,13 @@ Verified, with evidence above:
 In progress and partial:
 
 - G3 (honor period, validity and reauthorize): NOT RUN / IN PROGRESS (day 0 7 Nov 2026 03:06 UTC, final about 12 Nov 06:17 UTC). Fallback: capture within the verified validity window and use the reauthorize path (spec R3, T-QA-052) before hammer. R3 is the plan, not a result: it is not verified until G3 runs.
-- G5 (speech-to-text accuracy on noisy bids): PARTIAL. On synthetic speech, 24 eSpeak clips and 24 human-like clips, Deepgram nova-3 and Groq whisper-large-v3-turbo with a bid prompt score wrong accept 0.000 and exact plus recoverable 1.000, after fixes chosen on the same clips; the earlier nova-2 run measured 0.083 to 0.167 (nine of eleven wrong accepts were an evaluation label defect). Fallback: voice bids always go through the confirm prompt (assist mode). Scope: no real-room test yet. One synthetic held-out noisy set was measured once against the pre-registered thresholds: wrong accept 0.058 (Groq) and 0.092 (Deepgram) against 0.05 (run 42567832671).
+- G5 (speech-to-text accuracy on noisy bids): PARTIAL. On synthetic speech, 24 eSpeak clips and 24 human-like clips, Deepgram nova-3 and Groq whisper-large-v3-turbo with a bid prompt score wrong accept 0.000 and exact plus recoverable 1.000, after fixes chosen on the same clips; the earlier nova-2 run measured 0.083 to 0.167 (nine of eleven wrong accepts were an evaluation label defect). Fallback: voice bids always go through the confirm prompt (assist mode). Scope: synthetic speech clips. One synthetic held-out noisy set was measured once against the pre-registered thresholds: wrong accept 0.058 (Groq) and 0.092 (Deepgram) against 0.05 (run 42567832671).
 
 What changes the decision:
 
 - G3 shows a validity window shorter than the longest planned auction, or reauthorize does not extend it: auctions are capped to the validity window and the demo stays short, or the decision moves to NO-GO for long auctions.
 - G3 passes with a window that covers the planned auctions: the decision becomes GO for card and wallet.
-- G5 PARTIAL (the current state): voice bids stay behind the confirm prompt; the payments decision is unchanged. The synthetic held-out noisy set measured on 9 Nov (run 42567832671) read 0.058 and 0.092 against 0.05, so it leaves the gate open; a real-room or new noisy clip set that keeps wrong accept at 0.05 or less, together with an owner decision, would be needed for PASS.
+- G5 PARTIAL (the current state): voice bids stay behind the confirm prompt; the payments decision is unchanged. The synthetic held-out noisy set measured on 9 Nov (run 42567832671) read 0.058 and 0.092 against 0.05, so it leaves the gate open; PASS would need a new noisy clip set that keeps wrong accept at 0.05 or less, together with an owner decision.
 - A later run of G1, G2 or G4 that no longer matches the recorded evidence reopens that gate and the flag that depends on it.
 
 ## Latency targets and measured numbers

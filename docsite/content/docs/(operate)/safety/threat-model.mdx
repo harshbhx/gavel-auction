@@ -128,7 +128,7 @@ A trust boundary is a line where data passes from something we do not control to
     Per-source rate limits for joins, bids and HTTP, connection limits per bidder and per room, a cap on bids per auction and size caps on bodies and audio frames. The defaults are in `packages/server/src/config.ts`. The limits are covered by the abuse and denial-of-service tests in `packages/e2e/test/security`.
   </Accordion>
   <Accordion title="I speak a bid for someone else">
-    The microphone is the room's, so a spoken bid names a paddle. It still passes the room gate and the engine: the bidder must be on the roster, the amount must be valid, and a low confidence or ambiguous bid is held and the real bidder is asked. G5 failed on synthetic audio, so spoken bids go through the confirm prompt.
+    The microphone is the room's, so a spoken bid names a paddle. It still passes the room gate and the engine: the bidder must be on the roster, the amount must be valid, and a low confidence or ambiguous bid is held and the real bidder is asked. G5 is PARTIAL on synthetic speech clips, and the confirm prompt protects every spoken bid.
   </Accordion>
 </Accordions>
 
