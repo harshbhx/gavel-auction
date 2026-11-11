@@ -18,6 +18,7 @@ import type { Rig } from '../../test/flow/rig';
 //   npx vite-node packages/e2e/src/load/cli.ts -- L3|L4|L5|all [--minutes 30] [--out load.json] [--diag diag.json]
 // --diag writes memory samples every 5 s plus per-component counters for the L5 soak (#2203); run
 // node with --expose-gc to also get the live heap after a forced collection. Off by default.
+// GAVEL_LOAD_OUT and GAVEL_SOAK_MINUTES set the report path and soak length when the flags are absent.
 // Exit code 1 when any check fails.
 
 interface Result {
@@ -35,8 +36,8 @@ const gc = (globalThis as { gc?: () => void }).gc;
 
 async function main(argv: readonly string[]): Promise<number> {
   const which = argv.find((a) => a === 'L3' || a === 'L4' || a === 'L5' || a === 'all') ?? 'all';
-  const minutes = Number(flag(argv, '--minutes') ?? '30');
-  const out = flag(argv, '--out');
+  const minutes = Number(flag(argv, '--minutes') ?? process.env['GAVEL_SOAK_MINUTES'] ?? '30');
+  const out = flag(argv, '--out') ?? process.env['GAVEL_LOAD_OUT'];
   const diagFile = flag(argv, '--diag');
   const deps = { now: () => performance.now(), rss: () => process.memoryUsage().rss };
   const results: Result[] = [];
