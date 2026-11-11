@@ -39,7 +39,7 @@ defaults:
 jobs:
   screens:
     if: ${{ github.repository == 'harshbhx/gavel-auction' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 40
     env:
       WEB_URL: ${{ inputs.web_url }}

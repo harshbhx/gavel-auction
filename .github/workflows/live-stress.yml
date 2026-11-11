@@ -51,7 +51,7 @@ defaults:
 jobs:
   stress:
     if: ${{ github.repository == 'harshbhx/gavel-auction' && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[run]')) }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 120
     env:
       WEB_URL: ${{ inputs.web_url || 'https://gavel-web.creharsh.workers.dev' }}

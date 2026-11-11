@@ -51,7 +51,7 @@ jobs:
 
   nightly:
     if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && !github.event.repository.fork }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     environment: sandbox-nightly
     concurrency:
