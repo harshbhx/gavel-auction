@@ -1,10 +1,9 @@
-/* global document, window */
 // README header set: banner, flow, stats, partners and footer GIFs plus a same-name PNG poster each.
 // Paper #EFE6D3, ink #1D1712, signal orange #FF6A13; Big Shoulders Display and JetBrains Mono (the app fonts).
 // No URLs and no names inside the pixels. Every figure is quoted from the README facts; the auction in
 // flow.gif is labelled simulated. Rendered at 20 fps, loops forever, the last frame is a complete still.
 // Usage: node graphics/motion-readme-set/render.mjs <outDir> (CI only, see graphics.yml).
-import { mkdirSync, writeFileSync, statSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { openBrowser, frames, still } from '../lib/render.mjs';
@@ -74,7 +73,8 @@ const hr = (d, left, top, width, len = '.8s', h = 2, col = '') =>
   `<div class="abs hr" style="--d:${d}s;--len:${len};left:${left}px;top:${top}px;width:${width}px;height:${h}px;${col}"></div>`;
 const vr = (d, left, top, height) =>
   `<div class="abs vr" style="--d:${d}s;--len:.7s;left:${left}px;top:${top}px;width:2px;height:${height}px"></div>`;
-const mono = (d, style, html) => `<div class="abs mono fade" style="--d:${d}s;${style}">${html}</div>`;
+const mono = (d, style, html) =>
+  `<div class="abs mono fade" style="--d:${d}s;${style}">${html}</div>`;
 
 /* ---------- banner 1280x320, 5 s ---------- */
 await make('banner', {
@@ -116,7 +116,7 @@ ${hr(t + 0.1, COL(i), 124, 240, '.6s')}`;
 <div class="abs m14 fade" style="--d:${t + 0.3}s;left:${x}px;top:234px;width:80px;line-height:1.5">${label}<br>${amt}</div>
 <div class="abs m14 fade" style="--d:${TH}s;left:${x}px;top:282px;width:84px;font-weight:700;${win ? 'color:var(--orange)' : 'color:var(--muted)'}">${win ? 'captured' : 'released'}</div>`;
   };
-  const rrow = (k, l, r, t, big) => `
+  const rrow = (k, l, r, t) => `
 ${hr(t, COL(3), 150 + k * 60, 240, '.5s', 2)}
 <div class="abs fade" style="--d:${t + 0.1}s;left:${COL(3)}px;top:${166 + k * 60}px;width:240px;display:flex;justify-content:space-between;align-items:baseline">
   <span class="m14" style="font-weight:700">${l}</span>${r}</div>`;
