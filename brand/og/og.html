@@ -1,70 +1,229 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8" />
-<title>GAVEL share card</title>
-<style>
-  @font-face { font-family: 'Big Shoulders Display'; font-weight: 100 900; src: url('fonts/big-shoulders-display-latin-wght-normal.woff2') format('woff2'); }
-  @font-face { font-family: 'Public Sans'; font-weight: 100 900; src: url('fonts/public-sans-latin-wght-normal.woff2') format('woff2'); }
-  @font-face { font-family: 'JetBrains Mono'; font-weight: 100 800; src: url('fonts/jetbrains-mono-latin-wght-normal.woff2') format('woff2'); }
-  :root { --paper: #efe6d3; --ink: #1d1712; --signal: #ff6a13; --signal-ink: #a63e00; --muted: #5a4d40; }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { width: 1280px; height: 1280px; background: var(--paper); }
-  body { font-family: 'Public Sans', system-ui, sans-serif; color: var(--ink); }
-  .card { position: relative; width: var(--w); height: var(--h); display: flex; background: var(--paper); overflow: hidden; }
-  .stripe { width: 44px; flex: none; background: repeating-linear-gradient(45deg, var(--signal) 0 4px, var(--paper) 4px 12px); border-right: 4px solid var(--ink); }
-  .main { flex: 1; display: flex; flex-direction: column; justify-content: space-between; padding: var(--pad-y) 64px var(--pad-y) 56px; }
-  .top { display: flex; align-items: center; justify-content: space-between; }
-  .logo { height: 64px; width: auto; display: block; }
-  .kicker { font: 700 22px 'JetBrains Mono', monospace; letter-spacing: 0.14em; text-transform: uppercase; color: var(--signal-ink); border: 3px solid var(--signal-ink); padding: 8px 14px; }
-  h1 { font: 900 var(--h1) / 0.94 'Big Shoulders Display', 'Impact', sans-serif; letter-spacing: -0.01em; text-transform: uppercase; }
-  h1 em { font-style: normal; color: var(--signal); }
-  .sub { margin-top: 24px; font-size: 30px; line-height: 1.32; color: var(--muted); max-width: 880px; }
-  .tagline { margin-top: 28px; font: 700 24px 'JetBrains Mono', monospace; color: var(--ink); }
-  .tagline b { background: var(--signal); padding: 2px 8px; }
-  .bottom { display: flex; align-items: center; justify-content: space-between; border-top: 4px solid var(--ink); padding-top: 18px; gap: 24px; }
-  .note { font: 700 18px 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.06em; }
-  .partners { display: flex; gap: 10px; }
-  .chip { font: 700 18px 'JetBrains Mono', monospace; border: 3px solid var(--ink); padding: 4px 12px; background: #f7f0e1; }
-  [data-only] { display: none; }
-  body[data-v="landing"] [data-only~="landing"], body[data-v="try"] [data-only~="try"], body[data-v="ledger"] [data-only~="ledger"], body[data-v="docs"] [data-only~="docs"] { display: block; }
-  body.square .card { --w: 1200px; --h: 1200px; --pad-y: 64px; --h1: 150px; }
-  body.wide .card { --w: 1200px; --h: 630px; --pad-y: 40px; --h1: 120px; }
-  body.gh .card { --w: 1280px; --h: 640px; --pad-y: 48px; --h1: 120px; }
-  body[data-v="landing"].wide .card { --h1: 92px; }
-  body[data-v="landing"].gh .card { --h1: 98px; }
-  body.square .card { --h1: 150px; }
-  body.square .sub { font-size: 34px; }
-  .main { gap: 20px; }
-</style>
-</head>
-<body>
-<div class="card">
-  <div class="stripe"></div>
-  <div class="main">
-    <div class="top">
-      <!--LOGO-->
-      <div class="kicker" data-only="landing">Live auctions</div>
-      <div class="kicker" data-only="try">Judge panel</div>
-      <div class="kicker" data-only="ledger">Ledger and verify</div>
-      <div class="kicker" data-only="docs">Documentation</div>
+  <head>
+    <meta charset="utf-8" />
+    <title>GAVEL share card</title>
+    <style>
+      @font-face {
+        font-family: 'Big Shoulders Display';
+        font-weight: 100 900;
+        src: url('fonts/big-shoulders-display-latin-wght-normal.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'Public Sans';
+        font-weight: 100 900;
+        src: url('fonts/public-sans-latin-wght-normal.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'JetBrains Mono';
+        font-weight: 100 800;
+        src: url('fonts/jetbrains-mono-latin-wght-normal.woff2') format('woff2');
+      }
+      :root {
+        --paper: #efe6d3;
+        --ink: #1d1712;
+        --signal: #ff6a13;
+        --signal-ink: #a63e00;
+        --muted: #5a4d40;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        width: 1280px;
+        height: 1280px;
+        background: var(--paper);
+      }
+      body {
+        font-family: 'Public Sans', system-ui, sans-serif;
+        color: var(--ink);
+      }
+      .card {
+        position: relative;
+        width: var(--w);
+        height: var(--h);
+        display: flex;
+        background: var(--paper);
+        overflow: hidden;
+      }
+      .stripe {
+        width: 44px;
+        flex: none;
+        background: repeating-linear-gradient(45deg, var(--signal) 0 4px, var(--paper) 4px 12px);
+        border-right: 4px solid var(--ink);
+      }
+      .main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: var(--pad-y) 64px var(--pad-y) 56px;
+      }
+      .top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .logo {
+        height: 64px;
+        width: auto;
+        display: block;
+      }
+      .kicker {
+        font:
+          700 22px 'JetBrains Mono',
+          monospace;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--signal-ink);
+        border: 3px solid var(--signal-ink);
+        padding: 8px 14px;
+      }
+      h1 {
+        font:
+          900 var(--h1) / 0.94 'Big Shoulders Display',
+          'Impact',
+          sans-serif;
+        letter-spacing: -0.01em;
+        text-transform: uppercase;
+      }
+      h1 em {
+        font-style: normal;
+        color: var(--signal);
+      }
+      .sub {
+        margin-top: 24px;
+        font-size: 30px;
+        line-height: 1.32;
+        color: var(--muted);
+        max-width: 880px;
+      }
+      .tagline {
+        margin-top: 28px;
+        font:
+          700 24px 'JetBrains Mono',
+          monospace;
+        color: var(--ink);
+      }
+      .tagline b {
+        background: var(--signal);
+        padding: 2px 8px;
+      }
+      .bottom {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        border-top: 4px solid var(--ink);
+        padding-top: 18px;
+        gap: 24px;
+      }
+      .note {
+        font:
+          700 18px 'JetBrains Mono',
+          monospace;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .partners {
+        display: flex;
+        gap: 10px;
+      }
+      .chip {
+        font:
+          700 18px 'JetBrains Mono',
+          monospace;
+        border: 3px solid var(--ink);
+        padding: 4px 12px;
+        background: #f7f0e1;
+      }
+      [data-only] {
+        display: none;
+      }
+      body[data-v='landing'] [data-only~='landing'],
+      body[data-v='try'] [data-only~='try'],
+      body[data-v='ledger'] [data-only~='ledger'],
+      body[data-v='docs'] [data-only~='docs'] {
+        display: block;
+      }
+      body.square .card {
+        --w: 1200px;
+        --h: 1200px;
+        --pad-y: 64px;
+        --h1: 150px;
+      }
+      body.wide .card {
+        --w: 1200px;
+        --h: 630px;
+        --pad-y: 40px;
+        --h1: 120px;
+      }
+      body.gh .card {
+        --w: 1280px;
+        --h: 640px;
+        --pad-y: 48px;
+        --h1: 120px;
+      }
+      body[data-v='landing'].wide .card {
+        --h1: 92px;
+      }
+      body[data-v='landing'].gh .card {
+        --h1: 98px;
+      }
+      body.square .card {
+        --h1: 150px;
+      }
+      body.square .sub {
+        font-size: 34px;
+      }
+      .main {
+        gap: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <div class="stripe"></div>
+      <div class="main">
+        <div class="top">
+          <!--LOGO-->
+          <div class="kicker" data-only="landing">Live auctions</div>
+          <div class="kicker" data-only="try">Judge panel</div>
+          <div class="kicker" data-only="ledger">Ledger and verify</div>
+          <div class="kicker" data-only="docs">Documentation</div>
+        </div>
+        <div>
+          <h1 data-only="landing">Every bid is a hold.<br /><em>The hammer is the payment.</em></h1>
+          <h1 data-only="try">Try it in <em>2 minutes.</em><br />No login.</h1>
+          <h1 data-only="ledger">Check the receipts <em>yourself.</em></h1>
+          <h1 data-only="docs">How GAVEL settles <em>an auction.</em></h1>
+          <p class="sub" data-only="landing">
+            A live auction where every bid is a PayPal AUTHORIZE hold. Only the winner is captured;
+            every other hold is released.
+          </p>
+          <p class="sub" data-only="try">
+            Start a sandbox auction, place a bid, and watch the hold turn into the payment.
+          </p>
+          <p class="sub" data-only="ledger">
+            A hash-chained ledger of every hold, bid and capture. Paste it in and verify the chain.
+          </p>
+          <p class="sub" data-only="docs">
+            What is proven on the PayPal sandbox, what is simulated, and what is still open.
+          </p>
+          <p class="tagline" data-only="try ledger docs">
+            Every bid is a hold. <b>The hammer is the payment.</b>
+          </p>
+        </div>
+        <div class="bottom">
+          <div class="note">PayPal sandbox only. No real money moves.</div>
+          <div class="partners">
+            <span class="chip">Render</span><span class="chip">APIMatic</span
+            ><span class="chip">AG Grid</span>
+          </div>
+        </div>
+      </div>
     </div>
-    <div>
-      <h1 data-only="landing">Every bid is a hold.<br /><em>The hammer is the payment.</em></h1>
-      <h1 data-only="try">Try it in <em>2 minutes.</em><br />No login.</h1>
-      <h1 data-only="ledger">Check the receipts <em>yourself.</em></h1>
-      <h1 data-only="docs">How GAVEL settles <em>an auction.</em></h1>
-      <p class="sub" data-only="landing">A live auction where every bid is a PayPal AUTHORIZE hold. Only the winner is captured; every other hold is released.</p>
-      <p class="sub" data-only="try">Start a sandbox auction, place a bid, and watch the hold turn into the payment.</p>
-      <p class="sub" data-only="ledger">A hash-chained ledger of every hold, bid and capture. Paste it in and verify the chain.</p>
-      <p class="sub" data-only="docs">What is proven on the PayPal sandbox, what is simulated, and what is still open.</p>
-      <p class="tagline" data-only="try ledger docs">Every bid is a hold. <b>The hammer is the payment.</b></p>
-    </div>
-    <div class="bottom">
-      <div class="note">PayPal sandbox only. No real money moves.</div>
-      <div class="partners"><span class="chip">Render</span><span class="chip">APIMatic</span><span class="chip">AG Grid</span></div>
-    </div>
-  </div>
-</div>
-</body>
+  </body>
 </html>

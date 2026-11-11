@@ -207,10 +207,7 @@ export function renderRoutePreview(html: string, preview: RoutePreview): string 
   const url = `${SITE_ORIGIN}${preview.path}`;
   const image = `${SITE_ORIGIN}/og/${preview.image}`;
   let out = html.replace(/<title>[^<]*<\/title>/, `<title>${escapeAttr(preview.title)}</title>`);
-  out = out.replace(
-    /(<link rel="canonical" href=")[^"]*(")/,
-    `$1${url}$2`,
-  );
+  out = out.replace(/(<link rel="canonical" href=")[^"]*(")/, `$1${url}$2`);
   for (const [key, value] of [
     ['description', preview.description],
     ['og:title', preview.title],

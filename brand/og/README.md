@@ -2,15 +2,15 @@
 
 Every shared link to GAVEL unfurls as a 1200x630 card in the Newsprint and Signal style: paper, ink, signal orange, the GAVEL lockup, the tagline and the PayPal sandbox note.
 
-| Surface | Image | Where the tags live |
-| --- | --- | --- |
-| Web landing, /about, /demo/scripted | `packages/web/public/og/og-landing.png` | `packages/web/index.html` (static, so crawlers that skip JavaScript see it) |
-| Judge panel /try | `packages/web/public/og/og-try.png` | `ROUTE_PREVIEWS` in `packages/web/vite.config.ts`, written to `dist/try/index.html` at build time |
-| Ledger /ledger, /verify | `packages/web/public/og/og-ledger.png` | same |
-| Docs (site and home) | `docsite/public/og/og-docs.png` | `docsite/lib/meta.ts`, used by `docsite/app/layout.tsx` |
-| Docs pages | `/og/docs/<page>/image.png` (drawn per page at build time) | `generateMetadata` in `docsite/app/docs/[[...slug]]/page.tsx` |
-| Square fallback | `og-square.png` (1200x1200) | not referenced by a tag; use it where a platform wants a square image |
-| GitHub repo social preview | `brand/social-preview/github-social-preview-1280x640.png` | uploaded by hand, see below |
+| Surface                             | Image                                                      | Where the tags live                                                                               |
+| ----------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Web landing, /about, /demo/scripted | `packages/web/public/og/og-landing.png`                    | `packages/web/index.html` (static, so crawlers that skip JavaScript see it)                       |
+| Judge panel /try                    | `packages/web/public/og/og-try.png`                        | `ROUTE_PREVIEWS` in `packages/web/vite.config.ts`, written to `dist/try/index.html` at build time |
+| Ledger /ledger, /verify             | `packages/web/public/og/og-ledger.png`                     | same                                                                                              |
+| Docs (site and home)                | `docsite/public/og/og-docs.png`                            | `docsite/lib/meta.ts`, used by `docsite/app/layout.tsx`                                           |
+| Docs pages                          | `/og/docs/<page>/image.png` (drawn per page at build time) | `generateMetadata` in `docsite/app/docs/[[...slug]]/page.tsx`                                     |
+| Square fallback                     | `og-square.png` (1200x1200)                                | not referenced by a tag; use it where a platform wants a square image                             |
+| GitHub repo social preview          | `brand/social-preview/github-social-preview-1280x640.png`  | uploaded by hand, see below                                                                       |
 
 ## Refresh the images
 

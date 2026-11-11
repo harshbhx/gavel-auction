@@ -1,3 +1,4 @@
+/* global document */
 // Renders the GAVEL link-preview cards (brand/og/og.html) to PNG with Playwright. CI only.
 // Usage: PW_DIR=<dir with playwright installed> node brand/og/render.mjs <outDir>
 // The fonts are the app's own woff2 files, copied next to the template at render time.
@@ -54,7 +55,10 @@ for (const [name, v, cls, w, h] of cards) {
     [v, cls],
   );
   await page.evaluate(() => document.fonts.ready);
-  await page.screenshot({ path: path.join(out, `${name}.png`), clip: { x: 0, y: 0, width: w, height: h } });
+  await page.screenshot({
+    path: path.join(out, `${name}.png`),
+    clip: { x: 0, y: 0, width: w, height: h },
+  });
   await page.close();
 }
 await browser.close();
