@@ -1012,6 +1012,9 @@ export const en = {
   'controls.reason.openFirst': 'Open the lot to use this.',
   'controls.reason.paused': 'The lot is paused. Resume it to use this.',
   'controls.reason.ended': 'The lot has ended.',
+  'controls.reason.noExtends': 'No more extensions for this lot.',
+  'controls.extendsLeft': 'Extend can be used {n} more times on this lot.',
+  'controls.extendsLeftOne': 'Extend can be used 1 more time on this lot.',
   'controls.sent': '{action} sent',
   'controls.hammerChanged':
     'The price or leader changed. Nothing was hammered. Review and try again.',

@@ -6,11 +6,34 @@ import { Button } from '../../design/primitives/Button';
 import { HoldButton as DeskHold } from '../../ui';
 import { ControlError, ControlTimeoutError } from '../../net/controlPort';
 import type { ControlPort } from '../../net/transport';
-import type { AuctionStatus } from '../../wire';
+import type { AuctionConfig, AuctionStatus } from '../../wire';
 import { HammerDialog, type HammerLeader } from './HammerDialog';
 import { SHORTCUTS, ShortcutHelp, useShortcuts, type ShortcutHandlers } from './ShortcutHelp';
 
 export const DEFAULT_EXTEND_MS = 30_000;
+
+/**
+ * The server never lets a lot run more than this far past its configured end, whatever the
+ * soft-close settings say. Mirrors the hard-close margin the server applies when it opens a lot.
+ */
+export const HARD_CLOSE_MARGIN_MS = 3_600_000;
+
+/**
+ * How many more times Extend can add `extendMs` before the server refuses it. The limit is the
+ * hard close the room config already carries: the configured end plus the time the soft-close
+ * extensions could add. `endTs` is the current end of the lot, so time already added by bids or
+ * by earlier extends counts against the same limit.
+ */
+export function extendsLeft(
+  config: Pick<AuctionConfig, 'endTs' | 'softCloseExtensionMs' | 'maxExtensions'>,
+  endTs: number,
+  extendMs: number = DEFAULT_EXTEND_MS,
+): number {
+  if (extendMs <= 0) return 0;
+  const margin = Math.min(config.maxExtensions * config.softCloseExtensionMs, HARD_CLOSE_MARGIN_MS);
+  const roomMs = config.endTs + margin - endTs;
+  return Math.max(0, Math.floor(roomMs / extendMs));
+}
 
 export type ControlName = 'open' | 'pause' | 'resume' | 'extend' | 'hammer';
 
@@ -58,6 +81,8 @@ export interface ControlState {
   readonly online: boolean;
   readonly stopped: boolean;
   readonly busy: boolean;
+  /** Extends still allowed on this lot; absent or null when the limit is not known. */
+  readonly extendsLeft?: number | null;
 }
 
 /**
@@ -76,6 +101,7 @@ export function disabledReason(name: ControlName, s: ControlState): ReasonKey | 
   // A slow request never blocks the hammer: the lot clock keeps running meanwhile.
   if (s.busy && name !== 'hammer') return 'controls.reason.busy';
   if (s.status !== REQUIRED_STATUS[name]) return wrongState(name, s.status);
+  if (name === 'extend' && s.extendsLeft === 0) return 'controls.reason.noExtends';
   return null;
 }
 
@@ -108,6 +134,8 @@ export interface ControlsProps {
   readonly stopped: boolean;
   /** Extra time per extend, in milliseconds. */
   readonly extendMs?: number;
+  /** Extends still allowed on this lot, from `extendsLeft`; null when the limit is not known. */
+  readonly extendsLeft?: number | null;
   readonly leader: HammerLeader | null;
   readonly priceCents: number;
   /** Highest message seq the console has applied. Sent with the hammer so a late bid is refused. */
@@ -121,6 +149,7 @@ export function Controls({
   online,
   stopped,
   extendMs = DEFAULT_EXTEND_MS,
+  extendsLeft: left = null,
   leader,
   priceCents,
   seq = 0,
@@ -140,7 +169,7 @@ export function Controls({
   // The desk hold stays done after it completes; a new key makes it usable again.
   const [holdRound, setHoldRound] = useState(0);
   const baseId = useId();
-  const state: ControlState = { status, online, stopped, busy };
+  const state: ControlState = { status, online, stopped, busy, extendsLeft: left };
   const hammerReason = disabledReason('hammer', state);
 
   const run = async (
@@ -299,6 +328,15 @@ export function Controls({
       <p className="gv-console-controls__result" role="status">
         {result}
       </p>
+      {left !== null && status === 'OPEN' && !stopped && (
+        <p className="gv-console-controls__limit" data-slot="extends-left">
+          {left === 0
+            ? t('controls.reason.noExtends')
+            : left === 1
+              ? t('controls.extendsLeftOne')
+              : t('controls.extendsLeft', { n: left })}
+        </p>
+      )}
       {status !== 'CLOSING' && status !== 'SETTLING' && status !== 'DONE' && (
         <div className="gv-console-hammer">
           <DeskHold
