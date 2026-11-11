@@ -33,7 +33,7 @@ export const en = {
   'mk.nav.how': 'How it works',
   'mk.nav.trust': 'Trust',
   'mk.nav.docs': 'Docs',
-  'mk.cta.try': 'Try the demo',
+  'mk.cta.try': 'Watch the recorded demo',
   'mk.hero.kicker': 'Auctions on PayPal holds',
   'mk.hero.sub':
     'Set a limit once, bid by voice or tap, and the winner is charged only if the hammer falls.',
@@ -482,7 +482,7 @@ export const en = {
   'hub.previewLabel': 'Preview of the projection screen',
   'hub.qrLabel': 'QR code for a bidder on a phone',
   'hub.step3': 'Auctioneer console',
-  'hub.step3Hint': 'Start the lot, watch bids, hold the hammer 3 seconds.',
+  'hub.step3Hint': 'Start the lot, watch bids, press and hold the hammer 3 seconds.',
   'hub.step3Open': 'Open console',
   'hub.step4': 'Bidder',
   'hub.step4Hint': 'A second tab to bid as another person.',
@@ -564,7 +564,7 @@ export const en = {
     'Priya hold is picked as the winning hold. The holds of Sam and Ana start to be released.',
   'scriptedDemo.b8.label': 'Settling',
   'scriptedDemo.b8.body':
-    'Only $350 is taken from the $500 hold of Priya. The rest of the hold is not taken.',
+    'Only $350 is taken from the $500 hold of Priya. The rest of the hold is released.',
   'scriptedDemo.b9.label': 'Receipt',
   'scriptedDemo.b9.body':
     'Settled: $350 taken, $150 of her hold released. The holds of Sam and Ana are released in full. The receipt is recorded.',
