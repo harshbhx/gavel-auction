@@ -670,6 +670,36 @@ main[data-route='token-gate'] .gv-flow__action,
   padding-bottom: calc(48px + var(--space-6));
 }
 
+.gv-verify__why {
+  align-self: center;
+  color: var(--color-fg-muted);
+  font-size: var(--font-size-3);
+}
+
+.gv-verify__file input::file-selector-button {
+  min-height: 44px;
+  margin-inline-end: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-fg);
+  font: inherit;
+  cursor: pointer;
+}
+
+/* The two watcher buttons share one width and height. */
+main[data-route='watcher'] .gv-join__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+main[data-route='watcher'] .gv-join__actions > .gv-btn {
+  flex: 1 1 16rem;
+  min-height: 56px;
+}
+
 /* Not found: the primary link, then the two text links on one row; on a phone the card sits in the
  * middle of the screen instead of leaving the lower half empty. */
 .gv-notfound__links .gv-actions {
