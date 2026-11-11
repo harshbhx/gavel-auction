@@ -161,6 +161,7 @@ export function LiveConsole({
       roster={rows}
       rejection={rejection === '' ? null : rejection}
       offline={!online}
+      closed={stopped || status === 'CLOSING' || status === 'SETTLING' || status === 'DONE'}
       status={manualBid === '' ? null : manualBid}
       onSubmit={sendManual}
       onRetry={retryManual}

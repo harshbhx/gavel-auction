@@ -243,7 +243,10 @@ export function VoiceControl({
         <p role="status">{t('console.voice.note.maxClip', { s: MAX_HOLD_MS / 1000 })}</p>
       )}
       {problem !== null && <p role={plain ? 'status' : 'alert'}>{problem}</p>}
-      <p className="gv-voice-control__privacy">{t('console.voice.privacy')}</p>
+      <details className="gv-voice-control__privacy-box">
+        <summary>{t('console.voice.privacySummary')}</summary>
+        <p className="gv-voice-control__privacy">{t('console.voice.privacy')}</p>
+      </details>
     </div>
   );
 }

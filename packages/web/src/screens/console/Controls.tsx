@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { announce } from '../../a11y/announce';
 import { t } from '../../copy/t';
 import type { CopyKey } from '../../copy/en';
@@ -8,7 +8,7 @@ import { ControlError, ControlTimeoutError } from '../../net/controlPort';
 import type { ControlPort } from '../../net/transport';
 import type { AuctionStatus } from '../../wire';
 import { HammerDialog, type HammerLeader } from './HammerDialog';
-import { ShortcutHelp, useShortcuts, type ShortcutHandlers } from './ShortcutHelp';
+import { SHORTCUTS, ShortcutHelp, useShortcuts, type ShortcutHandlers } from './ShortcutHelp';
 
 export const DEFAULT_EXTEND_MS = 30_000;
 
@@ -197,9 +197,34 @@ export function Controls({
 
   // Single keys for the safe controls and `?` for the list. Hammer and stop have no key.
   const [helpOpen, setHelpOpen] = useState(false);
+  // A stray key must not change the sale: the first press arms the control and says so, the same
+  // key again within three seconds runs it.
+  const armedKey = useRef<ControlName | null>(null);
+  const armTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (armTimer.current !== null) clearTimeout(armTimer.current);
+    },
+    [],
+  );
   const keyFor = (name: ControlName): (() => void) => {
     return () => {
-      if (disabledReason(name, state) === null) items.find((i) => i.name === name)?.act();
+      if (disabledReason(name, state) !== null) return;
+      const item = items.find((i) => i.name === name);
+      if (item === undefined) return;
+      if (armTimer.current !== null) clearTimeout(armTimer.current);
+      if (armedKey.current === name) {
+        armedKey.current = null;
+        item.act();
+        return;
+      }
+      armedKey.current = name;
+      const key = SHORTCUTS.find((s) => s.id === name)?.keys ?? '';
+      setResult(t('console.shortcut.armed', { key: key.toUpperCase(), action: item.label }));
+      armTimer.current = setTimeout(() => {
+        armedKey.current = null;
+        setResult('');
+      }, 3000);
     };
   };
   const shortcuts: ShortcutHandlers = {
@@ -290,6 +315,11 @@ export function Controls({
           <p className="gv-console-hammer__alt">{t('console.hammerDialogHint')}</p>
         </div>
       )}
+      <p className="gv-console-controls__shortcuts">
+        <button type="button" className="gv-linkbutton" onClick={() => setHelpOpen(true)}>
+          {t('console.shortcutsHint')}
+        </button>
+      </p>
       <ShortcutHelp open={helpOpen} onClose={() => setHelpOpen(false)} />
       <HammerDialog
         open={shown !== null}

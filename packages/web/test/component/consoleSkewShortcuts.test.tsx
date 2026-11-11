@@ -72,7 +72,11 @@ describe('console keyboard shortcuts are mounted (R-WEB-072)', () => {
   it('p pauses and e extends when allowed; o is ignored on an open lot', async () => {
     const port = fakePort();
     mount(port);
+    // o is disabled on an open lot: even two presses must not fire.
     fireEvent.keyDown(window, { key: 'o' });
+    fireEvent.keyDown(window, { key: 'o' });
+    // p arms on first press, fires on second.
+    fireEvent.keyDown(window, { key: 'p' });
     fireEvent.keyDown(window, { key: 'p' });
     await act(async () => {
       await Promise.resolve();
