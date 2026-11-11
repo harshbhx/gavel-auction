@@ -144,6 +144,44 @@ button.ui-link {
   color: var(--color-fg-muted);
 }
 
+.ui-hold__reason {
+  font-size: var(--font-size-2);
+  font-weight: 700;
+  color: var(--color-fg);
+}
+
+/* The two-tap fallback is a real button, not a faint link. */
+.ui-hold__alt {
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: var(--border-width) solid var(--color-fg);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-fg);
+  font: inherit;
+  font-size: var(--font-size-2);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ui-hold__alt:focus-visible {
+  outline: var(--border-width-strong) solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+.ui-hold__btn[data-phase='cancelled'] ~ .ui-hold__status {
+  padding: var(--space-2) var(--space-3);
+  border: var(--border-width) solid var(--color-fg);
+  border-radius: var(--radius-md);
+}
+
+@media (max-width: 380px) {
+  .ui-hold__btn {
+    font-size: var(--font-size-3);
+    padding-inline-end: var(--space-3);
+  }
+}
+
 .ui-hold__status {
   min-height: 1.5em;
   font-size: var(--font-size-2);

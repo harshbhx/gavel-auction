@@ -110,6 +110,11 @@ export function RegisterScreen({
           <Button type="submit" size="bid" disabled={!stepOneValid}>
             {t('reg.continue')}
           </Button>
+          {!stepOneValid && (
+            <p className="gv-flow__reason" data-testid="continue-reason">
+              {t('reg.continueReason')}
+            </p>
+          )}
         </form>
         <WideAside />
       </main>
@@ -122,21 +127,27 @@ export function RegisterScreen({
       <p className="gv-flow__summary">{t('reg.summary', { name: name.trim() })}</p>
       <form onSubmit={submitStepTwo} noValidate>
         {limit.fields}
-        {ceilingCents !== null && (
-          <section className="gv-flow__held" data-testid="held-block">
-            <p>
-              <Icon name="lock" />
-              <strong>{t('reg.heldNotCharged')}</strong>
-            </p>
-            <p>{t('reg.heldExplain', { amount: formatUsdCompact(ceilingCents) })}</p>
-            <p>{t('reg.holdIsNotPayment')}</p>
-          </section>
-        )}
+        <section className="gv-flow__held" data-testid="held-block">
+          <p>
+            <Icon name="lock" />
+            <strong>{t('reg.heldNotCharged')}</strong>
+          </p>
+          <p>
+            {ceilingCents !== null
+              ? t('reg.heldExplain', { amount: formatUsdCompact(ceilingCents) })
+              : t('reg.heldExplainRange', {
+                  min: formatUsdCompact(minCents),
+                  max: formatUsdCompact(maxCents),
+                })}
+          </p>
+          <p>{t('reg.holdIsNotPayment')}</p>
+        </section>
         <FakePaymentsLabel />
         <HoldButton
           key={ceilingCents ?? 'none'}
           label={t('reg.approve')}
           disabled={ceilingCents === null}
+          {...(ceilingCents === null ? { disabledReason: t('reg.chooseFirst') } : {})}
           onConfirm={confirmStepTwo}
         />
       </form>

@@ -164,7 +164,7 @@ describe('judge hub join link', () => {
   it('lets a keyless watcher join without the room keys and says why nothing else opens', async () => {
     render(<JudgeHub roomId={ROOM} keys={{ ...NO_KEYS, code: 'EMY48N' }} origin={origin} />);
     expect(screen.getByTestId('hub-join-open')).toBeTruthy();
-    expect(screen.getByText(t('hub.watcherNote'))).toBeTruthy();
+    expect(screen.getAllByText(t('hub.noToken'))).toHaveLength(1);
   });
 
   it('reads the code from the room summary when the link had none', async () => {

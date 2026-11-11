@@ -22,7 +22,7 @@ brand/devpost/description/05-architecture.gif
 brand/devpost/description/06-judge-flow.png
 brand/devpost/description/07-audit-and-verify.gif
 brand/devpost/description/13-results.gif
-brand/devpost/description/16-ending.gif
+brand/archive/devpost-description/16-ending.gif
 brand/devpost/gallery/01-hero.gif
 brand/devpost/gallery/04-judge-flow.png
 brand/logo/animated/gavel-intro-dark.gif
@@ -33,7 +33,7 @@ brand/readme/architecture-flow.gif
 brand/readme/readme-banner-dark.gif
 brand/readme/readme-banner.gif
 brand/readme/readme-footer.gif
-brand/video/devpost-description/16-ending.mp4
+brand/archive/devpost-description/video/16-ending.mp4
 brand/video/devpost-gallery/01-hero.mp4
 brand/video/devpost-gallery/01-hero.webm
 docs/assets/devpost-story/00-story-banner.gif
