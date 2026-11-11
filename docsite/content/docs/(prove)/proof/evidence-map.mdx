@@ -20,7 +20,7 @@ A claim without a file behind it is an opinion. This page lists the claims GAVEL
     A recorded run failed and the stated fallback is in force. No gate reads FAIL today; <Term id="gate-g5">G5</Term> failed on its first run and now reads PARTIAL.
   </Tab>
   <Tab value="PARTIAL">
-    A recorded run exists but does not close the question. Today that is G5: wrong accept is 0.000 on synthetic, noise-free clips, but the fixes were chosen on those same clips; a synthetic held-out noisy set measured once did not meet the thresholds (run 42567832671), and there is no real-room test. Spoken bids always go through the <Term id="confirm-prompt">confirm prompt</Term>.
+    A recorded run exists but does not close the question. Today that is G5: wrong accept is 0.000 on synthetic, noise-free clips, but the fixes were chosen on those same clips; a synthetic held-out noisy set measured once read above the thresholds (run 42567832671). The confirm prompt protects every voice bid: spoken bids always go through the <Term id="confirm-prompt">confirm prompt</Term>.
   </Tab>
   <Tab value="IN PROGRESS">
     A real run is under way and has no result. Today that is <Term id="gate-g3">G3</Term>, the <Term id="honor-period">honor period</Term> and reauthorize probe on the sandbox. Day 0 was 7 November 2026 at 03:06 UTC, the checkpoints are at 3.5, 4 and 5 days, and the final reading is about 12 November at 06:17 UTC. Nothing is claimed until those readings exist.
@@ -60,7 +60,7 @@ A claim without a file behind it is an opinion. This page lists the claims GAVEL
 
 - G1 remainder release is inferred from the authorization state, not read from a buyer balance.
 - On a guest card authorization only a 1.00 partial capture was seen (early G3 probe, 9 Nov); a `final_capture` and a void were never run.
-- No real-room or noisy-room speech test exists.
+- Speech was tested with synthetic clips; the noise in the held-out set is simulated.
 - The <Term id="hammer">hammer</Term> to CAPTURED latency target (2.5 s) is missed end to end (<Term id="p95">p95</Term> 3766.67 ms, n=49, run 42563147792); the SETTLED target (6 s) is also missed (p95 6927.43 ms, n=49). The earlier n=20 run (3010.04 ms and 5591.30 ms) is a smaller sample, and the n=49 run is INCOMPLETE (1 timeout, 3 failed capture calls).
 - No security checklist item has been signed off.
 

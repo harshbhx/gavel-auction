@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   g1:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     environment: sandbox-nightly
     if: ${{ github.ref == 'refs/heads/main' }}

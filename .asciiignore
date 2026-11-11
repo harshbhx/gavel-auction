@@ -16,3 +16,6 @@ packages/voice/src/parser/spans.ts
 packages/voice/src/segment/dedupe.ts
 packages/voice/src/segment/echo.ts
 packages/voice/test/parser/ambiguity.test.ts
+
+# Generated SDK output (APIMatic): English prose with typographic dashes
+sdks/**

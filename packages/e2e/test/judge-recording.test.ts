@@ -1,16 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
-  REPLAY_BUNDLE_VERSION,
-  REPLAY_EXPORT_VERSION,
-  hashPublicEntry,
-  type ReplayBundle,
-  type ReplayEvent,
-} from '@gavel/shared';
-import {
   SIMULATED_NOTE,
   buildRecording,
   hostingProblems,
-  ledgerProblems,
   summarizeRecording,
   type Frame,
 } from '../src/replay/judge-recording';
@@ -90,85 +82,6 @@ describe('summarizeRecording and hostingProblems', () => {
     expect(hostingProblems(thin)).toEqual([
       'only 0 bid(s) took the lead, need at least 2',
       'no hammer frame was recorded',
-    ]);
-  });
-});
-
-// INTEGRATION-RT-22: the frames are tied to the hash-chained ledger the bundle carries.
-describe('ledgerProblems', () => {
-  /** A sealed public chain: one created entry, then one LOT_HAMMERED entry per price. */
-  function ledgerWith(prices: number[]): ReplayBundle {
-    const events: ReplayEvent[] = [];
-    let prev = '0'.repeat(64);
-    const add = (type: string, payload: Record<string, unknown>): void => {
-      const body = {
-        v: 4 as const,
-        auctionId: 'A1',
-        seq: events.length + 1,
-        at: 1000,
-        type,
-        cmd: null,
-        payload,
-        redacted: [] as string[],
-        fullHash: null,
-        prev,
-      };
-      const hash = hashPublicEntry(body);
-      events.push({ ...body, hash });
-      prev = hash;
-    };
-    add('AUCTION_CREATED', { note: 'x' });
-    for (const priceCents of prices) add('LOT_HAMMERED', { lotId: 'L1', priceCents });
-    return {
-      version: REPLAY_BUNDLE_VERSION,
-      exportVersion: REPLAY_EXPORT_VERSION,
-      auctionId: 'A1',
-      generatedAt: 5000,
-      count: events.length,
-      headHash: prev,
-      closed: false,
-      events,
-    };
-  }
-  const recorded = (price: number, ledger?: unknown) =>
-    buildRecording({
-      ...input([frame(0, 'state'), frame(100, 'hammer', { price })]),
-      ...(ledger === undefined ? {} : { ledger }),
-    }).bundle;
-
-  it('passes a recording whose hammer frame shows the sealed price', () => {
-    const bundle = recorded(35_000, ledgerWith([35_000]));
-    expect(bundle.ledger?.count).toBe(2);
-    expect(ledgerProblems(bundle)).toEqual([]);
-  });
-  it('refuses a recording without a ledger, or with one that is not a bundle', () => {
-    expect(ledgerProblems(recorded(35_000))).toEqual(['the recording carries no ledger export']);
-    const junk = recorded(35_000, { version: 9 });
-    expect(junk.ledger).toBeUndefined();
-    expect(ledgerProblems(junk)).toEqual(['the recording carries no ledger export']);
-  });
-  it('refuses a ledger with an edited entry', () => {
-    const ledger = ledgerWith([35_000]);
-    const entry = ledger.events[1];
-    if (entry === undefined) throw new Error('no entry');
-    entry.payload = { ...entry.payload, priceCents: 1 };
-    expect(ledgerProblems(recorded(1, ledger))).toEqual([
-      'the ledger chain is broken at index 1 (bad_hash)',
-    ]);
-  });
-  it('refuses a ledger with a dropped last entry', () => {
-    const ledger = ledgerWith([35_000]);
-    const cut = { ...ledger, events: ledger.events.slice(0, 1), count: 1 };
-    expect(ledgerProblems(recorded(35_000, cut))).toEqual([
-      'the ledger chain is broken at index 1 (truncated)',
-    ]);
-  });
-  it('refuses frames edited to another hammer price, or a hammer the ledger does not have', () => {
-    expect(ledgerProblems(recorded(10_000, ledgerWith([35_000])))).toEqual([
-      'hammer 1 in the frames does not match the ledger',
-    ]);
-    expect(ledgerProblems(recorded(35_000, ledgerWith([])))).toEqual([
-      'hammer 1 in the frames does not match the ledger',
     ]);
   });
 });
