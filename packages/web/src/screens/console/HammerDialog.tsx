@@ -1,80 +1,10 @@
-import { useCallback, useEffect, useRef, type KeyboardEvent } from 'react';
+import { useState } from 'react';
 import { t } from '../../copy/t';
-import { Button, type ButtonTone } from '../../design/primitives/Button';
+import { Button } from '../../design/primitives/Button';
 import { Dialog } from '../../design/primitives/Dialog';
+import { HoldButton } from '../../ui';
 import { formatUsd } from '../../util/money';
 import { HAMMER_HOLD_MS, HAMMER_HOLD_SECONDS } from './hammerHold';
-
-export interface HoldButtonProps {
-  readonly label: string;
-  readonly holdMs: number;
-  readonly tone?: ButtonTone;
-  readonly disabled?: boolean;
-  /** Fires once per completed hold, by pointer or by holding Enter. Never on a click or a tap of Enter. */
-  readonly onComplete: () => void;
-}
-
-/**
- * Press-and-hold confirm. Releasing or leaving early cancels. Holding Enter on the focused button for the
- * same time is the keyboard alternative (R-WEB-113). A click or a tap of Enter never confirms.
- */
-export function HoldButton({
-  label,
-  holdMs,
-  tone = 'danger',
-  disabled = false,
-  onComplete,
-}: HoldButtonProps) {
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const completeRef = useRef(onComplete);
-  completeRef.current = onComplete;
-
-  const cancel = useCallback((): void => {
-    if (timer.current !== null) {
-      clearTimeout(timer.current);
-      timer.current = null;
-    }
-  }, []);
-
-  useEffect(() => cancel, [cancel]);
-
-  const start = (): void => {
-    if (disabled) return;
-    cancel();
-    timer.current = setTimeout(() => {
-      timer.current = null;
-      completeRef.current();
-    }, holdMs);
-  };
-
-  const onKeyDown = (e: KeyboardEvent<HTMLButtonElement>): void => {
-    if (e.key !== 'Enter') return;
-    e.preventDefault();
-    // Key repeat must not restart the hold; only the first press starts it.
-    if (e.repeat) return;
-    start();
-  };
-
-  const onKeyUp = (e: KeyboardEvent<HTMLButtonElement>): void => {
-    if (e.key === 'Enter') cancel();
-  };
-
-  return (
-    <Button
-      tone={tone}
-      disabled={disabled}
-      onPointerDown={start}
-      onPointerUp={cancel}
-      onPointerLeave={cancel}
-      onPointerCancel={cancel}
-      onKeyDown={onKeyDown}
-      onKeyUp={onKeyUp}
-      onBlur={cancel}
-    >
-      {label}
-    </Button>
-  );
-}
 
 export interface HammerLeader {
   readonly paddle: number;
@@ -91,6 +21,8 @@ export interface HammerDialogProps {
 }
 
 export function HammerDialog({ open, leader, priceCents, onConfirm, onCancel }: HammerDialogProps) {
+  // A finished hold stays done; a new key makes it usable again if the dialog stays open.
+  const [round, setRound] = useState(0);
   const question =
     leader === null
       ? t('console.hammerNoBids')
@@ -109,9 +41,15 @@ export function HammerDialog({ open, leader, priceCents, onConfirm, onCancel }: 
           {t('common.cancel')}
         </Button>
         <HoldButton
+          key={round}
+          fill
           label={t('console.hammerHold')}
           holdMs={HAMMER_HOLD_MS}
-          onComplete={onConfirm}
+          confirmAlternative={false}
+          onConfirm={() => {
+            onConfirm();
+            setRound((n) => n + 1);
+          }}
         />
       </div>
     </Dialog>
