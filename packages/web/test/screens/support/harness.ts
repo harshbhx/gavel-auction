@@ -80,6 +80,11 @@ export interface RoomOptions {
   withoutToken?: boolean;
   /** Which roster paddle the device is, for the bidder role. Default: the first on the roster. */
   paddle?: number;
+  /**
+   * Moves every scenario timestamp (and the page clock) by this many ms, so a picture can show a
+   * current date instead of the scenario's 2023 start. Cents and other small numbers are untouched.
+   */
+  timeShiftMs?: number;
 }
 
 const BIDDER_CEILING_CENTS = 50_000;
@@ -99,7 +104,27 @@ export function roomIdOf(scenario: Scenario): string {
   throw new Error(`scenario ${scenario.name} has no state frame`);
 }
 
-function framesUpTo(scenario: Scenario, at: number, you: BidderId | null): ServerMessage[] {
+/** Adds `shift` to every number that looks like an epoch ms near BASE_TIME. */
+function shiftTimes(value: unknown, shift: number): unknown {
+  if (shift === 0) return value;
+  if (typeof value === 'number') {
+    return value >= BASE_TIME - 1e6 && value <= BASE_TIME + 1e7 ? value + shift : value;
+  }
+  if (Array.isArray(value)) return value.map((v) => shiftTimes(v, shift));
+  if (value !== null && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value).map(([k, v]) => [k, shiftTimes(v, shift)]),
+    );
+  }
+  return value;
+}
+
+function framesUpTo(
+  scenario: Scenario,
+  at: number,
+  you: BidderId | null,
+  shift = 0,
+): ServerMessage[] {
   const out: ServerMessage[] = [];
   for (const step of scenario.steps) {
     if (step.emit === undefined || step.at > at) continue;
@@ -116,7 +141,7 @@ function framesUpTo(scenario: Scenario, at: number, you: BidderId | null): Serve
       out.push(msg);
     }
   }
-  return out;
+  return shift === 0 ? out : (out.map((m) => shiftTimes(m, shift)) as ServerMessage[]);
 }
 
 function lastSeqOf(frames: readonly ServerMessage[]): number {
@@ -139,7 +164,15 @@ export async function serveRoom(
   page: Page,
   opts: Pick<
     RoomOptions,
-    'scenario' | 'at' | 'role' | 'reply' | 'dropAfterJoin' | 'joinError' | 'silent' | 'paddle'
+        | 'scenario'
+    | 'at'
+    | 'role'
+    | 'reply'
+    | 'dropAfterJoin'
+    | 'joinError'
+    | 'silent'
+    | 'paddle'
+    | 'timeShiftMs'
   >,
 ): Promise<ServedRoom> {
   const roomId = roomIdOf(opts.scenario);
@@ -147,15 +180,16 @@ export async function serveRoom(
   const me =
     roster.find((r) => (opts.paddle === undefined ? true : r.paddle === opts.paddle)) ?? roster[0];
   const you = opts.role === 'bidder' && me !== undefined ? (me.bidderId as BidderId) : null;
-  const frames = framesUpTo(opts.scenario, opts.at, you);
+  const shift = opts.timeShiftMs ?? 0;
+  const frames = framesUpTo(opts.scenario, opts.at, you, shift);
   let seq = lastSeqOf(frames);
   const next = (): Envelope => {
     seq += 1;
-    return { seq, ts: BASE_TIME + opts.at + seq };
+    return { seq, ts: BASE_TIME + shift + opts.at + seq };
   };
   let joined = false;
 
-  await page.clock.setFixedTime(BASE_TIME + opts.at);
+  await page.clock.setFixedTime(BASE_TIME + shift + opts.at);
   await page.routeWebSocket(WS_URL, (ws) => {
     if (opts.dropAfterJoin === true && joined) {
       void ws.close();

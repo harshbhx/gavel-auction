@@ -2,7 +2,8 @@ name: landing-shots
 # Captures the four landing page screenshots (UIX-50) from the screen tour specs: console and public
 # screen at 1440x900, bidder and receipt at 390x844 at 2x, all in one room state. Converts them to
 # WebP and uploads the artifact `landing-shots`; copy its files to packages/web/public/landing.
-# Informational: not part of the required roll-up in ci.yml and uses no secrets.
+# It also saves the whole Screens section of the landing page at both widths (landing-section-png)
+# so the card layout can be checked. Informational: not part of the required roll-up in ci.yml and uses no secrets.
 on:
   workflow_dispatch:
   pull_request:
@@ -33,6 +34,7 @@ jobs:
       - name: Capture the four views
         env:
           LANDING_SHOTS_DIR: ${{ github.workspace }}/landing-shots-png
+          LANDING_SECTION_DIR: ${{ github.workspace }}/landing-section-png
         run: >
           npx playwright test -c playwright.screens.config.ts landing-shots
           --project=desktop-light --project=phone-light
@@ -63,5 +65,6 @@ jobs:
           path: |
             landing-shots-out
             landing-shots-png
+            landing-section-png
           if-no-files-found: error
           retention-days: 14
