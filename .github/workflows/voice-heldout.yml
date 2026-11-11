@@ -41,6 +41,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - uses: ./.github/actions/apt-resilient
       - name: Guard, the frozen pipeline is unchanged
         env:
           FROZEN_SHA: ${{ inputs.frozen_sha }}

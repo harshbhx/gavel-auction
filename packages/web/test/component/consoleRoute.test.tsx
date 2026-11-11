@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../src/App';
 import { t } from '../../src/copy/t';
 import { loadSession, saveSession } from '../../src/net/session';
+import { HAMMER_HOLD_MS } from '../../src/screens/console/hammerHold';
 import { roomStore } from '../../src/store/roomStore';
 import { clearAuctioneerToken } from '../../src/store/session';
 import { baseConfig, openSnapshot, priceMsg, roster, stateMsg } from '../../src/testing/builders';
@@ -304,14 +305,14 @@ describe('stop switch through the console route (T-WEB-040)', () => {
     expect(stopButton().getAttribute('aria-disabled')).not.toBe('true');
   });
 
-  it('sends nothing after 1499 ms and one request after 1500 ms', async () => {
+  it('sends nothing one ms before the hold time and one request at it', async () => {
     vi.useFakeTimers();
     renderConsole();
     openStopDialog();
     type('STOP');
     fireEvent.pointerDown(stopButton());
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(1499);
+      await vi.advanceTimersByTimeAsync(HAMMER_HOLD_MS - 1);
     });
     fireEvent.pointerUp(stopButton());
     await act(async () => {
@@ -320,7 +321,7 @@ describe('stop switch through the console route (T-WEB-040)', () => {
     expect(fetchMock).not.toHaveBeenCalled();
     fireEvent.pointerDown(stopButton());
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(1500);
+      await vi.advanceTimersByTimeAsync(HAMMER_HOLD_MS);
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(lastCall().url.endsWith(`/api/auctions/${ROOM}/kill`)).toBe(true);
@@ -336,7 +337,7 @@ describe('stop switch through the console route (T-WEB-040)', () => {
     type('STOP');
     fireEvent.pointerDown(stopButton());
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(1500);
+      await vi.advanceTimersByTimeAsync(HAMMER_HOLD_MS);
     });
     expect(screen.queryByRole('button', { name: t('kill.button') })).toBeNull();
     expect(screen.getAllByText(t('kill.stopped')).length).toBeGreaterThan(0);

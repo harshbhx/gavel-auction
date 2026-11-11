@@ -59,7 +59,7 @@ GAVEL is a TypeScript monorepo (Node 22, npm workspaces) started on 4 Nov 2026, 
 - **Voice with a confirm step.** Audio goes to Deepgram (nova-3) with Groq (whisper-large-v3-turbo) as failover, then a rule-based parser and a validator.
 - **Cloudflare Workers and Render.** The web app and docs site run on Cloudflare with security headers. The API and WebSocket host is one always-on Node service on Render with a 1 GB disk for the ledger and settlement journals.
 - **An AG Grid ledger lab.** The audit ledger, console bid history and holds are AG Grid Community tables with filters, CSV export and an in-browser chain check.
-- **A judge API.** Per-judge keys open a sandbox room over HTTP. The OpenAPI 3.1 spec is linted in CI and checked against the router. The APIMatic portal and SDKs are not live yet, so we do not claim them.
+- **A judge API.** Per-judge keys open a sandbox room over HTTP. The OpenAPI 3.1 spec is linted in CI and checked against the router. SDKs for TypeScript, Python and C# (`gavel-sdk` 0.0.5, beta, sandbox only) were generated from it with APIMatic and are published as a [GitHub release](https://github.com/harshbhx/gavel-auction/releases/tag/sdk-v0.0.5), not on npm, PyPI or NuGet. The generated developer portal is not hosted yet, so we do not claim a live portal.
 - **Open evidence.** Five Hugging Face datasets and a read-only Evidence Explorer, each labelled real sandbox, simulated or synthetic, with sha256 manifests.
 - **Hardening.** A 24-item security review (all eight P0 items pass, residuals named for the rest) and red team and blue team rounds.
 
@@ -144,7 +144,7 @@ _The same event arrives twice and is counted once._
 - More payment methods through the same hold and capture shape.
 - An organizer dashboard: lots, bidders, settlement and the ledger in one view.
 - Repeat the process kill on the deployed host.
-- Ship the APIMatic portal and SDKs once they are generated and checked.
+- Host the APIMatic developer portal and publish the SDKs to npm, PyPI and NuGet.
 
 ![Three lines: the G3 probe (running), real-room voice, and a kill on the deployed host.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/15-what-is-next.png)
 
@@ -166,6 +166,8 @@ _Closing slide: web app, docs, source and the two builders._
 - [Judge panel](https://gavel.dualmindlab.tech/try): a live sandbox room, no login
 - [Scripted demo](https://gavel.dualmindlab.tech/demo/scripted): about one minute, recorded
 - [Docs](https://docs.gavel.dualmindlab.tech) and [API reference](https://docs.gavel.dualmindlab.tech/api-reference)
+- [Demo video](https://youtu.be/S5TrcJO-E9o), 2:56, captions on
+- [SDKs: TypeScript, Python and C#](https://github.com/harshbhx/gavel-auction/releases/tag/sdk-v0.0.5), a GitHub release
 - [Source, MIT licence](https://github.com/harshbhx/gavel-auction)
 
 PayPal sandbox only. Bids are held, not charged, and no real money moves anywhere in this project.
