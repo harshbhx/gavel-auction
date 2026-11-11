@@ -12,7 +12,7 @@ export const API = 'http://localhost:8787';
 const WS_URL = /^ws:\/\/localhost:8787\/ws/;
 
 /** Epoch ms that the scenario clock starts at (src/testing/builders.ts). */
-export const BASE_TIME = 1_700_000_000_000;
+export const BASE_TIME = 1_794_478_380_000;
 
 /** A time for pages that do not show a room: fixed, so no screenshot depends on the day it runs. */
 export const FROZEN_AT = new Date('2026-01-15T12:00:00.000Z');
