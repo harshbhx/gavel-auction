@@ -34,9 +34,11 @@ jobs:
           mkdir -p "$RUNNER_TEMP/pw" && cd "$RUNNER_TEMP/pw"
           npm init -y >/dev/null && npm install --no-audit --no-fund playwright@1.49.1
           npx playwright install --with-deps chromium
-          sudo apt-get install -y -qq imagemagick
+          sudo apt-get install -y -qq imagemagick librsvg2-bin
       - name: Render the cards
         run: PW_DIR="$RUNNER_TEMP/pw" node brand/og/render.mjs out/og
+      - name: Render the touch icon
+        run: rsvg-convert -w 180 -h 180 brand/svg/app-icon.svg -o out/og/apple-touch-icon.png
       - name: Shrink and check
         run: |
           cd out/og
@@ -50,7 +52,7 @@ jobs:
           test "$(identify -format '%wx%h' og-docs.png)" = "1200x630"
           test "$(identify -format '%wx%h' og-square.png)" = "1200x1200"
           test "$(identify -format '%wx%h' github-social-preview-1280x640.png)" = "1280x640"
-          for f in *.png; do
+          for f in og-*.png github-*.png; do
             size="$(stat -c %s "$f")"
             echo "$f $size bytes" >> "$GITHUB_STEP_SUMMARY"
             test "$size" -lt 300000
