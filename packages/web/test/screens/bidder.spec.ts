@@ -156,13 +156,29 @@ test.describe('bid: after the hammer', () => {
   test('closed, sold to this bidder', async ({ page, shoot }) => {
     await bidder(page, { scenario: soldNoSettlement, at: 4_000 });
     await expect(page.getByText(t('bid.closedBanner')).first()).toBeVisible();
+    await expect(page.getByRole('dialog', { name: t('win.title') })).toBeVisible();
     await shoot('bid', 'closed-sold-to-me');
   });
 
   test('closed, no sale', async ({ page, shoot }) => {
     await bidder(page, { scenario: unsold, at: 4_000 });
     await expect(page.getByText(t('bid.closedBanner')).first()).toBeVisible();
+    await expect(page.getByRole('dialog', { name: t('end.title.noSale') })).toBeVisible();
     await shoot('bid', 'closed-unsold');
+  });
+
+  test('closed, this bidder lost', async ({ page, shoot }) => {
+    await openRoom(page, {
+      scenario: receiptLoser,
+      at: 6_000,
+      role: 'bidder',
+      route: 'bid',
+      paddle: 9,
+    });
+    await expect(page.getByRole('dialog', { name: t('end.title.lost') })).toBeVisible();
+    await expect(page.getByRole('button', { name: t('end.join') })).toBeVisible();
+    await expect(page.getByRole('button', { name: t('end.home') })).toBeVisible();
+    await shoot('bid', 'closed-lost');
   });
 
   test('stopped by the operator', async ({ page, shoot }) => {

@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
-"""Build the confidential judge guide PDF from judge-guide.html.
+"""Build the judge guide PDF from judge-guide.html.
 
 Usage (from the repository root):
 
     python3 brand/devpost/judges/build.py
-        Writes brand/devpost/judges/GAVEL-judge-guide.pdf with every placeholder left as a
-        visible marked box. This is the only version that may be committed.
+        Writes brand/devpost/judges/GAVEL-judge-guide.pdf. The guide has no placeholders and no
+        secrets: the judge key and the sandbox logins live only in the Devpost Testing
+        instructions.
 
-    python3 brand/devpost/judges/build.py --fill ~/secure/judge-fill.json --out ~/judge.pdf
-        Replaces the placeholders with the values in the JSON file (keys as in
-        placeholders.example.json). A filled PDF holds sandbox logins and the judge key, so the
-        script refuses to write it anywhere inside the repository.
+    --out FILE  writes the PDF somewhere else.
 
+    python3 brand/devpost/judges/build.py --fill FILE.json --out ~/judge-guide-FINAL.pdf
+        Fills the Credentials page from a JSON file kept outside the repository (keys
+        JUDGE_KEY and BUYER_A..D_EMAIL / BUYER_A..D_PASSWORD). The script refuses to write a
+        filled PDF inside the repository. People run this at the last moment; it is never
+        committed and no automated job passes a fill file.
     --png DIR   also renders every page as a PNG into DIR (needs pdftoppm from poppler-utils).
 
 Needs: pip install weasyprint brotli (fontTools and Pillow come with WeasyPrint).
@@ -44,9 +47,6 @@ FONTS = {
     "GV Mono": ("jetbrains-mono-latin-wght-normal.woff2", [400, 500, 700]),
 }
 
-# Tolerates the line breaks a formatter puts inside the tag and around the text.
-PLACEHOLDER = re.compile(r'<span\s+class="ph"\s+data-key="([A-Z0-9_]+)"\s*>([^<]*)</span\s*>')
-
 
 def cut_fonts(tmp: Path) -> str:
     """Writes static TTF instances and returns the @font-face CSS for them."""
@@ -68,21 +68,26 @@ def cut_fonts(tmp: Path) -> str:
     return "\n".join(rules)
 
 
-def fill(source: str, values: dict) -> str:
-    missing = []
+FILL_KEYS = ["JUDGE_KEY"] + [f"BUYER_{r}_{f}" for r in "ABCD" for f in ("EMAIL", "PASSWORD")]
+ROLES = {"A": "wallet, wins", "B": "wallet, spare", "C": "wallet, test card", "D": "wallet, loses"}
 
-    def swap(match: re.Match) -> str:
-        key = match.group(1)
-        value = values.get(key, "")
-        if not isinstance(value, str) or value.strip() == "":
-            missing.append(key)
-            return match.group(0)
-        return '<span class="ph filled" data-key="%s">%s</span>' % (key, html.escape(value))
 
-    out = PLACEHOLDER.sub(swap, source)
+def credentials_html(values: dict) -> str:
+    missing = [k for k in FILL_KEYS if not str(values.get(k, "")).strip()]
     if missing:
-        print("not filled (left as placeholders): " + ", ".join(sorted(set(missing))))
-    return out
+        raise SystemExit("fill file is missing: " + ", ".join(missing))
+    e = lambda k: html.escape(str(values[k]).strip())
+    rows = "".join(
+        f'<tr><td class="key">{r} &middot; {ROLES[r]}</td><td>{e(f"BUYER_{r}_EMAIL")}</td>'
+        f'<td>{e(f"BUYER_{r}_PASSWORD")}</td></tr>'
+        for r in "ABCD"
+    )
+    return (
+        '<div class="card card--ink"><p class="card__label">Shared judge key</p>'
+        f'<p style="margin: 0"><code style="background: #3a2f26; color: #efe6d3">{e("JUDGE_KEY")}</code></p></div>'
+        '<table class="access"><thead><tr><th class="key">Role</th><th>Email</th><th>Password</th></tr></thead>'
+        f"<tbody>{rows}</tbody></table>"
+    )
 
 
 def inside_repo(path: Path) -> bool:
@@ -95,21 +100,27 @@ def inside_repo(path: Path) -> bool:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("--fill", type=Path, help="JSON file with placeholder values")
+    parser.add_argument("--fill", type=Path, help="JSON file with the credentials (kept outside the repo)")
     parser.add_argument("--out", type=Path, help="output PDF path")
     parser.add_argument("--png", type=Path, help="folder for one PNG per page")
     args = parser.parse_args()
 
     out = args.out or DEFAULT_OUT
     source = SOURCE.read_text(encoding="utf-8")
-    keys = sorted(set(m.group(1) for m in PLACEHOLDER.finditer(source)))
 
     if args.fill:
         if inside_repo(out):
             print("refusing: a filled guide holds logins; write it outside the repository")
             return 2
         values = json.loads(args.fill.expanduser().read_text(encoding="utf-8"))
-        source = fill(source, values)
+        source, n = re.subn(
+            r"<!--CREDENTIALS-->.*?<!--/CREDENTIALS-->",
+            lambda _m: credentials_html(values),
+            source,
+            flags=re.S,
+        )
+        if n != 1:
+            raise SystemExit("credentials markers not found in judge-guide.html")
 
     from weasyprint import CSS, HTML
     from weasyprint.text.fonts import FontConfiguration
@@ -122,7 +133,7 @@ def main() -> int:
         document = HTML(string=source, base_url=str(HERE) + "/")
         document.write_pdf(out, stylesheets=[fonts_css, style_css], font_config=font_config)
 
-    print(f"wrote {out} ({out.stat().st_size // 1024} KB), placeholders: {', '.join(keys)}")
+    print(f"wrote {out} ({out.stat().st_size // 1024} KB)")
 
     if args.png:
         if shutil.which("pdftoppm") is None:

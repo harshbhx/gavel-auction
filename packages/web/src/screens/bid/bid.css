@@ -42,8 +42,7 @@
 /* Controls that sit straight on the state ground (green, red) take the ink colour for their focus
    ring: the shared dark ring is only 2.7:1 on those grounds (WCAG 1.4.11, 2.4.7). */
 .bid__prefs :focus-visible,
-.bid__raise :focus-visible,
-.bid > .gv-btn:focus-visible {
+.bid__col > .gv-btn:focus-visible {
   outline-color: var(--bid-ink);
 }
 
@@ -86,8 +85,10 @@
   gap: var(--space-2);
 }
 
-.bid__status {
-  display: flex;
+/* Columns: on a phone they flow as one stack (price, lot, your position, then the actions). */
+.bid__cols,
+.bid__col {
+  display: contents;
 }
 
 /* The lot is a plain ruled block: a rule above and below, no card, no chip. */
@@ -133,8 +134,41 @@
 .bid__priceboard {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  border-block-start: var(--space-2) solid var(--color-action);
+  gap: var(--space-3);
+  border-block-start: var(--space-3) solid var(--color-action);
+}
+
+/* Label on the left, state chip on the right: the two things to read first. */
+.bid__pricehead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+}
+
+/* Your hold and how much of it is used form one group under the price. */
+.bid__position {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* The raise offer is a raised panel with one clear action. */
+.bid__raise {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.bid__raise p {
+  margin: 0;
+  font-size: var(--font-size-3);
+  font-weight: 600;
+}
+
+.bid__raise .gv-btn {
+  inline-size: 100%;
 }
 
 /* The paddle card and the instructor block share the panel's ink border and offset shadow. */
@@ -164,12 +198,17 @@
 }
 
 .bid__price {
-  font-size: var(--font-size-8);
-  line-height: 0.95;
+  font-family: var(--font-display);
+  font-size: clamp(3.5rem, 21vw, var(--font-size-8));
+  font-weight: 800;
+  line-height: 0.92;
 }
 
+/* Who leads: a ruled strip under the price, in the mono label voice. */
 .bid__leader {
   margin: 0;
+  padding-block-start: var(--space-3);
+  border-block-start: var(--border-width) dashed var(--color-fg);
   font-family: var(--font-mono);
   font-size: var(--font-size-3);
   font-weight: 700;
@@ -514,31 +553,94 @@
   }
 }
 
-/* Wide screens (UIX-27): the bidder room flows into two balanced columns, price and status on the
- * left, bids and the ladder on the right. Phones and tablets keep the single column. */
-@media (min-width: 1100px) {
+/* Wide screens: price, lot and your position on the left, the bid bar and the live bids on the
+ * right, two columns of equal weight. Phones and tablets keep the single column. */
+@media (min-width: 1000px) {
   .bid {
-    display: block;
-    column-count: 2;
-    column-gap: var(--space-7);
-    padding: var(--space-6) max(var(--space-7), calc((100vw - 1280px) / 2));
+    padding: var(--space-6) max(var(--space-7), calc((100vw - 1180px) / 2));
   }
 
-  .bid > * {
-    break-inside: avoid;
-    margin-bottom: var(--space-4);
+  .bid__cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--space-6);
+    align-items: start;
+  }
+
+  .bid__col {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-inline-size: 0;
+  }
+
+  .bid__col--lot {
+    position: sticky;
+    inset-block-start: var(--space-6);
   }
 }
 
-/* Winner pop-up (UIX-60). No animation, so reduced motion needs no override. */
+/* Short landscape phones: price and actions side by side so the bid buttons stay on screen. */
+@media (orientation: landscape) and (max-height: 520px) and (min-width: 600px) and (max-width: 999px) {
+  .bid {
+    padding-inline: var(--space-4);
+  }
+
+  .bid__cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--space-4);
+    align-items: start;
+  }
+
+  .bid__col {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-inline-size: 0;
+  }
+
+  .bid__bar {
+    position: static !important;
+  }
+
+  .bid__price {
+    font-size: clamp(3rem, 12vw, 4.5rem);
+  }
+}
+
+/* End pop-up for everyone in the room. No animation, so reduced motion needs no override. */
 .bid-win {
   display: grid;
   gap: var(--space-3);
 }
 
+.bid-win__kicker {
+  margin: 0;
+  color: var(--color-fg-muted);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-1);
+  font-weight: 700;
+  letter-spacing: var(--letter-spacing-label);
+  text-transform: uppercase;
+}
+
 .bid-win__title {
   margin: 0;
-  font-size: var(--font-size-5, 1.5rem);
+  font-family: var(--font-display);
+  font-size: var(--font-size-6);
+  font-weight: 800;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.bid-win__amount {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-7);
+  font-weight: 800;
+  line-height: 0.95;
+  font-variant-numeric: tabular-nums;
 }
 
 .bid-win__lot,
@@ -548,4 +650,19 @@
 
 .bid-win__money {
   color: var(--color-fg-muted);
+}
+
+/* Text links on the bid screen (the recorded demo link) keep a full-size touch target. */
+.bid a.ui-link {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 44px;
+}
+
+/* The hide-amount control sits on the left of the hold card, away from the floating help button
+   that rides the bottom right corner of a phone. */
+.bid .ui-holdcard__top {
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+  gap: var(--space-3);
 }

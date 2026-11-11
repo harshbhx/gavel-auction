@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -9,6 +10,7 @@ import {
   ShieldCheck,
   Terminal,
 } from 'lucide-react';
+import { socialMeta } from '@/lib/meta';
 import { Hero } from '@/components/home/hero';
 import { HoldBeam } from '@/components/home/hold-beam';
 import { Section, SectionHeading, btnPrimary, btnSecondary } from '@/components/home/section';
@@ -91,6 +93,16 @@ const faq = [
     a: 'Yes, in sandbox mode: the web app is at gavel.dualmindlab.tech and the API at api.gavel.dualmindlab.tech, with a persistent disk and key-less judge rooms. A recorded walk of the whole flow is the next step. The demo guide lists what is verified.',
   },
 ];
+
+export const metadata: Metadata = {
+  title: { absolute: 'GAVEL docs: every bid is a PayPal hold' },
+  ...socialMeta({
+    title: 'GAVEL docs: every bid is a PayPal hold',
+    description:
+      'Every bid is a PayPal hold; only the winner pays. What is proven on the PayPal sandbox, and what is not.',
+    path: '/',
+  }),
+};
 
 export default function HomePage() {
   const s8 = repoData.sim.s8;

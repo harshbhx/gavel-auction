@@ -171,7 +171,8 @@
       <div class="card card--ink">
         <p class="card__label">Shared judge key</p>
         <p style="margin-bottom: 2mm">
-          <span class="ph" data-key="JUDGE_KEY">[JUDGE KEY: Harsh pastes here]</span>
+          The shared judge key is on the Credentials page and in the Devpost Testing instructions,
+          visible to judges only.
         </p>
         <p class="small" style="margin: 0">
           Format
@@ -200,8 +201,6 @@
           <tr>
             <th class="key">Role</th>
             <th>Use it for</th>
-            <th>Email</th>
-            <th>Password</th>
           </tr>
         </thead>
         <tbody>
@@ -210,58 +209,32 @@
             <td>
               Your first bidder, the one you let win. You see the capture of the winning price.
             </td>
-            <td>
-              <span class="ph" data-key="BUYER_A_EMAIL">[BUYER A EMAIL: Harsh pastes here]</span>
-            </td>
-            <td>
-              <span class="ph" data-key="BUYER_A_PASSWORD"
-                >[BUYER A PASSWORD: Harsh pastes here]</span
-              >
-            </td>
           </tr>
           <tr>
             <td class="key">D &middot; wallet</td>
             <td>A second bidder in a private window who loses. You see their hold voided.</td>
-            <td>
-              <span class="ph" data-key="BUYER_D_EMAIL">[BUYER D EMAIL: Harsh pastes here]</span>
-            </td>
-            <td>
-              <span class="ph" data-key="BUYER_D_PASSWORD"
-                >[BUYER D PASSWORD: Harsh pastes here]</span
-              >
-            </td>
           </tr>
           <tr>
             <td class="key">B &middot; wallet</td>
             <td>Spare bidder. Use it if A is refused, or as a third bidder (the runner-up).</td>
-            <td>
-              <span class="ph" data-key="BUYER_B_EMAIL">[BUYER B EMAIL: Harsh pastes here]</span>
-            </td>
-            <td>
-              <span class="ph" data-key="BUYER_B_PASSWORD"
-                >[BUYER B PASSWORD: Harsh pastes here]</span
-              >
-            </td>
           </tr>
           <tr>
             <td class="key">C &middot; card</td>
             <td>A buyer whose wallet pays from a sandbox test card. Optional.</td>
-            <td>
-              <span class="ph" data-key="BUYER_C_EMAIL">[BUYER C EMAIL: Harsh pastes here]</span>
-            </td>
-            <td>
-              <span class="ph" data-key="BUYER_C_PASSWORD"
-                >[BUYER C PASSWORD: Harsh pastes here]</span
-              >
-            </td>
           </tr>
         </tbody>
       </table>
+      <p class="small">
+        The email and password of each sandbox buyer are in the Devpost Testing instructions,
+        visible to judges only. You do not need them to try GAVEL: open
+        <code>/try</code> and join with the demo.
+      </p>
 
       <div class="grid">
         <div class="note">
-          <strong>Where else</strong> Sandbox logins are also in the Devpost testing instructions.
-          They are never in the public repository, issues or pull requests.
+          <strong>Where they are</strong> The sandbox logins and the judge key are in the Devpost
+          Testing instructions, visible to judges only. They are never in the public repository,
+          issues or pull requests.
         </div>
         <div class="note">
           <strong>If a login fails</strong> Check it is the sandbox page (the address contains
@@ -273,6 +246,23 @@
         <strong>Access window</strong> The web app, the API on Render and these sandbox buyers stay
         live until the judging period ends on 15 Dec 2026. A demo room lasts about thirty minutes,
         so register, bid and hammer in one sitting.
+      </div>
+    </section>
+
+    <!-- ==================== CREDENTIALS ==================== -->
+    <section class="section" id="credentials">
+      <p class="kicker">Credentials</p>
+      <h1 data-short="Credentials">Credentials</h1>
+      <!--CREDENTIALS-->
+      <p class="lead">
+        Sandbox buyer logins and the judge key are in the Devpost Testing instructions, visible to
+        judges only. You do not need them to try GAVEL: open <code>/try</code> and join with the
+        demo.
+      </p>
+      <!--/CREDENTIALS-->
+      <div class="note">
+        <strong>Sandbox only</strong> These are PayPal sandbox test accounts. No real money moves.
+        Never use your own PayPal account or card.
       </div>
     </section>
 
@@ -974,11 +964,8 @@ curl -s $API/api/judge/rooms/$ID/ledger -H "authorization: Bearer $REVIEWER" &gt
             <td class="key">G3</td>
             <td>How long does a hold stay capturable, and does reauthorize extend it?</td>
             <td>
-              Timed probe since 7 Nov 03:06 UTC, final reading about 12 Nov 06:17 UTC.<br /><span
-                class="ph"
-                data-key="G3_RESULT"
-                >[G3 RESULT: Harsh writes the final reading here, or deletes this line]</span
-              >
+              Timed probe since 7 Nov 03:06 UTC. Final reading 12 Nov 2026, 06:17 UTC. The result is
+              recorded in <code>docs/GATES.md</code> and the Proven tab.
             </td>
             <td><span class="chip chip--progress">RUNNING</span></td>
           </tr>
@@ -1196,14 +1183,13 @@ curl -s $API/api/judge/rooms/$ID/ledger -H "authorization: Bearer $REVIEWER" &gt
             <td>
               TypeScript and Python generated by APIMatic, package name patched to
               <code>gavel-sdk</code> 0.0.5. A workflow builds and smoke-imports both, and publishes
-              them as a GitHub Release on the tag <code>sdk-v0.0.5</code>; that change was in review
-              when this guide was written.<br />
-              <span class="ph" data-key="SDK_RELEASE"
-                >[SDK RELEASE: Harsh confirms the GitHub release is live and pastes its link, or
-                deletes this line]</span
+              them as a GitHub Release on the tag <code>sdk-v0.0.5</code>:
+              <a href="https://github.com/harshbhx/gavel-auction/releases/tag/sdk-v0.0.5"
+                >GitHub release</a
               >
+              (TypeScript, Python, C#). The hosted APIMatic portal is not live.
             </td>
-            <td><span class="chip chip--progress">IN REVIEW</span></td>
+            <td><span class="chip chip--pass">LIVE</span></td>
           </tr>
           <tr>
             <td><strong>npm and PyPI</strong></td>
@@ -1314,8 +1300,8 @@ curl -s $API/api/judge/rooms/$ID/ledger -H "authorization: Bearer $REVIEWER" &gt
           </tr>
           <tr>
             <td><strong>APIMatic portal</strong></td>
-            <td>SDKs generated; release in review; hosted portal not live.</td>
-            <td><span class="chip chip--progress">IN REVIEW</span></td>
+            <td>SDKs generated and released on GitHub; hosted portal not live.</td>
+            <td><span class="chip chip--open">NOT LIVE</span></td>
           </tr>
           <tr>
             <td><strong>PayPal popup automation</strong></td>
@@ -1372,7 +1358,7 @@ curl -s $API/api/judge/rooms/$ID/ledger -H "authorization: Bearer $REVIEWER" &gt
           <tr>
             <td class="key" style="width: 30%">Email</td>
             <td>
-              <span class="ph" data-key="CONTACT_EMAIL">[CONTACT EMAIL: Harsh pastes here]</span>
+              <a href="mailto:bhanushaliharsh434@gmail.com">bhanushaliharsh434@gmail.com</a>
             </td>
           </tr>
           <tr>

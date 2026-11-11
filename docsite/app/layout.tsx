@@ -1,7 +1,8 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Banner } from 'fumadocs-ui/components/banner';
 import { Provider } from '@/components/provider';
 import { bigShoulders, jetbrains, publicSans } from '@/lib/fonts';
+import { socialMeta } from '@/lib/meta';
 import { siteUrl } from '@/lib/shared';
 import './global.css';
 
@@ -16,15 +17,16 @@ export const metadata: Metadata = {
   // One canonical host: the alias gavel-docs.dualmindlab.tech serves the same build, so every page
   // names its docs.gavel.dualmindlab.tech URL as canonical (relative to metadataBase).
   alternates: { canonical: './' },
-  icons: { icon: '/icon.svg' },
-  openGraph: {
+  icons: { icon: '/icon.svg', apple: '/apple-touch-icon.png' },
+  ...socialMeta({
     title: 'GAVEL docs',
     description:
       'Every bid is a PayPal hold; only the winner pays. What is proven on the PayPal sandbox, and what is not.',
-    images: '/og/site/image.png',
-  },
-  twitter: { card: 'summary_large_image', images: '/og/site/image.png' },
+    path: '/',
+  }),
 };
+
+export const viewport: Viewport = { themeColor: '#efe6d3' };
 
 export default function Layout({ children }: LayoutProps<'/'>) {
   return (

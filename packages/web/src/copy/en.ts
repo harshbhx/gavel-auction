@@ -1689,6 +1689,22 @@ export const en = {
   'end.join': 'Join room',
   'end.home': 'Go home',
   'end.announce': 'You won the lot at {amount}. Choose join room, go home, or view the receipt.',
+  // Pop-up for everyone in the room when the lot ends: lost, never in the bidding, and no sale.
+  'end.title.lost': 'You did not win this lot',
+  'end.title.sold': 'The lot is sold',
+  'end.title.noSale': 'Lot closed, no sale',
+  'end.sold.lot': '{lot} sold at {amount}.',
+  'end.sold.price': 'Sold at {amount}.',
+  'end.sold.paddle': 'Paddle {n} won it.',
+  'end.money.lost': 'Your hold is released. This is a sandbox, so no real money moves.',
+  'end.noSale.lot': '{lot} closed with no sale.',
+  'end.noSale.body': 'No bid won the lot, so nobody owes anything.',
+  'end.noSale.hold': 'No hold is taken. A hold you registered is released.',
+  'end.announce.lost':
+    'The lot sold at {amount}. You did not win. Choose join room, go home, or view the receipt.',
+  'end.announce.sold': 'The lot sold at {amount}. Choose join room or go home.',
+  'end.announce.noSale': 'The lot closed with no sale. Choose join room or go home.',
+  'bid.position.title': 'Your position',
 } as const;
 
 export type CopyKey = keyof typeof en;

@@ -1,4 +1,6 @@
 import react from '@vitejs/plugin-react';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { loadEnv, type Plugin } from 'vite';
 import { defineConfig } from 'vitest/config';
 
@@ -123,6 +125,126 @@ export function fontPreloadPlugin(): Plugin {
   };
 }
 
+export const SITE_ORIGIN = 'https://gavel.dualmindlab.tech';
+
+export interface RoutePreview {
+  /** Route path as the router matches it. */
+  readonly path: string;
+  readonly title: string;
+  readonly description: string;
+  /** File name under public/og/. */
+  readonly image: string;
+  readonly alt: string;
+}
+
+const ALT_LANDING =
+  'GAVEL: Every bid is a hold. The hammer is the payment. PayPal sandbox only. Partners: Render, APIMatic, AG Grid.';
+const ALT_TRY =
+  'GAVEL judge panel: Try it in 2 minutes. No login. Every bid is a hold. The hammer is the payment. PayPal sandbox only.';
+const ALT_LEDGER =
+  'GAVEL ledger: check the receipts yourself. A hash-chained ledger you can verify. PayPal sandbox only.';
+
+/**
+ * Pages whose link preview differs from the landing page. Social crawlers do not run JavaScript, so
+ * each page is written as its own static index.html at build time (closeBundle below); the single
+ * page app still boots from it. The landing page itself is index.html, written by hand.
+ */
+export const ROUTE_PREVIEWS: readonly RoutePreview[] = [
+  {
+    path: '/about',
+    title: 'About GAVEL: every bid is a PayPal hold',
+    description:
+      'How GAVEL settles a live auction: every bid is a PayPal AUTHORIZE hold and only the winning price is captured. PayPal sandbox only.',
+    image: 'og-landing.png',
+    alt: ALT_LANDING,
+  },
+  {
+    path: '/demo/scripted',
+    title: 'GAVEL scripted demo: a live auction in two minutes',
+    description:
+      'Watch a scripted GAVEL auction: holds, bids, the hammer and the receipt. PayPal sandbox only, no real money moves.',
+    image: 'og-landing.png',
+    alt: ALT_LANDING,
+  },
+  {
+    path: '/try',
+    title: 'GAVEL judge panel: try it in 2 minutes, no login',
+    description:
+      'Start a sandbox auction, place a bid and watch the hold turn into the payment. No login. PayPal sandbox only.',
+    image: 'og-try.png',
+    alt: ALT_TRY,
+  },
+  {
+    path: '/ledger',
+    title: 'GAVEL ledger lab: check the receipts yourself',
+    description:
+      'A hash-chained ledger of every hold, bid and capture. Paste it in and verify the chain. PayPal sandbox only.',
+    image: 'og-ledger.png',
+    alt: ALT_LEDGER,
+  },
+  {
+    path: '/verify',
+    title: 'Verify a GAVEL ledger',
+    description:
+      'Paste a GAVEL ledger and verify its hash chain in your browser. PayPal sandbox only.',
+    image: 'og-ledger.png',
+    alt: ALT_LEDGER,
+  },
+];
+
+function escapeAttr(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+function setMeta(html: string, key: string, value: string): string {
+  const re = new RegExp(`(<meta\\s+(?:name|property)="${key}"\\s+content=")[^"]*(")`);
+  if (!re.test(html)) throw new Error(`index.html has no meta tag ${key}`);
+  return html.replace(re, `$1${escapeAttr(value)}$2`);
+}
+
+/** index.html with the title, description, canonical, Open Graph and Twitter tags of one route. */
+export function renderRoutePreview(html: string, preview: RoutePreview): string {
+  const url = `${SITE_ORIGIN}${preview.path}`;
+  const image = `${SITE_ORIGIN}/og/${preview.image}`;
+  let out = html.replace(/<title>[^<]*<\/title>/, `<title>${escapeAttr(preview.title)}</title>`);
+  out = out.replace(/(<link rel="canonical" href=")[^"]*(")/, `$1${url}$2`);
+  for (const [key, value] of [
+    ['description', preview.description],
+    ['og:title', preview.title],
+    ['og:description', preview.description],
+    ['og:url', url],
+    ['og:image', image],
+    ['og:image:alt', preview.alt],
+    ['twitter:title', preview.title],
+    ['twitter:description', preview.description],
+    ['twitter:image', image],
+    ['twitter:image:alt', preview.alt],
+  ] as const) {
+    out = setMeta(out, key, value);
+  }
+  return out;
+}
+
+/** Writes dist/<route>/index.html for every ROUTE_PREVIEWS entry, from the built index.html. */
+export function routePreviewPlugin(): Plugin {
+  let outDir = 'dist';
+  return {
+    name: 'gavel-route-previews',
+    apply: 'build',
+    configResolved(resolved) {
+      outDir = path.resolve(resolved.root, resolved.build.outDir);
+    },
+    closeBundle() {
+      const index = readFileSync(path.join(outDir, 'index.html'), 'utf8');
+      for (const preview of ROUTE_PREVIEWS) {
+        const dir = path.join(outDir, preview.path);
+        mkdirSync(dir, { recursive: true });
+        writeFileSync(path.join(dir, 'index.html'), renderRoutePreview(index, preview));
+      }
+    },
+  };
+}
+
 const AG_GRID_MODULE = /[\\/]node_modules[\\/](?:ag-grid-community|ag-grid-react)[\\/]/;
 
 /**
@@ -139,7 +261,7 @@ export function chunkFileName(chunk: { moduleIds: readonly string[] }): string {
 }
 
 export default defineConfig({
-  plugins: [react(), sandboxGuard(), cspPlugin(), fontPreloadPlugin()],
+  plugins: [react(), sandboxGuard(), cspPlugin(), fontPreloadPlugin(), routePreviewPlugin()],
   build: { rollupOptions: { output: { chunkFileNames: chunkFileName } } },
   test: {
     environment: 'jsdom',
