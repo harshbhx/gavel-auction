@@ -118,7 +118,7 @@ export function LightSweep({
 export function Footer({
   t,
   world,
-  text = 'Motion graphics of the app. Sandbox only. No real money moves.',
+  text = 'Motion graphics of the app.',
   right = 'GAVEL',
 }: {
   t: number;

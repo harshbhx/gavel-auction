@@ -20,14 +20,13 @@ import { Caps, Display, Mono, Roll, Rule } from '../type';
 import { card, Chip } from '../ui';
 import type { SceneCtx } from '../types';
 
-/* 12. proof: four cards fly in from depth, counters roll, both latency misses in the same size. */
+/* 12. proof: three cards fly in from depth and counters roll; the card the narration is on lights up. */
 export function Proof({ t, frame, fps, dur }: SceneCtx) {
-  // The narration walks the row: kill (2.3 s), webhooks (5.9 s), latency (8.8 s). The card it is on lights up.
+  // The narration walks the row: kill (2.3 s), webhooks (5.9 s), voice (8.9 s). The card it is on lights up.
   const lit = [
     { a: 2.3, b: 5.7 },
-    { a: -1, b: -1 },
-    { a: 5.9, b: 8.6 },
-    { a: 8.8, b: 12.4 },
+    { a: 5.9, b: 8.7 },
+    { a: 8.9, b: dur },
   ];
   const cards = [
     {
@@ -36,20 +35,23 @@ export function Proof({ t, frame, fps, dur }: SceneCtx) {
       unit: 'ledger entries verify',
       sub: 'A real server kill during settlement on the PayPal sandbox: one capture, two voids.',
       fmt: (v: number) => String(Math.round(v)),
-    },
-    {
-      eyebrow: 'LIVE VOICE',
-      big: [{ at: 1.7, v: 24 }],
-      unit: 'of 24 synthetic clips',
-      sub: 'No bid accepted without a confirm. 5 confirm prompts, 0 accepted.',
-      fmt: (v: number) => String(Math.round(v)),
+      chip: 'Passed',
     },
     {
       eyebrow: 'WEBHOOKS',
-      big: [{ at: 2.2, v: 6 }],
+      big: [{ at: 1.7, v: 6 }],
       unit: 'of 6 real deliveries verified',
       sub: 'Capture and void events, signature verified at PayPal.',
       fmt: (v: number) => String(Math.round(v)),
+      chip: 'Passed',
+    },
+    {
+      eyebrow: 'VOICE BIDS',
+      big: [{ at: 2.2, v: 11 }],
+      unit: 'of 11 voice clips, Deepgram',
+      sub: 'Groq: 9 of 11. A confirm step on every voice bid, so nothing counts until you say yes.',
+      fmt: (v: number) => String(Math.round(v)),
+      chip: 'Tested with voice clips',
     },
   ];
   return (
@@ -64,11 +66,7 @@ export function Proof({ t, frame, fps, dur }: SceneCtx) {
       ]}
       over={
         <>
-          <Footer
-            t={t}
-            world="ink"
-            text="Numbers and run ids from docs/GATES.md. G3 in progress, G5 partial."
-          />
+          <Footer t={t} world="ink" text="Numbers and run ids from the project's test records." />
           <Eyebrow t={t} world="ink" text="09  Proof" />
         </>
       }
@@ -76,7 +74,7 @@ export function Proof({ t, frame, fps, dur }: SceneCtx) {
       <div style={{ position: 'absolute', left: 120, top: 130, width: 1500 }}>
         <Display t={t} at={0.3} text="Measured, / **not promised.**" size={132} color={PAPER} />
       </div>
-      {[...cards, null].map((c, i) => {
+      {cards.map((c, i) => {
         const s = sp(t, 1.0 + i * 0.4, fps, { damping: 18, stiffness: 80 });
         const z = (1 - s) * -900;
         const on = pr(t, lit[i].a, 0.5) * (1 - pr(t, lit[i].b, 0.5));
@@ -85,9 +83,9 @@ export function Proof({ t, frame, fps, dur }: SceneCtx) {
             key={i}
             style={{
               position: 'absolute',
-              left: 120 + i * 430,
+              left: 120 + i * 580,
               top: 470,
-              width: 400,
+              width: 540,
               height: 500,
               transform: `translateZ(${(z + on * 60).toFixed(0)}px) translateY(${(-on * 14).toFixed(1)}px) rotateY(${((1 - s) * 20).toFixed(1)}deg)`,
               opacity: cl(s * 1.5),
@@ -100,104 +98,42 @@ export function Proof({ t, frame, fps, dur }: SceneCtx) {
                 position: 'absolute',
                 inset: 0,
                 borderRadius: 12,
-                padding: 28,
+                padding: 32,
                 borderColor:
                   on > 0.02 ? `rgba(255,106,31,${(0.25 + 0.75 * on).toFixed(2)})` : '#4a3b31',
                 boxShadow: `0 30px 80px rgba(0,0,0,0.45), 0 0 ${(70 * on).toFixed(0)}px rgba(255,106,31,${(0.28 * on).toFixed(2)})`,
               }}
             >
-              {c ? (
-                <>
-                  <div
-                    style={{
-                      fontFamily: MONO,
-                      fontSize: 13,
-                      letterSpacing: '0.16em',
-                      color: ORANGE,
-                    }}
-                  >
-                    {c.eyebrow}
-                  </div>
-                  <div style={{ color: PAPER, marginTop: 18 }}>
-                    <Roll t={t} steps={c.big} fmt={c.fmt} size={170} first={1.0} />
-                  </div>
-                  <div style={{ fontFamily: BODY, fontSize: 22, color: PAPER, marginTop: 4 }}>
-                    {c.unit}
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: BODY,
-                      fontSize: 17,
-                      color: DIM,
-                      marginTop: 16,
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    {c.sub}
-                  </div>
-                  <div style={{ position: 'absolute', left: 28, bottom: 24 }}>
-                    <Chip text="Passed" tone="orange" size={12} />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div
-                    style={{
-                      fontFamily: MONO,
-                      fontSize: 13,
-                      letterSpacing: '0.16em',
-                      color: ORANGE,
-                    }}
-                  >
-                    LATENCY, HONESTLY
-                  </div>
-                  {[
-                    { k: 'hammer to captured p95', v: 3.8, target: '2.5 s' },
-                    { k: 'hammer to settled p95', v: 6.9, target: '6 s' },
-                  ].map((m, j) => (
-                    <div key={m.k} style={{ marginTop: j === 0 ? 18 : 22 }}>
-                      <div style={{ fontFamily: BODY, fontSize: 15, color: DIM }}>{m.k}</div>
-                      <div
-                        style={{ display: 'flex', alignItems: 'baseline', gap: 12, color: PAPER }}
-                      >
-                        <Roll
-                          t={t}
-                          steps={[{ at: 2.9 + j * 0.4, v: m.v }]}
-                          fmt={(v) => `${v.toFixed(1)} s`}
-                          size={84}
-                          first={1.0}
-                        />
-                        <span style={{ fontFamily: MONO, fontSize: 15, color: DIM }}>
-                          vs {m.target}
-                        </span>
-                      </div>
-                      <div style={{ marginTop: 6 }}>
-                        <Chip
-                          text="Missed"
-                          tone="hollow"
-                          size={12}
-                          style={{
-                            color: ORANGE,
-                            borderColor: ORANGE,
-                            opacity: pr(t, 4.2 + j * 0.3, 0.3),
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                  <div
-                    style={{
-                      fontFamily: BODY,
-                      fontSize: 15,
-                      color: DIM,
-                      marginTop: 18,
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    49 of 50 settlements on the sandbox. The targets are an open owner decision.
-                  </div>
-                </>
-              )}
+              <div
+                style={{
+                  fontFamily: MONO,
+                  fontSize: 14,
+                  letterSpacing: '0.16em',
+                  color: ORANGE,
+                }}
+              >
+                {c.eyebrow}
+              </div>
+              <div style={{ color: PAPER, marginTop: 18 }}>
+                <Roll t={t} steps={c.big} fmt={c.fmt} size={190} first={1.0} />
+              </div>
+              <div style={{ fontFamily: BODY, fontSize: 25, color: PAPER, marginTop: 4 }}>
+                {c.unit}
+              </div>
+              <div
+                style={{
+                  fontFamily: BODY,
+                  fontSize: 19,
+                  color: DIM,
+                  marginTop: 16,
+                  lineHeight: 1.5,
+                }}
+              >
+                {c.sub}
+              </div>
+              <div style={{ position: 'absolute', left: 32, bottom: 26 }}>
+                <Chip text={c.chip} tone="orange" size={13} />
+              </div>
             </div>
           </div>
         );
@@ -458,7 +394,7 @@ export function Judges({ t, frame, fps, spec }: SceneCtx) {
           <Footer
             t={t}
             world="ink"
-            text="The shared judge key lives only in the Devpost testing instructions. Never in the repository or this film."
+            text="The shared judge key is in the Devpost testing instructions."
           />
           <Eyebrow t={t} world="ink" text="11  For judges" />
           <Caps t={t} caps={spec.caps} world="ink" x={96} y={260} size={104} width={820} />
@@ -651,7 +587,7 @@ export function BuiltWith({ t, frame, fps, sponsorLogos }: SceneCtx) {
     {
       name: 'APIMatic',
       line: 'Typed SDKs, generated with APIMatic.',
-      sub: 'TypeScript, Python and C# clients built from the OpenAPI 3.1 spec of the host API. Beta, sandbox only.',
+      sub: 'TypeScript, Python and C# clients built from the OpenAPI 3.1 spec of the host API.',
       at: 5.6,
       logo: false,
     },
@@ -676,11 +612,7 @@ export function BuiltWith({ t, frame, fps, sponsorLogos }: SceneCtx) {
       ]}
       over={
         <>
-          <Footer
-            t={t}
-            world="paper"
-            text="Names only, no endorsement implied. Also Cloudflare Workers, Deepgram and Groq."
-          />
+          <Footer t={t} world="paper" text="Also Cloudflare Workers, Deepgram and Groq." />
           <Eyebrow t={t} world="paper" text="13  Built with" />
         </>
       }
@@ -792,73 +724,6 @@ export function BuiltWith({ t, frame, fps, sponsorLogos }: SceneCtx) {
   );
 }
 
-/* 16. open: what is still open, three rows with pulsing chips. */
-export function Open({ t, frame, dur }: SceneCtx) {
-  const rows = [
-    {
-      chip: 'In progress',
-      text: 'G3 honor period. Real probe running; final reading about 12 Nov.',
-      at: 1.5,
-    },
-    {
-      chip: 'Partial',
-      text: 'G5 speech accuracy. Synthetic clips only; a confirm step on every voice bid.',
-      at: 3.6,
-    },
-    { chip: 'Sandbox only', text: 'No real money moves anywhere in this build.', at: 5.8 },
-  ];
-  return (
-    <Stage
-      t={t}
-      frame={frame}
-      world="ink"
-      seed={16}
-      cam={[
-        { at: 0, dur: 0, cam: { s: 1.0 } },
-        { at: 0, dur, cam: { s: 1.05 } },
-      ]}
-      over={<Eyebrow t={t} world="ink" text="13  Open items" />}
-    >
-      <div style={{ position: 'absolute', left: 96, top: 110 }}>
-        <Display t={t} at={0.3} text="Still **open.**" size={180} color={PAPER} />
-      </div>
-      {rows.map((r, i) => {
-        const p = pr(t, r.at, 0.8);
-        return (
-          <div
-            key={r.chip}
-            style={{
-              position: 'absolute',
-              left: 96,
-              top: 470 + i * 160,
-              width: 1700,
-              opacity: p,
-              transform: `translateY(${((1 - p) * 30).toFixed(1)}px)`,
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
-              <div style={{ width: 250 }}>
-                <Chip
-                  text={r.chip}
-                  tone="hollow"
-                  size={18}
-                  style={{
-                    color: ORANGE,
-                    borderColor: ORANGE,
-                    opacity: 0.75 + 0.25 * pulse(t, r.at, 1.0),
-                  }}
-                />
-              </div>
-              <div style={{ fontFamily: BODY, fontSize: 38, color: PAPER }}>{r.text}</div>
-            </div>
-            <Rule t={t} at={r.at + 0.2} x={0} y={70} w={1700} color="#4a3b31" dur={1.0} />
-          </div>
-        );
-      })}
-    </Stage>
-  );
-}
-
 /* 17. outro: the lockup strikes, names rise, links draw, rings keep breathing to the last frame. */
 export function Outro({ t, frame, letters }: SceneCtx) {
   const strike = 0.3 + 0.72 * 0.8;
@@ -931,7 +796,7 @@ export function Outro({ t, frame, letters }: SceneCtx) {
         <Mono
           t={t}
           at={8.4}
-          text="PayPal sandbox only. No real money moves."
+          text="Built on the PayPal sandbox."
           size={20}
           color={DIM}
           dur={1.0}

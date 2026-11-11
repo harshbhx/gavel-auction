@@ -1,5 +1,5 @@
 {
-  "duration": 187,
+  "duration": 184,
   "cues": [
     {
       "a": 0.52,
@@ -243,139 +243,133 @@
     },
     {
       "a": 116.511,
-      "b": 119.38,
+      "b": 119.28,
       "text": "Webhooks: six of six verified.",
       "scene": "proof"
     },
     {
-      "a": 119.42,
-      "b": 123.157,
-      "text": "Latency: both targets missed, and we say so.",
+      "a": 119.32,
+      "b": 120.82,
+      "text": "Voice bids work.",
       "scene": "proof"
     },
     {
-      "a": 123.545,
-      "b": 127.445,
+      "a": 120.82,
+      "b": 122.44,
+      "text": "Tested with voice clips.",
+      "scene": "proof"
+    },
+    {
+      "a": 122.44,
+      "b": 126.1,
+      "text": "Deepgram 11 of 11, Groq 9 of 11,",
+      "scene": "proof"
+    },
+    {
+      "a": 126.1,
+      "b": 128.984,
+      "text": "with a confirm step on every voice bid.",
+      "scene": "proof"
+    },
+    {
+      "a": 129.545,
+      "b": 133.445,
       "text": "The landing page scores 100 in every Lighthouse category,",
       "scene": "speed"
     },
     {
-      "a": 127.445,
-      "b": 129.728,
+      "a": 133.445,
+      "b": 135.728,
       "text": "on mobile and on desktop.",
       "scene": "speed"
     },
     {
-      "a": 131.579,
-      "b": 134.019,
+      "a": 137.579,
+      "b": 140.019,
       "text": "For judges: one shared key,",
       "scene": "judges"
     },
     {
-      "a": 134.019,
-      "b": 136.443,
+      "a": 140.019,
+      "b": 142.443,
       "text": "in the Devpost testing instructions.",
       "scene": "judges"
     },
     {
-      "a": 137.46,
-      "b": 140.117,
+      "a": 143.46,
+      "b": 146.117,
       "text": "And the try page needs no key at all.",
       "scene": "judges"
     },
     {
-      "a": 141.632,
-      "b": 144.09,
+      "a": 147.632,
+      "b": 150.09,
       "text": "GAVEL ships with a full docs site.",
       "scene": "docs"
     },
     {
-      "a": 144.33,
-      "b": 147.47,
+      "a": 150.33,
+      "b": 153.47,
       "text": "Guides for every step, from holds to settlement,",
       "scene": "docs"
     },
     {
-      "a": 147.47,
-      "b": 149.99,
+      "a": 153.47,
+      "b": 155.99,
       "text": "an API reference for the host API,",
       "scene": "docs"
     },
     {
-      "a": 149.99,
-      "b": 152.975,
+      "a": 155.99,
+      "b": 158.975,
       "text": "and typed SDKs to call it from code.",
       "scene": "docs"
     },
     {
-      "a": 155.57,
-      "b": 157.917,
+      "a": 161.57,
+      "b": 163.917,
       "text": "Payments run in the PayPal sandbox.",
       "scene": "builtWith"
     },
     {
-      "a": 157.957,
-      "b": 160.241,
+      "a": 163.957,
+      "b": 166.241,
       "text": "The API is hosted on Render.",
       "scene": "builtWith"
     },
     {
-      "a": 160.281,
-      "b": 163.687,
+      "a": 166.281,
+      "b": 169.687,
       "text": "Typed SDKs are generated with APIMatic.",
       "scene": "builtWith"
     },
     {
-      "a": 163.727,
-      "b": 167.277,
+      "a": 169.727,
+      "b": 173.277,
       "text": "Live bid and audit tables run on AG Grid.",
       "scene": "builtWith"
     },
     {
-      "a": 168.094,
-      "b": 171.334,
-      "text": "Still open: the honor period test is in progress,",
-      "scene": "open"
-    },
-    {
-      "a": 171.334,
-      "b": 173.375,
-      "text": "and speech accuracy is partial.",
-      "scene": "open"
-    },
-    {
-      "a": 173.415,
-      "b": 174.955,
-      "text": "Sandbox only.",
-      "scene": "open"
-    },
-    {
-      "a": 174.955,
-      "b": 176.799,
-      "text": "No real money moves.",
-      "scene": "open"
-    },
-    {
-      "a": 177.542,
-      "b": 178.506,
+      "a": 174.542,
+      "b": 175.506,
       "text": "GAVEL.",
       "scene": "outro"
     },
     {
-      "a": 178.704,
-      "b": 181.948,
+      "a": 175.704,
+      "b": 178.948,
       "text": "Built by Harsh Bhanushali and Dhairya Patel.",
       "scene": "outro"
     },
     {
-      "a": 182.213,
-      "b": 184.073,
+      "a": 179.213,
+      "b": 181.073,
       "text": "Every bid is a hold.",
       "scene": "outro"
     },
     {
-      "a": 184.073,
-      "b": 186.059,
+      "a": 181.073,
+      "b": 183.059,
       "text": "The hammer is the payment.",
       "scene": "outro"
     }

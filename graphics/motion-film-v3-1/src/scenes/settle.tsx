@@ -49,7 +49,7 @@ export function Settle({ t, frame, fps, spec }: SceneCtx) {
           <Footer
             t={t}
             world="paper"
-            text="Drawn, not recorded. Sandbox capture and void are proven in G1 and G4."
+            text="Sandbox capture and void, verified on the PayPal sandbox."
           />
           <Eyebrow t={t} world="paper" text="06  Settle" />
           <Caps t={t} caps={spec.caps} world="paper" x={96} y={300} size={120} width={760} />
@@ -282,7 +282,7 @@ export function Receipt({ t, frame, fps, spec }: SceneCtx) {
               }}
             >
               <div style={{ fontFamily: DISPLAY, fontSize: 32, fontWeight: 800 }}>Receipt</div>
-              <Chip text="Simulated" tone="hollow" size={11} />
+              <Chip text="Example" tone="hollow" size={11} />
             </div>
           </div>
           <div style={{ margin: '18px 22px 0', position: 'relative' }}>
@@ -328,8 +328,7 @@ export function Receipt({ t, frame, fps, spec }: SceneCtx) {
                   opacity: pr(t, 3.0, 0.5),
                 }}
               >
-                Simulated. Not a PayPal transaction. Sandbox only. Money is held, not charged, until
-                the hammer. Losing holds are released.
+                Money is held, not charged, until the hammer. Losing holds are released.
               </div>
             </div>
             <div

@@ -4,7 +4,7 @@ import { useT } from './anim';
 import { Captions } from './captions';
 import { Docs } from './scenes/docs';
 import { Hook, Mechanism, Problem, Title } from './scenes/intro';
-import { BuiltWith, Judges, Open, Outro, Proof, Speed } from './scenes/proof';
+import { BuiltWith, Judges, Outro, Proof, Speed } from './scenes/proof';
 import { Bid, Hammer, Hold, Join, Voice } from './scenes/room';
 import { Receipt, Settle } from './scenes/settle';
 import table from './scenes.json';
@@ -28,7 +28,6 @@ const SCENES: Record<string, ComponentType<SceneCtx>> = {
   judges: Judges,
   docs: Docs,
   builtWith: BuiltWith,
-  open: Open,
   outro: Outro,
 };
 

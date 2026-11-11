@@ -125,7 +125,7 @@ export function Docs({ t, frame, fps }: SceneCtx) {
           <Footer
             t={t}
             world="ink"
-            text="Written from the code. Typed SDKs generated with APIMatic. Sandbox only."
+            text="Written from the code. Typed SDKs generated with APIMatic."
           />
           <Eyebrow t={t} world="ink" text="12  Docs" />
         </>

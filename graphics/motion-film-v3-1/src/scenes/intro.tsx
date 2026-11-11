@@ -658,7 +658,7 @@ export function Mechanism({ t, frame, fps }: SceneCtx) {
         <Mono
           t={t}
           at={9.2}
-          text="Orders v2 intent AUTHORIZE. Payments v2 capture, final_capture, void. Sandbox only."
+          text="Orders v2 intent AUTHORIZE. Payments v2 capture, final_capture, void."
           size={20}
           color={MUTE}
           dur={1.6}

@@ -195,7 +195,7 @@
     },
     {
       "id": "proof",
-      "dur": 12.5,
+      "dur": 18.5,
       "world": "ink",
       "caps": []
     },
@@ -248,12 +248,6 @@
       "id": "builtWith",
       "dur": 13,
       "world": "paper",
-      "caps": []
-    },
-    {
-      "id": "open",
-      "dur": 9,
-      "world": "ink",
       "caps": []
     },
     {

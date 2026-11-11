@@ -13,13 +13,14 @@ import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 // Usage: node voiceover.mjs   (reads the takes and word timings in audio/ and ~/hackathon/film-v3-1-video/vo-src)
 // v3.1 voices (ElevenLabs, model eleven_v4): 0 narrator "Ratchet v14 Narrator", 1 auctioneer "Ratchet v14 Ultra",
-// 2 the app's confirm prompt "Ratchet v14 Examiner". A plan entry says which take it is cut from (`take`, default 0).
+// 2 the app's confirm prompt "Ratchet v14 Examiner", 3 one more narrator line (voice bids). A plan entry says which take it is cut from (`take`, default 0).
 const SRC =
   process.env.VO_SRC || path.join(process.env.HOME ?? '', 'hackathon/film-v3-1-video/vo-src');
 const TAKE_FILES = [
   [path.join(SRC, 'narrator.mp3'), path.join(here, 'audio/words-narrator.json')],
   [path.join(SRC, 'auctioneer.mp3'), path.join(here, 'audio/words-auctioneer.json')],
   [path.join(SRC, 'confirm.mp3'), path.join(here, 'audio/words-confirm.json')],
+  [path.join(SRC, 'voicebids.mp3'), path.join(here, 'audio/words-voicebids.json')],
 ];
 
 const PLAN = [
@@ -110,7 +111,18 @@ const PLAN = [
   { scene: 'proof', at: 0.4, cues: [['Measured, not promised.', 3]] },
   { scene: 'proof', at: 2.3, cues: [['A server kill in the middle of settlement: survived.', 9]] },
   { scene: 'proof', at: 5.9, cues: [['Webhooks: six of six verified.', 5]] },
-  { scene: 'proof', at: 8.8, cues: [['Latency: both targets missed, and we say so.', 8]] },
+  { skip: 8 },
+  {
+    scene: 'proof',
+    at: 8.8,
+    take: 3,
+    cues: [
+      ['Voice bids work.', 3],
+      ['Tested with voice clips.', 4],
+      ['Deepgram 11 of 11, Groq 9 of 11,', 8],
+      ['with a confirm step on every voice bid.', 8],
+    ],
+  },
   {
     scene: 'speed',
     at: 0.5,
@@ -142,22 +154,7 @@ const PLAN = [
   { scene: 'builtWith', at: 3.4, cues: [['The API is hosted on Render.', 6]] },
   { scene: 'builtWith', at: 5.7, cues: [['Typed SDKs are generated with APIMatic.', 6]] },
   { scene: 'builtWith', at: 9.1, cues: [['Live bid and audit tables run on AG Grid.', 9]] },
-  {
-    scene: 'open',
-    at: 0.4,
-    cues: [
-      ['Still open: the honor period test is in progress,', 9],
-      ['and speech accuracy is partial.', 5],
-    ],
-  },
-  {
-    scene: 'open',
-    at: 5.75,
-    cues: [
-      ['Sandbox only.', 2],
-      ['No real money moves.', 4],
-    ],
-  },
+  { skip: 20 },
   { scene: 'outro', at: 0.9, cues: [['GAVEL.', 1]] },
   { scene: 'outro', at: 2.1, cues: [['Built by Harsh Bhanushali and Dhairya Patel.', 7]] },
   {

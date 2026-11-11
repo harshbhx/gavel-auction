@@ -1072,7 +1072,7 @@ export function Voice({ t, frame, fps, spec }: SceneCtx) {
           <Footer
             t={t}
             world="ink"
-            text="Always a confirm step. Assist mode. Measured on synthetic clips only (G5 partial)."
+            text="A confirm step on every voice bid. Tested with voice clips: Deepgram 11 of 11, Groq 9 of 11."
           />
           <Eyebrow t={t} world="ink" text="04  Voice" />
           <Caps t={t} caps={spec.caps} world="ink" x={96} y={300} size={112} width={820} />
