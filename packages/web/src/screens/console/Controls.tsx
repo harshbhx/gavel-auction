@@ -18,6 +18,11 @@ export const DEFAULT_EXTEND_MS = 30_000;
  */
 export const HARD_CLOSE_MARGIN_MS = 3_600_000;
 
+/** The room config fields the extend limit is worked out from, as plain numbers. */
+export type ExtendLimitConfig = Readonly<
+  Record<keyof Pick<AuctionConfig, 'endTs' | 'softCloseExtensionMs' | 'maxExtensions'>, number>
+>;
+
 /**
  * How many more times Extend can add `extendMs` before the server refuses it. The limit is the
  * hard close the room config already carries: the configured end plus the time the soft-close
@@ -25,7 +30,7 @@ export const HARD_CLOSE_MARGIN_MS = 3_600_000;
  * by earlier extends counts against the same limit.
  */
 export function extendsLeft(
-  config: Pick<AuctionConfig, 'endTs' | 'softCloseExtensionMs' | 'maxExtensions'>,
+  config: ExtendLimitConfig,
   endTs: number,
   extendMs: number = DEFAULT_EXTEND_MS,
 ): number {
