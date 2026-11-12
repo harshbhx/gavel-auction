@@ -102,6 +102,11 @@ describe('server entry point (INT-R3-17)', () => {
     expect(metrics.status).toBe(200);
     expect(await metrics.json()).toHaveProperty('bids');
     expect((await fetch(`${url}/nope`)).status).toBe(404);
+    const root = await fetch(`${url}/`);
+    expect(root.status).toBe(200);
+    expect(await root.json()).toMatchObject({ name: 'GAVEL API', health: '/healthz' });
+    expect((await fetch(`${url}/`, { method: 'HEAD' })).status).toBe(200);
+    expect((await fetch(`${url}/`, { method: 'POST' })).status).toBe(404);
   });
 
   it('mounts the webhook route and rejects an unsigned delivery', async () => {

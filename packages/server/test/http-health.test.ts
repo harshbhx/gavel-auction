@@ -1,7 +1,12 @@
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createHealthRoutes, createVersionRoute, resolveSha } from '../src/http/health';
+import {
+  createHealthRoutes,
+  createRootRoute,
+  createVersionRoute,
+  resolveSha,
+} from '../src/http/health';
 
 const servers: Server[] = [];
 afterEach(async () => {
@@ -52,5 +57,41 @@ describe('version route', () => {
     const res = await fetch(base + '/version');
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ sha: 'abc1234' });
+  });
+});
+
+describe('root route', () => {
+  it('answers GET and HEAD / with the signpost JSON and no secrets', async () => {
+    const route = createRootRoute();
+    const server = createServer((req, res) => void route(req, res));
+    servers.push(server);
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+    const base = 'http://127.0.0.1:' + String((server.address() as AddressInfo).port);
+    const res = await fetch(base + '/');
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toBe('application/json');
+    expect(await res.json()).toEqual({
+      name: 'GAVEL API',
+      note: 'PayPal sandbox only. No real money moves.',
+      web: 'https://gavel.dualmindlab.tech/try',
+      docs: 'https://docs.gavel.dualmindlab.tech',
+      apiReference: 'https://docs.gavel.dualmindlab.tech/api-reference',
+      openapi: 'https://docs.gavel.dualmindlab.tech/openapi.yaml',
+      health: '/healthz',
+      version: '/version',
+    });
+    const head = await fetch(base + '/', { method: 'HEAD' });
+    expect(head.status).toBe(200);
+    expect(await head.text()).toBe('');
+  });
+
+  it('builds the web link from a configured origin', async () => {
+    const route = createRootRoute({ webOrigin: 'http://localhost:5173/' });
+    const server = createServer((req, res) => void route(req, res));
+    servers.push(server);
+    await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
+    const base = 'http://127.0.0.1:' + String((server.address() as AddressInfo).port);
+    const body = (await (await fetch(base + '/')).json()) as { web: string };
+    expect(body.web).toBe('http://localhost:5173/try');
   });
 });
