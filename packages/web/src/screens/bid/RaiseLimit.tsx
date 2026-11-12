@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { announce } from '../../a11y/announce';
 import { t } from '../../copy/t';
@@ -24,7 +24,6 @@ export interface RaiseLimitProps {
   currentCents: number;
   /** The real cap of the room (snapshot `maxCeilingCents`), in cents. */
   maxCents: number;
-  presetsCents?: readonly number[];
   allowCustom?: boolean;
   /** Back to the bid screen (after a raise or when the bidder walks away). */
   onClose: () => void;
@@ -46,10 +45,6 @@ export function RaiseLimit(props: RaiseLimitProps) {
   // The amount last tried, kept when the bidder goes back from the approval (as register does).
   const [lastTarget, setLastTarget] = useState<number | null>(null);
   const minCents = minRaiseCents(currentCents);
-  const presetsCents = useMemo(
-    () => (props.presetsCents ?? []).filter((p) => p >= minCents && p <= maxCents),
-    [props.presetsCents, minCents, maxCents],
-  );
 
   if (minCents > maxCents) {
     return (
@@ -79,7 +74,6 @@ export function RaiseLimit(props: RaiseLimitProps) {
       currentCents={currentCents}
       minCents={minCents}
       maxCents={maxCents}
-      presetsCents={presetsCents}
       allowCustom={props.allowCustom ?? true}
       initialCents={lastTarget ?? undefined}
       onChoose={(cents) => {
@@ -95,7 +89,6 @@ function RaiseEntry(props: {
   currentCents: number;
   minCents: number;
   maxCents: number;
-  presetsCents: readonly number[];
   allowCustom: boolean;
   initialCents?: number | undefined;
   onChoose: (cents: number) => void;
@@ -104,7 +97,6 @@ function RaiseEntry(props: {
   const limit = useLimitEntry({
     minCents: props.minCents,
     maxCents: props.maxCents,
-    presetsCents: props.presetsCents,
     allowCustom: props.allowCustom,
     initialCents: props.initialCents,
   });

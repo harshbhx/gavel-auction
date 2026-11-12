@@ -458,14 +458,14 @@ describe('register route', () => {
     fireEvent.click(screen.getByRole('button', { name: t('reg.continue') }));
     expect(screen.queryByRole('radio', { name: '$100' })).toBeNull();
     expect(screen.getByRole('radio', { name: '$1,500' })).toBeTruthy();
-    fireEvent.click(screen.getByRole('radio', { name: '$500' }));
+    fireEvent.click(screen.getByRole('radio', { name: '$750' }));
     confirmHold();
     await flush();
-    expect(JSON.parse(calls[0]?.body ?? '{}')).toEqual({ auctionId: ROOM, ceilingCents: 50_000 });
+    expect(JSON.parse(calls[0]?.body ?? '{}')).toEqual({ auctionId: ROOM, ceilingCents: 75_000 });
     expect(screen.getByText(en[holdErrorCopyTable.ceiling_out_of_range])).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: t('generic.back') }));
     expect(screen.getByText(t('reg.summary', { name: 'Priya' }))).toBeTruthy();
-    expect((screen.getByRole('radio', { name: '$500' }) as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByRole('radio', { name: '$750' }) as HTMLInputElement).checked).toBe(true);
   });
 
   it('says registration is closed and offers the watch link once the hammer has fallen', () => {
@@ -564,16 +564,16 @@ describe('register route', () => {
       clientRegistrationId: 'reg-one',
       orderId: 'order-one',
       holdId: 'hold-ABC123',
-      ceilingCents: 10_000,
+      ceilingCents: 25_000,
     });
     const calls = stubHolds(() => ({
       status: 200,
-      body: { holdId: 'hold-ABC123', status: 'HELD', ceilingCents: 10_000 },
+      body: { holdId: 'hold-ABC123', status: 'HELD', ceilingCents: 25_000 },
     }));
     const socket = joinLive(`/r/${ROOM}/register`, { api: API });
     act(() => socket.receive(stateMsg(1, snapshot({ others: [[7, 'Ana']] }))));
     expect(screen.queryByLabelText(t('reg.paddle'))).toBeNull();
-    fillAndApprove('$100');
+    fillAndApprove('$250');
     await flush();
     expect(calls).toHaveLength(1);
     expect(JSON.parse(calls[0]?.body ?? '{}')).toEqual({ orderId: 'order-one', name: 'Priya' });

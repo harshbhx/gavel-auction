@@ -247,7 +247,6 @@ export function BidScreen({
         bidderId={raise.bidderId}
         currentCents={ceiling}
         maxCents={cap ?? Math.max(ceiling, ...(presets ?? []))}
-        {...(presets === undefined ? {} : { presetsCents: presets })}
         {...(raise.allowCustom === undefined ? {} : { allowCustom: raise.allowCustom })}
         onClose={() => setRaising(false)}
       />
