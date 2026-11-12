@@ -3,7 +3,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { t } from '../../src/copy/t';
 import { BidScreen } from '../../src/screens/bid/BidScreen';
 import { CustomBid, centsToText, sliderMax, stepAmount } from '../../src/screens/bid/CustomBid';
-import { LotBlock } from '../../src/screens/bid/LotBlock';
 import { RoomStore } from '../../src/store/roomStore';
 import { bidderId, openSnapshot, roster, stateMsg } from '../../src/testing/builders';
 
@@ -104,21 +103,8 @@ describe('CustomBid stepper and slider', () => {
   });
 });
 
-describe('LotBlock and the bid screen lot', () => {
-  it('shows an image with alt text, the name and the fallback story', () => {
-    render(<LotBlock title="Signed press plate" />);
-    expect(screen.getByRole('img', { name: t('bid.lot.alt') })).toBeTruthy();
-    expect(screen.getByRole('heading', { name: 'Signed press plate' })).toBeTruthy();
-    expect(screen.getByText(t('bid.lot.story'))).toBeTruthy();
-  });
-
-  it('falls back to the catalog name and prefers a story from the room', () => {
-    render(<LotBlock title={null} story="Pulled in 1923." />);
-    expect(screen.getByRole('heading', { name: t('bid.lot.fallbackName') })).toBeTruthy();
-    expect(screen.getByText('Pulled in 1923.')).toBeTruthy();
-  });
-
-  it('is on the bidder screen with the stepper under the room limit', () => {
+describe('the bid screen stepper', () => {
+  it('shows no lot card and has the stepper under the room limit', () => {
     const store = new RoomStore();
     const snap = {
       ...openSnapshot(roster([12, 'Priya'])),
@@ -126,7 +112,7 @@ describe('LotBlock and the bid screen lot', () => {
     };
     store.dispatch({ kind: 'wire', msg: stateMsg(1, snap as never) }, 0);
     render(<BidScreen store={store} onBid={vi.fn()} />);
-    expect(screen.getByTestId('lot-block')).toBeTruthy();
+    expect(screen.queryByTestId('lot-block')).toBeNull();
     expect(screen.getByRole('slider')).toBeTruthy();
   });
 });
