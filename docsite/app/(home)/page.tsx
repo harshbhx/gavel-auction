@@ -110,7 +110,7 @@ export default function HomePage() {
     {
       value: gatesPassed(),
       of: ' of 6',
-      label: 'PayPal sandbox gates passed: G0, G1, G2, G4. G3 is a timed probe in progress, G5 is partial (tested with synthetic speech).',
+      label: 'PayPal sandbox gates passed: G0, G1, G2, G3, G4. G5 is partial (tested with synthetic speech).',
       chip: <Chip kind="solid">Sandbox, PASS</Chip>,
     },
     {
@@ -207,8 +207,8 @@ export default function HomePage() {
       </Section>
 
       <Section id="gates" labelledBy="gates-title" className="border-t border-[var(--hl-hairline)] bg-fd-card/40">
-        <SectionHeading id="gates-title" eyebrow="Proof" title="Six gates: four passed on the PayPal sandbox.">
-          Source of truth: <code>docs/GATES.md</code>. G0, G1, G2 and G4 ran against the PayPal sandbox and passed. G3 is a timed probe on the sandbox that is still running. G5 is a speech-to-text evaluation on synthetic audio and never calls PayPal (tested with synthetic voice clips). A gate closes only with a recorded result.
+        <SectionHeading id="gates-title" eyebrow="Proof" title="Six gates: five passed on the PayPal sandbox.">
+          Source of truth: <code>docs/GATES.md</code>. G0, G1, G2, G3 and G4 ran against the PayPal sandbox and passed (G3 is scoped to a wallet buyer and a 1.00 partial capture). G5 is a speech-to-text evaluation on synthetic audio and never calls PayPal (tested with synthetic voice clips). A gate closes only with a recorded result.
         </SectionHeading>
         <GatesTable />
         <p className="text-sm text-fd-muted-foreground">

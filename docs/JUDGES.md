@@ -6,7 +6,7 @@ A short path through the repository for judges. Everything is PayPal sandbox onl
 
 What is built and proven:
 
-- Gates G0, G1, G2 and G4 passed on the real PayPal sandbox: app and buyers, partial capture with `final_capture`, wallet and guest card authorization, and six real webhooks verified.
+- Gates G0, G1, G2, G3 and G4 passed on the real PayPal sandbox: app and buyers, partial capture with `final_capture`, wallet and guest card authorization, a multi-day capture and reauthorize probe, and six real webhooks verified.
 - A real server process was killed once on a CI runner against the sandbox, restarted on the same data folder, and settled with one capture, two losers voided, a journal equal to PayPal and a verifying ledger (run 42558021614, `docs/evidence/server-kill/`).
 - Live speech through the `/audio` socket: both providers answered 24 of 24 synthetic clips and no spoken bid was accepted without a confirm (run 42575018866, `docs/evidence/voice-live-socket/`).
 - The ledger hash chain verifies (19 entries in the kill run), and the public export verifier is covered by tests.
@@ -19,14 +19,14 @@ Scope and limits:
 
 - Latency is measured on the sandbox: hammer to settled p95 6.93 s against a 6 s target and hammer to captured p95 3.77 s against 2.5 s (run 42563147792, 49 of 50 completed, INCOMPLETE: 1 timeout and 3 failed capture calls); the earlier n=20 run measured 5591 ms and 3010 ms. Owner decision open: keep the targets, raise them with a reason, or reduce latency. Both targets are missed; the gate record is `docs/GATES.md`.
 - G5 (speech accuracy) is tested with synthetic voice clips, with a confirm step on every voice bid: wrong accept 0.000 on 24 noise-free clips per set (tuned on those clips), and 0.058 (Groq) and 0.092 (Deepgram) on a held-out noisy set measured once (120 clips) against a pre-registered 0.05. Spoken bids always use the confirm prompt; the next step is a live or noisy room.
-- G3 is a timed sandbox probe, running since 7 Nov 2026 03:06 UTC. Day 0 is recorded and the final reading is about 12 Nov 06:17 UTC, so the result is reported then. The 30-day run is a simulation on a fake clock (`docs/evidence/SIM/SIM-MULTIDAY.md`).
+- G3 passed: a timed sandbox probe from 7 Nov 2026 03:06 UTC showed the authorization stayed capturable at 3.5, 4 and 5 days and reauthorize was accepted (sandbox, wallet buyer, 1.00 partial capture only). The 30-day run is a simulation on a fake clock (`docs/evidence/SIM/SIM-MULTIDAY.md`).
 - The kill ran on a CI runner, not the deployed host; the live socket run used the fake PayPal and synthetic clips. The web console now has an auctioneer microphone (enabled only when the server reports a live speech provider, and every spoken bid still asks for a confirm).
 - The Hugging Face datasets are published and use synthetic data by design (privacy by design).
 - Next steps, with owners and dates where known, are on `docs/LIMITATIONS.md`. What changed and when is in `CHANGELOG.md`.
 
 How to read the labels:
 
-- The fake PayPal demo and the replay are recorded or simulated, not live PayPal. Gates G0, G1, G2 and G4 ran against the real sandbox. Committed run logs exist for G1, G2 and G4; G0 is an Actions run log.
+- The fake PayPal demo and the replay are recorded or simulated, not live PayPal. Gates G0, G1, G2, G3 and G4 ran against the real sandbox. Committed run logs exist for G1, G2 and G4; G0 is an Actions run log.
 - Settlement of a whole auction and crash recovery are covered against the fake PayPal. On the real sandbox the nightly specs R7, R8 and R10 ran (one lot of three holds, one in-process crash; runs 42200708552 and 42317068784), and 20 settlements of 6 holds were measured end to end. A real server process was killed once on a CI runner against the sandbox and recovered with one capture (run 42558021614, `docs/evidence/server-kill/`); driving a whole auction through the deployed Render server, and a kill on that host, are the next sandbox runs.
 - See `docs/GATES.md` for each gate and its result.
 

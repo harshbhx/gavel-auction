@@ -47,12 +47,11 @@ export function gateById(id: string): GateRow {
 
 /**
  * The word a reader sees for a gate. docs/GATES.md keeps its own status words (it is the record);
- * the site shows the same facts in plainer terms. G3 reads NOT RUN there until the final reading.
+ * the site shows the same facts in plainer terms. A gate that has not run reads NEXT RUN.
  */
 export function gateLabel(g: GateRow): string {
   if (g.status === 'PASS' || g.status === 'FAIL') return g.status;
   if (g.status === 'PARTIAL') return g.id === 'G5' ? 'TESTED, SYNTHETIC CLIPS' : 'MEASURED';
-  if (g.id === 'G3' && g.status === 'NOT RUN') return 'RUNNING, FINAL READING 12 NOV';
   return 'NEXT RUN';
 }
 

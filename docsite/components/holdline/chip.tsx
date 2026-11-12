@@ -27,8 +27,7 @@ export function Chip({
 /** Status of one gate, read from docs/GATES.md at build time, with its fill and a word. */
 export function GateBadge({ id }: { id: string }) {
   const g = gateById(id);
-  const inProgress = g.id === 'G3' && g.status === 'NOT RUN';
   const label = gateLabel(g);
-  const kind = g.status === 'PASS' ? 'solid' : g.status === 'FAIL' ? 'stop' : inProgress || g.status === 'PARTIAL' ? 'hatched' : 'hollow';
+  const kind = g.status === 'PASS' ? 'solid' : g.status === 'FAIL' ? 'stop' : g.status === 'PARTIAL' ? 'hatched' : 'hollow';
   return <Chip kind={kind}>{`${g.id} ${label}`}</Chip>;
 }

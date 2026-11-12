@@ -47,8 +47,8 @@ export function TimelineDiagram() {
       caption={
         <>
           What this shows: the settlement code kept its invariants under injected crashes and faults, on a
-          model of PayPal. What it does not show: real PayPal behaviour over days. That is gate G3, still
-          in progress. The honor period (3 days) and validity (29 days) are assumptions of the model, not
+          model of PayPal. What it does not show: real PayPal behaviour over days. That is gate G3, a real sandbox probe
+          that passed (3.5, 4 and 5 days, wallet buyer, 1.00 partial capture). The honor period (3 days) and validity (29 days) are assumptions of the model, not
           PayPal facts. Figures are read from <code>docs/evidence/SIM/SIM-MULTIDAY.md</code> (seed {s8.seed}).
         </>
       }

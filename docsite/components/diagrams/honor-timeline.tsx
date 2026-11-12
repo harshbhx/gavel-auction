@@ -117,7 +117,7 @@ export function HonorTimelineDiagram() {
       badge={
         <>
           <Chip kind="fake">Model and simulation</Chip>
-          <Chip kind="hatched">G3 in progress</Chip>
+          <Chip kind="solid">G3 PASS</Chip>
         </>
       }
       toolbar={
@@ -152,8 +152,8 @@ export function HonorTimelineDiagram() {
           all unverified) and the <strong>simulated</strong> scenarios S2 to S5 in{' '}
           <code>docs/evidence/SIM/SIM-MULTIDAY.md</code>; PayPal&apos;s real values are not verified. The third group is the
           real probe in <code>packages/payments/gates/g3.ts</code> and <code>g3-timed.ts</code>, run by{' '}
-          <code>.github/workflows/gate-g3.yml</code> with day 0 on 7 Nov 2026 03:06 UTC. Gate G3 is running; the
-          final reading is about 12 Nov 06:17 UTC and no result is claimed here.
+          <code>.github/workflows/gate-g3.yml</code> with day 0 on 7 Nov 2026 03:06 UTC. Gate G3 passed on 12 Nov: captures of 1.00 and reauthorize were accepted at 3.5, 4 and 5 days (wallet
+          buyer, sandbox).
         </>
       }
       transcript={
@@ -162,7 +162,7 @@ export function HonorTimelineDiagram() {
             <li>Model: an authorization is held for a 3 day honor period and is valid for 29 days. A capture after the honor period is refused in the strict reading (the simulation uses it). A reauthorization is refused inside the honor period and, after it, returns a new authorization with its own id and a new honor clock.</li>
             <li>Policy: reauthorization is off by default (GAVEL_REAUTH). When on, a hold older than 2 days 18 hours is reauthorized before the capture, once, never above its ceiling. A hold older than 2 hours at settlement start is only flagged stale and is still captured.</li>
             <li>Simulation: S2 closes at day 2.5 and captures inside the honor period, and a too-early reauthorization at day 2.9 is refused without blocking the capture. S3 captures at day 3.5 with reauthorization and, with it off, nobody is charged. S4 reauthorizes at day 3.04 and captures at day 5. S5 lets holds expire at day 30 and the runner-up is charged its own price.</li>
-            <li>Real probe G3 (in progress, day 0 is 7 Nov 2026 03:06 UTC): day 0 tries an immediate reauthorize on a fresh authorization and creates three authorizations. At 3.5, 4 and 5 days (10 Nov 15:06, 11 Nov 03:06, 12 Nov 03:06 UTC) it reads one, tries a 1.00 partial capture, tries a reauthorize and reads again. No result is recorded yet.</li>
+            <li>Real probe G3 (PASS, day 0 is 7 Nov 2026 03:06 UTC): day 0 tries an immediate reauthorize on a fresh authorization and creates three authorizations. At 3.5, 4 and 5 days (10 Nov 15:06, 11 Nov 03:06, 12 Nov 03:06 UTC) it reads one, tries a 1.00 partial capture, tries a reauthorize and reads again. All three checkpoints accepted the capture and the reauthorize.</li>
           </ul>
         </>
       }
@@ -251,7 +251,7 @@ export function HonorTimelineDiagram() {
           {/* group 3: real probe */}
           <rect x={14} y={296} width={W - 28} height={232} rx={2} className="panel" />
           <T x={26} y={320} cls="t-big">
-            Real sandbox probe: gate G3, in progress
+            Real sandbox probe: gate G3, passed
           </T>
           <T x={26} y={338} cls="t-small t-muted">
             day 0 = 7 Nov 2026 03:06 UTC. At each checkpoint: read, capture 1.00 (not final), reauthorize, read again.

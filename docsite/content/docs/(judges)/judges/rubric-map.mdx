@@ -8,7 +8,7 @@ The PayPal AI Hackathon scores five equally weighted criteria from 1 to 5 in Sta
 
 <Held title="Not scored here">
 
-The map shows where to look. It makes no claim about the score. Open items (<Term id="gate-g3">G3</Term>, <Term id="gate-g5">G5</Term>, hosted demo not yet walked end to end) are repeated in each row where they matter.
+The map shows where to look. It makes no claim about the score. Open items (<Term id="gate-g5">G5</Term>, hosted demo not yet walked end to end) are repeated in each row where they matter.
 
 </Held>
 
@@ -32,7 +32,7 @@ Thorough, skilled use of the PayPal platform and AI, a genuine and non-trivial i
 
 | What to open | What it shows | Status |
 | --- | --- | --- |
-| [Gates G0 to G5](/docs/proof/gates) | Real sandbox runs for authorize, partial <Term id="capture">capture</Term>, card and guest authorize and webhook verification | PASS for G0, G1, G2, G4 |
+| [Gates G0 to G5](/docs/proof/gates) | Real sandbox runs for authorize, partial <Term id="capture">capture</Term>, card and guest authorize and webhook verification | PASS for G0, G1, G2, G3, G4 |
 | [Settlement saga](/docs/how-it-works/settlement-saga), [Idempotency](/docs/how-it-works/idempotency) | A pure state machine, a <Term id="journal">journal</Term> saved before each call, deterministic request ids | Tested against the fake PayPal; one lot of three holds and one in-process crash on the real sandbox |
 | [Webhooks](/docs/safety/webhooks) | Signature verification through PayPal's endpoint | PASS on six real events (G4); tampered-event rejection is fake only |
 | [Voice and the confirm gate](/docs/how-it-works/voice-and-confirm) | Speech-to-text, a parser and a validator that never decides a winner or moves money | G5 tested with synthetic voice clips, synthetic audio only; every spoken bid confirms |
@@ -80,5 +80,5 @@ The video shows it working end to end, and the pitch states the problem, the aud
 ## Where the evidence grows next
 
 - The hosted app (gavel.dualmindlab.tech, sandbox mode) is live; a recorded walk of the whole flow is the next step. A judge can open it, read the evidence, and run the fake-PayPal demo locally.
-- G3 is a timed probe with its final reading about 12 Nov. G5 is tested with synthetic voice clips: wrong accept 0.000 on synthetic, noise-free clips (tuned on them), and a synthetic held-out noisy set measured once read 0.058 and 0.092 against 0.05; the confirm prompt protects every voice bid.
+- G3 passed (sandbox, wallet buyer, 1.00 partial capture only). G5 is tested with synthetic voice clips: wrong accept 0.000 on synthetic, noise-free clips (tuned on them), and a synthetic held-out noisy set measured once read 0.058 and 0.092 against 0.05; the confirm prompt protects every voice bid.
 - Security review: all eight P0 items PASS as of 2026-11-07; SEC-19 and SEC-20 are the open items; SEC-09, SEC-10, SEC-14, SEC-15 (one S01 server log scanned, 0 findings, not yet reviewed by someone other than the author) and SEC-21 to SEC-24 are checked with a named residual, the last four agent-only. See [Tough questions](/docs/judges/tough-questions).

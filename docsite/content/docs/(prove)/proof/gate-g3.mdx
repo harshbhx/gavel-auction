@@ -1,8 +1,8 @@
 ---
 title: 'Gate G3: honor period and reauthorize'
-description: How long an authorization stays capturable, and whether reauthorize extends it. In progress, with a simulation beside it.
+description: How long an authorization stays capturable, and whether reauthorize extends it. Passed on the sandbox, with a simulation beside it.
 icon: Hourglass
-status: running
+status: verified
 ---
 
 <GateBadge id="G3" />
@@ -13,33 +13,33 @@ How long does a PayPal <Term id="authorization">authorization</Term> stay captur
 
 ## Status
 
-<Held title="In progress, not a result">
+<Charged title="PASS">
 
-This is a real <Term id="sandbox">sandbox</Term> probe that is still running. Day 0 was 7 Nov 2026 03:06 UTC; the earlier attempts on 4 to 7 Nov never ran, so no earlier day is claimed. Checkpoints are at 3.5, 4 and 5 days, and the final reading is about 12 Nov 06:17 UTC. Until those results exist the gate is not marked passed, and this site shows it as RUNNING.
+G3 passed: the authorization stayed capturable at 3.5, 4 and 5 days and reauthorize was accepted (sandbox, wallet buyer, 1.00 partial capture). This was a real <Term id="sandbox">sandbox</Term> probe. Day 0 was 7 Nov 2026 03:06 UTC; the earlier attempts on 4 to 7 Nov never ran, so no earlier day is claimed. The final checkpoint is [run 43174780092](https://github.com/harshbhx/gavel-auction/actions/runs/43174780092). Fallback adopted: none.
 
-</Held>
+</Charged>
 
 ## Method
 
 - Workflow: [`gate-g3`](https://github.com/harshbhx/gavel-auction/blob/main/.github/workflows/gate-g3.yml). A manual run on `main` starts the probe (day 0: a headless browser signs in as the sandbox buyer and approves four orders). It also runs on a schedule, every 6 hours, to pick the probe up again and do the checks at each checkpoint. The last run appends the entry to `docs/GATES.md`.
 - Scripts: `gates/g3.ts` and `gates/g3-timed.ts` in `packages/payments`.
-- Early reading: [`gate-g3-early`](https://github.com/harshbhx/gavel-auction/blob/main/.github/workflows/gate-g3-early.yml) probes two older G2 authorizations (a 1.00 partial capture and a <Term id="reauthorization">reauthorization</Term> once an authorization reaches its checkpoint age, 3.0 days for the wallet one and 3.5 for the card one). It never touches the G3 probe state. It is an extra early reading, not the full 5-day result.
+- Early reading: [`gate-g3-early`](https://github.com/harshbhx/gavel-auction/blob/main/.github/workflows/gate-g3-early.yml) probes two older G2 authorizations (a 1.00 partial capture and a <Term id="reauthorization">reauthorization</Term> once an authorization reaches its checkpoint age, 3.0 days for the wallet one and 3.5 for the card one). It never touches the G3 probe state. It was an extra early reading, before the final result.
 - Secrets by name: `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `SANDBOX_BUYER_EMAIL`, `SANDBOX_BUYER_PASSWORD`.
 
-## Readings so far
+## Readings
 
 | When | Reading | Where |
 | --- | --- | --- |
 | 7 Nov 03:06 UTC, day 0 | An immediate reauthorize was refused with 422 `UNPROCESSABLE_ENTITY` `REAUTHORIZATION_TOO_SOON`, as expected. Three authorizations were approved, to be read at day 3.5, day 4 and day 5. | [run 42332377547](https://github.com/harshbhx/gavel-auction/actions/runs/42332377547) |
 | 8 Nov 17:36 UTC, early, older G2 wallet authorization at age 3.24 days | A partial capture of 1.00 was accepted (HTTP 201) and the authorization then read `PARTIALLY_CAPTURED`. The reauthorize call answered 422 `UNPROCESSABLE_ENTITY` with the issue `PAYER_CANNOT_PAY`. | [run 42505780514](https://github.com/harshbhx/gavel-auction/actions/runs/42505780514) |
 | 9 Nov 00:09 UTC, early, older G2 guest card authorization at age 3.5075 days | Still CREATED. A partial capture of 1.00 was accepted (HTTP 201) and the authorization then read `PARTIALLY_CAPTURED`. The reauthorize call answered 422 `PAYER_CANNOT_PAY`. No `final_capture`, no void. | [run 42538613566](https://github.com/harshbhx/gavel-auction/actions/runs/42538613566) |
-| About 12 Nov 06:17 UTC | Final reading on the day 3.5, 4 and 5 authorizations. | `gate-g3` |
+| 10 to 12 Nov, final probe, day 3.5, 4 and 5 authorizations | At each checkpoint a partial capture of 1.00 was accepted (HTTP 201, authorization `CREATED` to `PARTIALLY_CAPTURED`) and reauthorize was accepted (HTTP 201). Verdict PASS, fallback none. | [run 43174780092](https://github.com/harshbhx/gavel-auction/actions/runs/43174780092) |
 
-The 8 Nov reading was taken on an authorization that already had a partial capture, so it is an early data point, not the G3 result. The day 3.5, 4 and 5 authorizations have no capture on them, which makes them the clean reading.
+The 8 Nov reading was taken on an authorization that already had a partial capture, so it is an early data point, not the G3 result. The day 3.5, 4 and 5 authorizations had no capture on them before the probe, which makes them the clean reading, and that is the one that passed.
 
-## What the nightly run said so far
+## What the nightly run said
 
-The nightly spec R3 (reauthorize after a delay) answered HTTP 422 UNPROCESSABLE_ENTITY and reported `inconclusive`. Reauthorize is therefore unproven on that run. See the [nightly record](https://github.com/harshbhx/gavel-auction/blob/main/docs/evidence/nightly/NIGHTLY-42200708552.json).
+The nightly spec R3 (reauthorize after a delay) answered HTTP 422 UNPROCESSABLE_ENTITY and reported `inconclusive`. Reauthorize was therefore unproven on that run; the final G3 probe is the reading that settles it. See the [nightly record](https://github.com/harshbhx/gavel-auction/blob/main/docs/evidence/nightly/NIGHTLY-42200708552.json).
 
 ## Simulated, not real
 
@@ -53,15 +53,14 @@ We simulated 30 days of auctions with a fake clock: holds, <Term id="honor-perio
 
 ## Limits
 
-- No result yet; nothing here may be quoted as a pass.
+- Scope of the pass: sandbox, wallet buyer, a partial capture of 1.00 only. It is not a card order and not a full-amount capture, and the 29-day validity was not probed.
 - It uses PayPal-account sandbox orders created by the probe, not a deployed auction.
-- The expected failure modes it will confirm or correct are listed in the simulation file: whether a capture after 3 days still works, the exact error name, whether reauthorize inside the honor period is refused, whether it returns a new id, and whether PayPal sends a webhook on expiry.
+- The failure modes listed in the simulation file were not seen at 3.5, 4 and 5 days (a capture was never refused). They remain unprobed beyond 5 days: whether a capture after 3 days still works, the exact error name, whether reauthorize inside the honor period is refused, whether it returns a new id, and whether PayPal sends a webhook on expiry.
 
 ## What changes the decision
 
-- A validity window shorter than the longest planned auction, or reauthorize that does not extend it: auctions are capped to the window and the demo stays short, or long auctions become no-go.
-- A window that covers the planned auctions: go for card and wallet.
-- Fallback in the meantime: keep auctions shorter than the validity window and reauthorize before the hammer. That is a plan, not a result.
+- G3 recorded PASS, fallback none: captures worked at 3.5, 4 and 5 days, so auctions up to that length are inside what was tested. A longer auction, a card order or a full-amount capture would need its own reading.
+- The reauthorize path stays available (off by default) if an auction ever needs it.
 
 <CodePaths
   paths={[
