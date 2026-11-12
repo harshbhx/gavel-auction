@@ -395,11 +395,12 @@
   }
 }
 
-.gv-player__more > summary {
+.gv-player__more-title {
+  margin: 0;
   min-height: 44px;
   display: flex;
   align-items: center;
-  cursor: pointer;
+  font-weight: inherit;
   font-size: var(--font-size-2);
   color: var(--color-fg-muted);
 }

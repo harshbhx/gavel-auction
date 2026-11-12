@@ -154,12 +154,6 @@ const say = (key: Beat['label'] | Beat['body']): string => t(key as 'scriptedDem
 /** Speed labels have no placeholders, so a union of their keys is safe to look up. */
 const speedText = (s: PlaybackSpeed): string => t(SPEED_LABEL[s] as 'scriptedDemo.speed1');
 
-/** Phones fold the step list so the screen and the controls stay in view; wide, tall pages show it. */
-function stepsStartOpen(): boolean {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return true;
-  return window.matchMedia('(min-width: 901px) and (min-height: 860px)').matches;
-}
-
 /** Caption, transport controls and the step list that sit beside the scripted screen. */
 export function ScriptedPlayer({
   playback,
@@ -259,8 +253,8 @@ export function ScriptedPlayer({
           speed: speedText(speed),
         })}
       </p>
-      <details className="gv-player__more" open={stepsStartOpen()}>
-        <summary>{t('scriptedDemo.allSteps')}</summary>
+      <div className="gv-player__more">
+        <h3 className="gv-player__more-title">{t('scriptedDemo.allSteps')}</h3>
         <div
           ref={scroller}
           className="gv-player__scroll"
@@ -289,7 +283,7 @@ export function ScriptedPlayer({
             ))}
           </ol>
         </div>
-      </details>
+      </div>
     </section>
   );
 }
