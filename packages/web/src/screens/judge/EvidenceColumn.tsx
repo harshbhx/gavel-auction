@@ -12,11 +12,11 @@ const PROVEN = [
   ['try.ev.p3', 'try.ev.p3d'],
   ['try.ev.p4', 'try.ev.p4d'],
   ['try.ev.p5', 'try.ev.p5d'],
+  ['try.ev.p6', 'try.ev.p6d'],
 ] as const;
 
 const NOT_CLAIMED = [
   ['try.ev.n1', 'try.ev.n1d'],
-  ['try.ev.n2', 'try.ev.n2d'],
   ['try.ev.n3', 'try.ev.n3d'],
   ['try.ev.n4', 'try.ev.n4d'],
   ['try.ev.n5', 'try.ev.n5d'],

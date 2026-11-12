@@ -75,12 +75,12 @@ _One bid, four hops through the stack._
 
 We kept a [gate file](https://github.com/harshbhx/gavel-auction/blob/main/docs/GATES.md) (`docs/GATES.md`) and let nothing count until a real run backed it. Status today:
 
-- **G0, G1, G2 and G4 pass** on the real PayPal sandbox: app and buyers, partial capture with final_capture, wallet and guest-card holds, and six real webhooks verified.
-- **G3 is running: final reading 12 Nov.** It started 7 Nov 2026 03:06 UTC and reads out at about 12 Nov 06:17 UTC.
+- **G0, G1, G2, G3 and G4 pass** on the real PayPal sandbox: app and buyers, partial capture with final_capture, wallet and guest-card holds, and six real webhooks verified.
+- **G3 passes: a hold stayed capturable for 5 days.** A real sandbox probe started 7 Nov 2026 03:06 UTC (wallet buyer, partial capture of 1.00). After 3.5, 4 and 5 days a 1.00 capture was accepted and a reauthorize was accepted each time; a reauthorize on day 0 was refused as too soon (422 TOO_SOON). Run: https://github.com/harshbhx/gavel-auction/actions/runs/43174780092
 - **G5: tested, with a confirm step on every voice bid.** Voice bids were tested on synthetic speech clips, not by a person in a room (Deepgram 11 of 11 and Groq 9 of 11 scripted bids parsed exactly), and the confirm prompt protects every voice bid.
 - The 30-day settlement run on a fake clock is labelled simulated. The [real versus simulated page](https://docs.gavel.dualmindlab.tech/docs/judges/real-vs-simulated) says which part is which.
 
-![Animated slide: open datasets and gate status, G0, G1, G2 and G4 pass, G3 running, G5 tested.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/09-open-data-and-gates.png)
+![Animated slide: open datasets and gate status, G0, G1, G2, G3 and G4 pass, G5 tested.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/09-open-data-and-gates.png)
 
 _Open data and the gate status._
 
@@ -105,7 +105,7 @@ Correctness costs more than the happy path. [Findings that mattered](https://doc
 - **Holds must be idempotent.** A retry or a double tap must not make a second hold. Webhooks also arrive twice or out of order, so handlers de-duplicate and the saga never trusts one event alone. Real events carried fields our simulator lacked, so we test against six sanitized real fixtures.
 - **Void on loss, and what "released" means.** After a final capture, a follow-up void answers 422 PREVIOUSLY_CAPTURED and the authorization reads CAPTURED. We treat that as the remainder being released, and we say plainly that it is inferred, not read from a buyer balance.
 - **The soft close.** Two bids landing together must get one ordered answer: one accepted, one refused as not higher.
-- **How long a hold lasts.** PayPal's pages disagree (3 days versus 29, with one reauthorization). We run a real timed probe, and until it reports, demo holds are made minutes before the capture.
+- **How long a hold lasts.** PayPal's pages disagree (3 days versus 29, with one reauthorization). Our 5-day sandbox probe passed: a hold was still capturable at 3.5, 4 and 5 days and reauthorize was accepted. The probe used a wallet buyer, so demo holds are still made shortly before the capture.
 - **Voice in noise.** Speech-to-text gets less exact when the room is noisy, so a spoken bid never counts until the bidder confirms it, and every voice bid shows what was heard before it counts. We tested with 120 noisy clips.
 - **Flaky CI and honest numbers.** Browser and sandbox runs flake, so we separated a real failure from a flaky one before trusting a green run, and every figure here names what it measured. The sandbox also needs US accounts and USD.
 
@@ -139,15 +139,15 @@ _The same event arrives twice and is counted once._
 
 ## What's next for GAVEL
 
-- Read out the G3 probe and set the reauthorize behaviour from it.
+- Set the reauthorize behaviour in the app from the G3 result.
 - Test the console microphone with a person in a real room and in recorded noise.
 - More payment methods through the same hold and capture shape.
 - An organizer dashboard: lots, bidders, settlement and the ledger in one view.
 - Repeat the process kill on the deployed host.
 
-![Three lines: the G3 probe (running), real-room voice, and a kill on the deployed host.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/15-what-is-next.png)
+![Three lines: the G3 follow-up, real-room voice, and a kill on the deployed host.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/15-what-is-next.png)
 
-_Next: the G3 probe result, real-room voice, a kill on the deployed host._
+_Next: reauthorize behaviour from G3, real-room voice, a kill on the deployed host._
 
 ## Read more and proof
 

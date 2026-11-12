@@ -80,7 +80,6 @@ export const en = {
     'This is the gate log: what is built and measured, and the next step for each open item. Each line links to its proof page.',
   'mk.trust.read': 'Read the proof',
   'mk.trust.passed': 'Passed',
-  'mk.trust.progress': 'Running, final reading 12 Nov',
   'mk.trust.partial': 'Measured',
   'mk.trust.simulated': 'Simulated',
   'mk.trust.g0.title': 'G0 Sandbox app',
@@ -92,7 +91,7 @@ export const en = {
   'mk.trust.g2.body': 'Wallet and guest card buyers can both authorize in the SDK v6 flow.',
   'mk.trust.g3.title': 'G3 Honor period',
   'mk.trust.g3.body':
-    'A timed sandbox probe is running. Day 0 and an early reading on an older wallet hold are recorded, and the final reading is due 12 Nov.',
+    'A 5-day sandbox probe started 7 Nov. After 3.5, 4 and 5 days a 1.00 partial settlement was still accepted and a reauthorize was accepted each time. A reauthorize on day 0 was refused as too soon. Sandbox, wallet buyer.',
   'mk.trust.g4.title': 'G4 Webhooks',
   'mk.trust.g4.body': 'Six real sandbox webhook deliveries passed signature verification.',
   'mk.trust.g5.title': 'G5 Speech accuracy',
@@ -208,7 +207,7 @@ export const en = {
     'No. GAVEL runs on the PayPal sandbox, so use sandbox test accounts only. Do not enter a personal PayPal login.',
   'mk.faq.q7': 'What comes next?',
   'mk.faq.a7':
-    'The honor period test (G3) is a timed probe with its final reading about 12 Nov. Voice accuracy (G5) is measured on synthetic speech: voice was tested with synthetic speech clips, the live voice run answered 24 of 24 clips with 0 bids accepted without a confirm, and the noisy held-out set measured wrong accept 0.058 and 0.092 against a target of 0.05. The confirm prompt protects every voice bid. The gate log above lists both.',
+    'The honor period test (G3) passed: a hold stayed usable for at least 5 days on the sandbox. Voice accuracy (G5) is measured on synthetic speech: voice was tested with synthetic speech clips, the live voice run answered 24 of 24 clips with 0 bids accepted without a confirm, and the noisy held-out set measured wrong accept 0.058 and 0.092 against a target of 0.05. The confirm prompt protects every voice bid. The gate log above lists both.',
   'mk.faq.q8': 'Is the code open?',
   'mk.faq.a8':
     'Yes. The source is on GitHub under the MIT license, and the docs explain how an auction settles.',
@@ -390,11 +389,11 @@ export const en = {
   'try.ev.p4d': 'G4: PayPal webhook signatures verify on real sandbox events.',
   'try.ev.p5': 'A hash-chained audit trail',
   'try.ev.p5d': 'A room exports a ledger that is checked for edits and for truncation.',
+  'try.ev.p6': 'Hold lasts at least 5 days',
+  'try.ev.p6d':
+    'G3 passed: an authorization stayed usable at 3.5, 4 and 5 days and reauthorize was accepted (sandbox, wallet buyer).',
   'try.ev.n1': 'Real money',
-  'try.ev.n1d': 'PayPal sandbox only. No live account is touched.',
-  'try.ev.n2': 'G3: how long a hold lasts',
-  'try.ev.n2d':
-    'A real probe has been running since 7 Nov, final reading about 12 Nov. The result is not in yet. The 30-day run is a simulation.',
+  'try.ev.n1d': 'PayPal sandbox only. No live account is touched. The 30-day run is a simulation.',
   'try.ev.n3': 'G5: voice accuracy',
   'try.ev.n3d':
     'Tested with synthetic speech clips. Live voice run: 24 of 24 clips answered, with 0 bids accepted without a confirm. Measured once on a 120-clip noisy held-out set: wrong accept 0.058 (Groq) and 0.092 (Deepgram) against a target of 0.05. The confirm prompt protects every voice bid.',

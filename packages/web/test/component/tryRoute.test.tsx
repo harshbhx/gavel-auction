@@ -141,9 +141,9 @@ describe('/try judge panel: the Ledger front page', () => {
     render(panel());
     const proven = screen.getByRole('region', { name: t('try.ev.proven') });
     const not = screen.getByRole('region', { name: t('try.ev.notClaimed') });
-    expect(within(proven).getAllByRole('listitem').length).toBe(5);
-    expect(within(not).getAllByRole('listitem').length).toBe(5);
-    expect(within(not).getByText(t('try.ev.n2'))).toBeTruthy();
+    expect(within(proven).getAllByRole('listitem').length).toBe(6);
+    expect(within(not).getAllByRole('listitem').length).toBe(4);
+    expect(within(proven).getByText(t('try.ev.p6'))).toBeTruthy();
     expect(within(not).getByText(t('try.ev.n3'))).toBeTruthy();
     expect(within(not).getByText(t('try.ev.n4'))).toBeTruthy();
     expect(within(not).getByText(t('try.ev.n5d'))).toBeTruthy();

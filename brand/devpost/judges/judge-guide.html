@@ -964,10 +964,11 @@ curl -s $API/api/judge/rooms/$ID/ledger -H "authorization: Bearer $REVIEWER" &gt
             <td class="key">G3</td>
             <td>How long does a hold stay capturable, and does reauthorize extend it?</td>
             <td>
-              Timed probe since 7 Nov 03:06 UTC. Final reading 12 Nov 2026, 06:17 UTC. The result is
-              recorded in <code>docs/GATES.md</code> and the Proven tab.
+              5-day timed probe since 7 Nov 03:06 UTC (sandbox, wallet buyer). After 3.5, 4 and 5
+              days a 1.00 capture was accepted and reauthorize was accepted each time; a reauthorize
+              on day 0 was refused as too soon. Shown in the Proven tab.
             </td>
-            <td><span class="chip chip--progress">RUNNING</span></td>
+            <td><span class="chip chip--pass">PASS</span></td>
           </tr>
           <tr>
             <td class="key">G4</td>
@@ -1242,10 +1243,10 @@ curl -s $API/api/judge/rooms/$ID/ledger -H "authorization: Bearer $REVIEWER" &gt
           <tr>
             <td><strong>Hold lifetime (G3)</strong></td>
             <td>
-              PayPal's pages disagree on how long a hold stays capturable. Our timed probe reads out
-              about 12 Nov; until then demo holds are made minutes before capture.
+              PayPal's pages disagree on how long a hold stays capturable. Our 5-day probe passed
+              (wallet buyer, sandbox); demo holds are still made shortly before capture.
             </td>
-            <td><span class="chip chip--progress">RUNNING</span></td>
+            <td><span class="chip chip--pass">PASS</span></td>
           </tr>
           <tr>
             <td><strong>Voice in a real room (G5)</strong></td>
