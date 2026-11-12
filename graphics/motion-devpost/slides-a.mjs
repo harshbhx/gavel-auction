@@ -55,12 +55,12 @@ function setup(h){
     html += '<div class="rl rr" style="left:64px;top:' + y + 'px;width:1072px"></div>';
     html += '<div class="a m ix" style="left:64px;top:' + (y+26) + 'px;font-size:18px;color:#cbbfa6">0' + (i+1) + '</div>';
     html += '<div class="ln" style="left:112px;top:' + (y+14) + 'px;width:520px;height:' + Math.round(120*.86) + 'px"><span class="d wd" style="font-size:120px;line-height:' + Math.round(120*.86) + 'px;color:#cbbfa6">' + r.w + '</span></div>';
-    html += '<div class="ln" style="left:690px;top:' + (y+22) + 'px;width:440px;height:26px"><span class="m lb" style="font-size:16px;line-height:26px;color:#6f6250">' + r.lab + '</span></div>';
+    html += '<div class="ln" style="left:690px;top:' + (y+14) + 'px;width:440px;height:26px"><span class="m lb" style="font-size:16px;line-height:26px;color:#6f6250">' + r.lab + '</span></div>';
   });
   // visuals per row
   var y1 = Y0, y2 = Y0 + RH, y3 = Y0 + 2*RH, y4 = Y0 + 3*RH;
   html += '<div class="a hb" style="left:690px;top:' + (y1+66) + 'px;width:446px;height:30px;border:1.5px solid #1d1712;overflow:hidden"><div class="hf" style="height:100%;width:100%;background:repeating-linear-gradient(135deg,#ff6a1f 0 2px,transparent 2px 11px);transform-origin:0 50%"></div></div>';
-  html += '<div class="ln" style="left:690px;top:' + (y2+46) + 'px;width:440px;height:92px"><span class="d pr" style="font-size:110px;line-height:92px;color:#1d1712">$10</span></div>';
+  html += '<div class="ln" style="left:690px;top:' + (y2+24) + 'px;width:440px;height:128px;padding:18px 0"><span class="d pr" style="font-size:94px;line-height:92px;color:#1d1712">$10</span></div>';
   html += '<div class="a hm" style="left:1030px;top:' + (y3+30) + 'px"></div>';
   html += '<div class="ln" style="left:690px;top:' + (y3+46) + 'px;width:330px;height:92px"><span class="d sd" style="font-size:110px;line-height:92px;color:#ff6a1f">Sold</span></div>';
   html += '<svg class="a ck" viewBox="0 0 120 90" width="120" height="90" style="left:690px;top:' + (y4+48) + 'px;overflow:visible"><path class="ckp" pathLength="1" d="M8 48 L42 80 L112 8" fill="none" stroke="#ff6a1f" stroke-width="9" stroke-linecap="butt" stroke-linejoin="miter" stroke-dasharray="1"/></svg>';
@@ -82,6 +82,7 @@ function update(t,h){
   h.$('.hf').style.transform = 'scaleX(' + h.pr(t, act[0]+.05, .7, h.E.o4) + ')';
   var pe = h.$('.pr'); h.mask(pe, t, act[1], 0.6);
   var v = Math.round(10 + 10*h.pr(t, act[1]+.2, 1.0, h.E.io)); pe.textContent = '$' + v;
+  pe.style.visibility = parseFloat(pe.style.transform.slice(11)) >= 85 ? 'hidden' : 'visible';
   pe.style.color = v >= 20 ? '#ff6a1f' : '#1d1712';
   marks[2].update(t);
   h.fade(h.$('.hm'), t, act[2], 0.2);

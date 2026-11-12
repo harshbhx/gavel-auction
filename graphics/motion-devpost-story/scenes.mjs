@@ -37,7 +37,7 @@ const frame = (section, no, sandbox = true) =>
 const LIB = `
 function L(t,h){
   h.$('#w').style.opacity = 1 - h.exitp(t);
-  h.$$('.mk').forEach(function(m){ var p = h.pr(t, +m.dataset.t, +(m.dataset.d||.8), h.E.o5); m.firstElementChild.style.transform = 'translateY(' + ((1-p)*110).toFixed(2) + '%)'; });
+  h.$$('.mk').forEach(function(m){ var p = h.pr(t, +m.dataset.t, +(m.dataset.d||.8), h.E.o5); m.firstElementChild.style.transform = 'translateY(' + ((1-p)*(+m.dataset.y||110)).toFixed(2) + '%)'; });
   h.$$('.rl').forEach(function(r){ var p = h.pr(t, +r.dataset.t, +(r.dataset.d||.8), h.E.io); r.style.transform = 'scaleX(' + p.toFixed(4) + ')'; });
   h.$$('.fd').forEach(function(f){ f.style.opacity = h.pr(t, +f.dataset.t, +(f.dataset.d||.5), h.E.o2); });
   h.$$('.cn').forEach(function(c){ var p = h.pr(t, +c.dataset.t, +(c.dataset.d||1), h.E.o4); var v = +c.dataset.f + (+c.dataset.v - +c.dataset.f)*p; c.textContent = (c.dataset.p||'') + Math.round(v) + (c.dataset.s||''); });
@@ -75,7 +75,7 @@ export const inspiration = {
   T: 4.4,
   poster: 3.3,
   html: `${frame('Inspiration', '01')}
-<div class="a mk" data-t=".05" data-d="1" style="left:48px;top:76px;overflow:hidden;font:800 330px/.84 var(--display);padding-bottom:.06em"><span style="display:block"><span class="cn" data-t=".15" data-d="1.1" data-f="0" data-v="20" data-p="$">$0</span></span></div>
+<div class="a mk" data-t=".05" data-d="1" data-y="150" style="left:48px;top:calc(100px - .14em);overflow:hidden;font:800 300px/.84 var(--display);padding:.14em 0 .16em"><span style="display:block"><span class="cn" data-t=".15" data-d="1.1" data-f="0" data-v="20" data-p="$">$0</span></span></div>
 ${M(0.3, 'left:650px;top:110px;' + disp(64) + 'width:300px', 'A bid is')}
 ${M(0.42, 'left:650px;top:172px;' + disp(64) + 'width:300px', 'a promise.')}
 ${R(0.9, 0.9, 'left:56px;width:888px;top:392px')}
@@ -195,8 +195,8 @@ ${M(0.22, 'left:56px;top:140px;' + disp(66) + 'width:800px', '<span class="or">O
 <div class="a" id="vr" style="left:500px;top:228px;width:1.5px;height:230px;background:var(--ink);transform-origin:50% 0;transform:scaleY(0)"></div>
 ${F(0.9, 0.4, 'left:56px;top:238px', '<span class="lab">Paddle 12</span>')}
 ${F(0.9, 0.4, 'left:524px;top:238px', '<span class="lab">Paddle 7</span>')}
-<div class="a" id="na" style="left:0;top:262px;overflow:hidden;font:800 214px/.84 var(--display);padding-bottom:.06em;white-space:nowrap">$25</div>
-<div class="a" id="nb" style="left:0;top:262px;overflow:hidden;font:800 214px/.84 var(--display);padding-bottom:.06em;white-space:nowrap">$25</div>
+<div class="a" id="na" style="left:0;top:calc(284px - .14em);overflow:hidden;font:800 182px/.84 var(--display);padding:.14em 0 .16em;white-space:nowrap">$25</div>
+<div class="a" id="nb" style="left:0;top:calc(284px - .14em);overflow:hidden;font:800 182px/.84 var(--display);padding:.14em 0 .16em;white-space:nowrap">$25</div>
 <div class="a" id="sk" style="left:524px;top:352px;width:0;height:6px;background:var(--ink)"></div>
 <div class="a" id="ua" style="left:56px;top:452px;width:0;height:6px;background:var(--orange)"></div>
 ${F(2.3, 0.4, 'left:56px;top:470px', '<span class="lab">Entry 41 &nbsp;/&nbsp; accepted</span>')}
