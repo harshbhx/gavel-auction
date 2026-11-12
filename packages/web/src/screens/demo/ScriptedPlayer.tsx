@@ -154,6 +154,17 @@ const say = (key: Beat['label'] | Beat['body']): string => t(key as 'scriptedDem
 /** Speed labels have no placeholders, so a union of their keys is safe to look up. */
 const speedText = (s: PlaybackSpeed): string => t(SPEED_LABEL[s] as 'scriptedDemo.speed1');
 
+/**
+ * scrollTop that centres `item` inside `list`. Measured from bounding boxes, because offsetTop is
+ * relative to the nearest positioned ancestor (the sticky player on desktop, not the list), which
+ * overshot and clamped the list to its last step. Clamped to the scrollable range.
+ */
+export function centeredScrollTop(list: HTMLElement, item: HTMLElement): number {
+  const offset = item.getBoundingClientRect().top - list.getBoundingClientRect().top;
+  const top = list.scrollTop + offset - (list.clientHeight - item.offsetHeight) / 2;
+  return Math.min(Math.max(0, top), Math.max(0, list.scrollHeight - list.clientHeight));
+}
+
 /** Caption, transport controls and the step list that sit beside the scripted screen. */
 export function ScriptedPlayer({
   playback,
@@ -176,8 +187,7 @@ export function ScriptedPlayer({
     const el = scroller.current;
     const now = el?.querySelector<HTMLElement>('[data-status="now"]');
     if (el && now && el.clientHeight > 0) {
-      const top = now.offsetTop - (el.clientHeight - now.offsetHeight) / 2;
-      const to = Math.max(0, top);
+      const to = centeredScrollTop(el, now);
       if (typeof el.scrollTo === 'function') {
         el.scrollTo({ top: to, behavior: reduced ? 'auto' : 'smooth' });
       } else {
