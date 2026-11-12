@@ -319,7 +319,7 @@
         <p class="small">
           Statuses exactly as recorded in <code>docs/GATES.md</code>. A gate is closed only when it
           is PASS or FAIL; a gate tested only with synthetic data stays open. G3, the multi-day
-          authorization probe, is still running and has no result yet.
+          authorization probe, passed (wallet buyer, 1.00 partial capture only).
         </p>
         <div class="grid" id="gate-cards"></div>
       </section>
@@ -346,8 +346,7 @@
         <div class="banner">
           <b>SIMULATED.</b> A fake clock and a model of PayPal, with crashes and injected faults. It
           is not a real-sandbox result. It shows that the settlement code keeps the ledger balanced
-          to the cent; it does not show how PayPal behaves over 30 days (that is gate G3, still
-          running).
+          to the cent; it does not show how PayPal behaves over 30 days (that is gate G3, a real sandbox probe that passed).
         </div>
         <div class="tiles" id="sim-tiles"></div>
         <p class="small">Outcome of each simulated lot.</p>

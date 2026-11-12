@@ -28,7 +28,7 @@ Expected: one sentence (every bid is a PayPal authorization hold, only the winni
 
 Open [Gates G0 to G5](/docs/proof/gates).
 
-Expected: a table with <Term id="gate-g0">G0</Term>, G1, G2 and G4 as PASS, <Term id="gate-g5">G5</Term> as TESTED, SYNTHETIC CLIPS and <Term id="gate-g3">G3</Term> as RUNNING, FINAL READING 12 NOV. The table is generated from `docs/GATES.md`, so it cannot differ from the repository.
+Expected: a table with <Term id="gate-g0">G0</Term>, G1, G2, <Term id="gate-g3">G3</Term> and G4 as PASS and <Term id="gate-g5">G5</Term> as TESTED, SYNTHETIC CLIPS. The table is generated from `docs/GATES.md`, so it cannot differ from the repository.
 
 </Step>
 <Step>
@@ -55,16 +55,16 @@ Expected: hatched means held, solid means charged, hollow means released. One wi
 
 Open [The 30-day simulation](/docs/proof/simulation).
 
-Expected: eight scenarios, all PASS, each labelled simulated. They run our code against a model of PayPal on a fake clock, so they do not replace gate G3.
+Expected: eight scenarios, all PASS, each labelled simulated. They run our code against a model of PayPal on a fake clock, so they do not replace the real sandbox result of gate G3.
 
 </Step>
 </Steps>
 
 ## What you have seen
 
-- Real on the PayPal sandbox: gates G0, G1, G2 and G4.
+- Real on the PayPal sandbox: gates G0, G1, G2, G3 and G4.
 - Measured, with the fallback in place: gate G5 was tested with synthetic voice clips, tested with synthetic speech clips (fixes chosen on the same clips), and the confirm prompt protects every spoken bid.
-- In progress: gate G3, a timed probe with day 0 recorded and the final reading about 12 Nov 06:17 UTC.
+- Gate G3 passed: the authorization stayed capturable at 3.5, 4 and 5 days and reauthorize was accepted (sandbox, wallet buyer, 1.00 partial capture only).
 - Simulated: the multi-day run and whole-auction settlement on the fake PayPal, plus one lot of three holds on the real sandbox.
 
 Next: the [rubric map](/docs/judges/rubric-map) points each judging criterion at its evidence.

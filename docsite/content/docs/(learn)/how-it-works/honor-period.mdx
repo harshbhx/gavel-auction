@@ -1,8 +1,8 @@
 ---
 title: Honor period and reauthorization
-description: How long a hold can be captured, what GAVEL does about it, and exactly what gate G3 is testing on the real sandbox.
+description: How long a hold can be captured, what GAVEL does about it, and exactly what gate G3 tested on the real sandbox.
 icon: Hourglass
-status: running
+status: verified
 full: true
 ---
 
@@ -10,11 +10,11 @@ full: true
 
 PayPal does not let a <Term id="hold">hold</Term> stay capturable forever. An <Term id="authorization">authorization</Term> has an **<Term id="honor-period">honor period</Term>**: PayPal promises to honor a <Term id="capture">capture</Term> for a limited time after the hold, and may decline later ones. The authorization is also **valid** for a longer window. A **<Term id="reauthorization">reauthorization</Term>** asks PayPal to renew the reservation, which is only useful in an auction that runs for days.
 
-GAVEL's demo creates holds minutes before the capture, so none of this matters there. It matters for a multi-day auction. Because PayPal's real numbers are what is uncertain, GAVEL ships with reauthorization **off** and a real <Term id="sandbox">sandbox</Term> probe, <Term id="gate">gate</Term> <Term id="gate-g3">G3</Term>, running to measure them.
+GAVEL's demo creates holds minutes before the capture, so none of this matters there. It matters for a multi-day auction. Because PayPal's real numbers were uncertain, GAVEL ships with reauthorization **off** and a real <Term id="sandbox">sandbox</Term> probe, <Term id="gate">gate</Term> <Term id="gate-g3">G3</Term>, which has now measured 3.5, 4 and 5 days.
 
 <NotVerified title="PayPal's real numbers are not verified">
 
-The 3 day honor period and the 29 day validity on this page are the assumptions of GAVEL's **<Term id="fake-paypal">fake PayPal</Term>** (assumptions A07 to A11, all marked as modelled, not yet read from the sandbox). Gate G3 is **running**: day 0 was 7 Nov 2026 03:06 UTC and the final reading is about 12 Nov 2026 06:17 UTC. Until it finishes, nothing here claims what PayPal does.
+The 3 day honor period and the 29 day validity on this page are the assumptions of GAVEL's **<Term id="fake-paypal">fake PayPal</Term>** (assumptions A07 to A11, all marked as modelled). Gate G3 **passed** on the sandbox: day 0 was 7 Nov 2026 03:06 UTC, and at 3.5, 4 and 5 days a partial capture of 1.00 was accepted and reauthorize was accepted (wallet buyer; [final run](https://github.com/harshbhx/gavel-auction/actions/runs/43174780092)). That reading covers those days only: the 29 day validity and the exact 3 day honor period figure are still the fake's assumptions.
 
 </NotVerified>
 
@@ -40,7 +40,7 @@ If PayPal refuses a capture because the authorization is older than its honor pe
 </Tab>
 </Tabs>
 
-## What gate G3 tests
+## What gate G3 tested
 
 G3 asks: how long does an authorization stay capturable, and does reauthorize extend it? The probe in `packages/payments/gates/g3.ts` runs from the `gate-g3` workflow:
 
@@ -74,7 +74,7 @@ Scheduled runs (minute 17 of every sixth hour) pick the saved state up. At each 
 </Step>
 </Steps>
 
-The state travels between runs as an artifact; the final run writes the GATES.md entry. There is also an early reading of two older G2 authorizations (`gate-g3-early.yml`); its readings are recorded in GATES.md and committed under `docs/evidence/G3-early/`; they are not the G3 result.
+The state travelled between runs as an artifact; the final run wrote the GATES.md entry (outcome: PASS, fallback none). There is also an early reading of two older G2 authorizations (`gate-g3-early.yml`); its readings are recorded in GATES.md and committed under `docs/evidence/G3-early/`; they came before, and are not the G3 result.
 
 <GateBadge id="G3" />
 

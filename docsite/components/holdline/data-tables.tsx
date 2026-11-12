@@ -34,7 +34,6 @@ export function GatesTable() {
         </thead>
         <tbody>
           {repoData.gates.map((g) => {
-            const inProgress = g.id === 'G3' && g.status === 'NOT RUN';
             return (
               <tr key={g.id}>
                 <td className={`${td} font-mono font-bold`}>{g.id}</td>
@@ -46,7 +45,7 @@ export function GatesTable() {
                         ? 'solid'
                         : g.status === 'FAIL'
                           ? 'stop'
-                          : inProgress || g.status === 'PARTIAL'
+                          : g.status === 'PARTIAL'
                             ? 'hatched'
                             : 'hollow'
                     }
@@ -55,7 +54,7 @@ export function GatesTable() {
                   </Chip>
                 </td>
                 <td className={`${td} max-w-[28rem] text-fd-muted-foreground`}>
-                  {inProgress ? 'Real probe. Day 0 was 7 Nov 2026 03:06 UTC. Final reading about 12 Nov 06:17 UTC.' : g.run}
+                  {g.run}
                 </td>
               </tr>
             );

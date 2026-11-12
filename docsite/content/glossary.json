@@ -106,7 +106,7 @@
     {
       "id": "gate-g3",
       "term": "G3",
-      "short": "Gate G3 asks: how long does an authorization stay capturable, and does reauthorize extend it? Read its current status on the gate page.",
+      "short": "Gate G3 asks: how long does an authorization stay capturable, and does reauthorize extend it? It passed on 12 Nov 2026 (wallet buyer, 1.00 partial capture); read the gate page for the scope.",
       "page": "/docs/proof/gate-g3",
       "see": ["gate", "honor-period", "reauthorization"]
     },
@@ -150,7 +150,7 @@
     {
       "id": "honor-period",
       "term": "Honor period",
-      "short": "How long PayPal promises to honor a capture on an authorization. GAVEL's 3 day figure is an assumption of its fake PayPal, still unverified on the real sandbox (G3).",
+      "short": "How long PayPal promises to honor a capture on an authorization. GAVEL's 3 day figure is an assumption of its fake PayPal; the real sandbox accepted captures at 3.5, 4 and 5 days (G3, wallet buyer, 1.00 partial capture).",
       "page": "/docs/how-it-works/honor-period",
       "see": ["reauthorization", "gate-g3"]
     },
@@ -213,7 +213,7 @@
     {
       "id": "reauthorization",
       "term": "Reauthorization",
-      "short": "Asking PayPal to renew an authorization that has aged. Only useful for auctions that run for days; GAVEL ships with it off, pending gate G3.",
+      "short": "Asking PayPal to renew an authorization that has aged. Only useful for auctions that run for days; GAVEL ships with it off; gate G3 saw the real sandbox accept it at 3.5, 4 and 5 days.",
       "page": "/docs/how-it-works/honor-period",
       "see": ["honor-period", "gate-g3"]
     },

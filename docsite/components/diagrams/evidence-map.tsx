@@ -179,7 +179,7 @@ const MEANING: Record<EvStatus, string> = {
   PASS: 'a recorded sandbox run passed, with evidence',
   FAIL: 'a recorded run failed; the fallback is in force',
   TESTED: 'tested with synthetic data, with a safeguard on every use; a live or noisy-room test would add more (G5)',
-  RUNNING: 'a real run is under way; the final reading is due 12 Nov (G3)',
+  RUNNING: 'a real run is under way and has no result yet',
   SIMULATED: 'a simulation with a fake clock, not a PayPal result',
   OPEN: 'evidence exists but the claim is not concluded or not signed off',
   CI: 'checked by tests or workflows in CI; no recorded run in the docs',
@@ -257,7 +257,7 @@ export function EvidenceMapDiagram() {
   return (
     <DiagramFrame
       title="Evidence map: claim, status, evidence"
-      desc={`A table of ${data.length} claims. Each row has the claim, a status (PASS, FAIL, TESTED, RUNNING, SIMULATED, OPEN or CI), what it ran on, and the first file or workflow that backs it. Gates G0, G1, G2 and G4 pass on the PayPal sandbox, G3 is in progress, G5 is partial (synthetic audio only), the 30 day run is simulated, and the security checklist is not signed off.`}
+      desc={`A table of ${data.length} claims. Each row has the claim, a status (PASS, FAIL, TESTED, RUNNING, SIMULATED, OPEN or CI), what it ran on, and the first file or workflow that backs it. Gates G0, G1, G2, G3 and G4 pass on the PayPal sandbox, G5 is partial (synthetic audio only), the 30 day run is simulated, and the security checklist is not signed off.`}
       width={1200}
       height={height}
       minWidth={1000}
@@ -280,7 +280,7 @@ export function EvidenceMapDiagram() {
       caption={
         <>
           Gate rows read their status from <code>docs/GATES.md</code> when the site is built. Limits are quoted from the Scope, Verdict and Evidence lines there, from{' '}
-          <code>docs/evidence/SIM/SIM-MULTIDAY.md</code> and from <code>docs/SECURITY-REVIEW.md</code>. G3 is in progress (day 0 7 Nov 2026 03:06 UTC, final about 12 Nov). The 30 day run is a simulation. Sandbox and fake PayPal are labelled as they are in <code>docs/GATES.md</code>. Every path in the map exists on main.
+          <code>docs/evidence/SIM/SIM-MULTIDAY.md</code> and from <code>docs/SECURITY-REVIEW.md</code>. G3 passed (probe day 0 7 Nov 2026 03:06 UTC, final checkpoint 12 Nov; wallet buyer, 1.00 partial capture). The 30 day run is a simulation. Sandbox and fake PayPal are labelled as they are in <code>docs/GATES.md</code>. Every path in the map exists on main.
         </>
       }
       transcript={

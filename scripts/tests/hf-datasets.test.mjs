@@ -130,7 +130,7 @@ describe('hf datasets', () => {
         ['G0', 'G1', 'G2', 'G3', 'G4', 'G5'],
       );
       assert.ok(gates.every((g) => g.evidence_files !== ''));
-      assert.equal(gates.find((g) => g.gate === 'G3').status, 'IN PROGRESS');
+      assert.equal(gates.find((g) => g.gate === 'G3').status, 'PASS');
       assert.equal(gates.find((g) => g.gate === 'G5').status, 'PARTIAL');
     } finally {
       rmSync(out, { recursive: true, force: true });

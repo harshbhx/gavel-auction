@@ -1,6 +1,6 @@
 # GAVEL: design plan (PayPal AI Hackathon 2026)
 
-Deadline: Thu Nov 12 2026 12:00pm PST (= Fri Nov 13 01:30 IST). Early eligibility check if submitted by Nov 5 (optional). Scope: PayPal sandbox only. Behaviour against the real PayPal sandbox is verified only for the single calls in gates G0, G1, G2 and G4; G3 is an in-progress probe and G5 is PARTIAL on synthetic speech (see `docs/GATES.md`). Whole-auction settlement is tested against the project's fake PayPal server.
+Deadline: Thu Nov 12 2026 12:00pm PST (= Fri Nov 13 01:30 IST). Early eligibility check if submitted by Nov 5 (optional). Scope: PayPal sandbox only. Behaviour against the real PayPal sandbox is verified only for the single calls in gates G0, G1, G2 and G4, and for the G3 multi-day probe (wallet buyer, 1.00 partial capture); G5 is PARTIAL on synthetic speech (see `docs/GATES.md`). Whole-auction settlement is tested against the project's fake PayPal server.
 
 ## 0. Current status
 
@@ -16,7 +16,7 @@ Deadline: Thu Nov 12 2026 12:00pm PST (= Fri Nov 13 01:30 IST). Early eligibilit
 | Crash and resume                                           | in-process test hook, one in-process crash on the sandbox    |                                          | trigger on a hosted server                                                  |
 | Hosted demo                                                | web, API (Render) and docs site are up in sandbox mode       |                                          | a full recorded hosted run                                                  |
 
-Gate G0, G1, G2 and G4: PASS on the sandbox (G1: two PayPal-account buyers, guest card: only a 1.00 partial capture seen, no final_capture or void; G2: wallet and guest card AUTHORIZE). Gate G3: NOT RUN / IN PROGRESS (a real probe, day 0 7 Nov 2026 03:06 UTC). Gate G5: PARTIAL (synthetic, noise-free speech only, fixes chosen on the same clips, no real-room test; spoken bids always confirm). `docs/GATES.md` is the source of truth.
+Gate G0, G1, G2, G3 and G4: PASS on the sandbox (G1: two PayPal-account buyers, guest card: only a 1.00 partial capture seen, no final_capture or void; G2: wallet and guest card AUTHORIZE). G3: the authorization stayed capturable at 3.5, 4 and 5 days and reauthorize was accepted (sandbox, wallet buyer, 1.00 partial capture only; probe day 0 7 Nov 2026 03:06 UTC). Gate G5: PARTIAL (synthetic, noise-free speech only, fixes chosen on the same clips, no real-room test; spoken bids always confirm). `docs/GATES.md` is the source of truth.
 
 ## 1. Pitch (one paragraph)
 
@@ -48,7 +48,7 @@ Judge line: "Every charity auction has winners who never pay; GAVEL makes the bi
 
 register -> authorize (hold) -> active bidder -> bid parse -> confirm if low confidence -> deterministic validation (ceiling, increment, state) -> ledger -> hammer -> winner = highest valid bid -> capture winning amount (partial, final) -> void all other holds -> verify via webhook/GET -> final ledger. Fall back to the runner-up if the winner's hold expired, was declined or was voided (covered by the reference implementation's tests). Invariants: at most one capture; captured <= ceiling; each non-winner voided exactly once; captured + released = holds; idempotent under retry/duplicate/out-of-order webhooks.
 
-## 5. Gate tests (need a PayPal sandbox app; G0, G1 (PayPal-account buyers, guest capture not covered), G2 and G4 PASS; G3 in progress; G5 PARTIAL)
+## 5. Gate tests (need a PayPal sandbox app; G0, G1 (PayPal-account buyers, guest capture not covered), G2, G3 and G4 PASS; G5 PARTIAL)
 
 G1 authorize 500 -> capture 350 final_capture=true -> is the 150 remainder auto-released or still active? void it explicitly; check via GET and webhooks. Both PayPal-wallet and card sandbox buyers.
 G2 guest/card AUTHORIZE flow in JS SDK v6 (Card Fields/Fastlane docs show CAPTURE sample; verify AUTHORIZE works). Fallback: PayPal-wallet sandbox buyers (bulk sandbox accounts).

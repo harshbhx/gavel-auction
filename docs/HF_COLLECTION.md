@@ -36,7 +36,7 @@ Short description: Index of the six go/no-go experiments (G0 to G5): status, dat
 
 Tags: evidence, sandbox, payments, verification, checksums.
 
-Why this data matters: judges can see in one small table which claims rest on real PayPal sandbox runs, which on simulation, and what is still open (the multi-day authorization probe, G3, is in progress). Each row can be checked against a file hash or a workflow run, so the project does not ask to be trusted.
+Why this data matters: judges can see in one small table which claims rest on real PayPal sandbox runs, which on simulation, and what is still open (the multi-day authorization probe, G3, passed on 12 Nov 2026 for a wallet buyer and a 1.00 partial capture). Each row can be checked against a file hash or a workflow run, so the project does not ask to be trusted.
 
 ### 2. gavel-latency
 
@@ -76,7 +76,7 @@ A static, read-only Hugging Face Space (no server, no tracking). Source in `hf/s
 
 What it shows, each section carrying its label:
 
-- Gates G0 to G5 with status exactly as `docs/GATES.md` says (PASS, PARTIAL, IN PROGRESS for G3).
+- Gates G0 to G5 with status exactly as `docs/GATES.md` says (PASS or PARTIAL; G3 reads PASS).
 - Latency, real sandbox: hammer to captured and to settled p95 against the targets (the capture target is missed), and per-call p50 and p95, with n stated.
 - The 30-day run, labelled SIMULATED: lots, holds, outcomes, review causes, money held, captured, released and open, and the scenario checks.
 - Speech-to-text, labelled SYNTHETIC: exact-match rates per provider and clip set, and the parse-level G5 table.
