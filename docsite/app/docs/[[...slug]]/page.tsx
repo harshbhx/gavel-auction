@@ -1,4 +1,5 @@
 import { source } from '@/lib/source';
+import { socialMeta } from '@/lib/meta';
 import {
   DocsBody,
   DocsDescription,
@@ -80,16 +81,14 @@ export async function generateMetadata(props: PageProps<'/docs/[[...slug]]'>): P
   return {
     title: page.data.title,
     description: page.data.description,
-    openGraph: {
+    ...socialMeta({
       title: page.data.title,
-      description: page.data.description,
-      images: image,
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: page.data.title,
-      description: page.data.description,
-      images: image,
-    },
+      description: page.data.description ??
+        'Every bid is a PayPal hold; only the winner pays. GAVEL documentation, PayPal sandbox only.',
+      path: page.url,
+      image,
+      alt: `${page.data.title}: GAVEL documentation. Every bid is a hold, the hammer is the payment. PayPal sandbox only.`,
+      type: 'article',
+    }),
   };
 }

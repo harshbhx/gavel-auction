@@ -51,7 +51,7 @@ Read these files in this order:
 | Item                                                                                 | Status you may state                                                                                                                                                                    |
 | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | G0 connectivity, G1 partial capture, G2 wallet and guest-card authorize, G4 webhooks | PASS on the real PayPal sandbox                                                                                                                                                         |
-| G3 honor period and reauthorize                                                      | a timed sandbox probe in progress, final reading about 12 Nov; no result is claimed                                                                                                     |
+| G3 honor period and reauthorize                                                      | PASS: the authorization stayed capturable at 3.5, 4 and 5 days and reauthorize was accepted (sandbox, wallet buyer, 1.00 partial capture; final probe 12 Nov 2026, run 43174780092)     |
 | G5 speech accuracy                                                                   | PARTIAL: synthetic, noise-free audio only, every spoken bid confirmed                                                                                                                   |
 | Full multi-bidder settlement                                                         | not run end to end on the sandbox; shown on the fake PayPal                                                                                                                             |
 | Crash recovery                                                                       | shown on the fake PayPal, plus one in-process crash on the sandbox                                                                                                                      |
@@ -80,7 +80,7 @@ Confirm the maximum length on the Devpost rules page; assume 3:00. Do not run ov
 | 1:20-1:40 | Voice and confirm       | Recorded replay of a spoken bid and the confirm prompt, labelled Recorded                                         |
 | 1:40-2:05 | The hammer moment       | Hammer, winner captured at the winning price, other holds released, ladder HELD to CAPTURED and RELEASED, receipt |
 | 2:05-2:30 | Trust and audit         | Audit trail, ledger verify, evidence lines from `docs/GATES.md`                                                   |
-| 2:30-2:50 | Honest status and close | G3 in progress, G5 partial, sandbox only; end card with repo and demo URLs                                        |
+| 2:30-2:50 | Honest status and close | G3 passed, G5 partial, sandbox only; end card with repo and demo URLs                                             |
 
 If you run over, cut in this order: the voice beat, then the evidence lines, then the second bidder.
 
@@ -131,7 +131,7 @@ Use the app fonts and brand colours (see assets). Lower-thirds are short: one li
 - Persistent corner tag: "PayPal sandbox only. No real money moves."
 - Source label on every shot, one of: "Live sandbox", "Scripted demo: recorded events, no PayPal calls", "Recorded: this is a replay", "Fake PayPal, test run", "Real sandbox evidence".
 - Step labels in the demo: "1 Hold", "2 Bid", "3 Hammer", "4 Receipt", "5 Verify".
-- Final card: "G3 in progress. G5 partial: synthetic speech only." plus https://github.com/harshbhx/gavel-auction and https://gavel.dualmindlab.tech.
+- Final card: "G3 passed. G5 partial: generated speech only." plus https://github.com/harshbhx/gavel-auction and https://gavel.dualmindlab.tech.
 
 ## 6. Music and sound
 
@@ -164,7 +164,7 @@ If an asset is missing, say so in your report and use the brand SVGs on a plain 
 
 Never say or show:
 
-- "fully tested", "production ready", "passed" or "proven" for anything marked partial or in progress in `docs/GATES.md` (G3, G5, whole-auction settlement on the sandbox, latency to captured).
+- "fully tested", "production ready", "passed" or "proven" for anything marked partial or open in `docs/GATES.md` (G5, whole-auction settlement on the sandbox, latency to captured).
 - A live charge, real money, a real customer, a user count, revenue, a testimonial or a metric the repo does not contain.
 - Fake PayPal behaviour as if it were the real sandbox. Label it "Fake PayPal, test run".
 - A recording as if it were live. Label it.

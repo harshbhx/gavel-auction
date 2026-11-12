@@ -4,7 +4,7 @@ description: One table that says what is real PayPal sandbox, what is the fake P
 icon: Scale
 ---
 
-Proven so far: gates G0, G1, G2 and G4 on the real PayPal sandbox, a real server process kill on a CI runner that settled with one capture, live speech through the `/audio` socket (24 of 24 synthetic clips answered, no bid accepted without a confirm), the hosted API checks, and a live judge flow on the hosted site. The scope of each result is in the table below.
+Proven so far: gates G0, G1, G2, G3 and G4 on the real PayPal sandbox, a real server process kill on a CI runner that settled with one capture, live speech through the `/audio` socket (24 of 24 synthetic clips answered, no bid accepted without a confirm), the hosted API checks, and a live judge flow on the hosted site. The scope of each result is in the table below.
 
 Four words are used with care on this site.
 
@@ -26,7 +26,7 @@ Four words are used with care on this site.
 | Webhook signature verification | Real on the sandbox | Gate <Term id="gate-g4">G4</Term> PASS: six real deliveries verified. Rejecting a tampered event is covered against the fake PayPal; a sandbox run of it is next. |
 | Whole-auction settlement | Fake, plus sandbox lots | Settlement <Term id="saga">saga</Term> against the fake PayPal. On the real sandbox, nightly specs R7 and R8 settled one lot of three holds (runs 42200708552 and 42317068784, redacted reports committed) and 20 settlements of 6 holds were measured end to end (run 42346811713). Driving a whole auction through a server is the next step. |
 | Crash recovery | Fake, plus one sandbox crash | Injected crashes against the fake PayPal. Spec R10 recovered from one in-process crash on the sandbox. A real server process was killed once on a CI runner against the sandbox and recovered with one capture (run 42558021614); the deployed host is not yet killed. |
-| Honor period and reauthorize | Timed probe running | Gate G3 is a real sandbox probe: day 0 recorded 7 Nov 03:06 UTC, final reading about 12 Nov 06:17 UTC. The 30 day run is simulated. |
+| Honor period and reauthorize | Real on the sandbox | Gate G3 passed: a real sandbox probe from 7 Nov 03:06 UTC; at 3.5, 4 and 5 days a partial capture of 1.00 and a reauthorize were accepted (wallet buyer). The 30 day run is simulated. |
 | Voice | Recorded | Cached transcripts by default. Live speech only with `VOICE_STT` set. One live socket run is recorded (24 synthetic clips, both providers). Gate <Term id="gate-g5">G5</Term> tested with synthetic speech clips; the confirm prompt protects every voice bid. |
 | Hosted demo | Hosted in sandbox mode | Web at gavel.dualmindlab.tech, API at api.gavel.dualmindlab.tech, persistent disk. A live walkthrough passed all 17 steps, including the hammer, on 9 Nov (judge smoke [run 42584326641](https://github.com/harshbhx/gavel-auction/actions/runs/42584326641)); an earlier run that morning (42561627128) passed all but step 16, which a later fix addressed. |
 

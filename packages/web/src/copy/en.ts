@@ -80,7 +80,6 @@ export const en = {
     'This is the gate log: what is built and measured, and the next step for each open item. Each line links to its proof page.',
   'mk.trust.read': 'Read the proof',
   'mk.trust.passed': 'Passed',
-  'mk.trust.progress': 'Running, final reading 12 Nov',
   'mk.trust.partial': 'Measured',
   'mk.trust.simulated': 'Simulated',
   'mk.trust.g0.title': 'G0 Sandbox app',
@@ -92,7 +91,7 @@ export const en = {
   'mk.trust.g2.body': 'Wallet and guest card buyers can both authorize in the SDK v6 flow.',
   'mk.trust.g3.title': 'G3 Honor period',
   'mk.trust.g3.body':
-    'A timed sandbox probe is running. Day 0 and an early reading on an older wallet hold are recorded, and the final reading is due 12 Nov.',
+    'A 5-day sandbox probe started 7 Nov. After 3.5, 4 and 5 days a 1.00 partial settlement was still accepted and a reauthorize was accepted each time. A reauthorize on day 0 was refused as too soon. Sandbox, wallet buyer.',
   'mk.trust.g4.title': 'G4 Webhooks',
   'mk.trust.g4.body': 'Six real sandbox webhook deliveries passed signature verification.',
   'mk.trust.g5.title': 'G5 Speech accuracy',
@@ -189,13 +188,13 @@ export const en = {
     'Screenshots of the app on its test stage: a simulated room with sample bids and amounts. Not a real auction.',
   'mk.shots.bidder.cap': 'Bidder, on a phone: the price, your paddle and your hold.',
   'mk.shots.bidder.alt':
-    'The bidder screen on a phone: current price 500 dollars, leading paddle 7, your hold of 500 dollars marked held, and three bid buttons.',
+    'The bidder screen on a phone: a Leading badge, current price 350 dollars with paddle 12 in front, your limit of 500 dollars, and three bid buttons.',
   'mk.shots.screen.cap': 'Public screen: the current bid, the latest bids and a QR code to join.',
   'mk.shots.screen.alt':
-    'The public screen: a large price of 300 dollars, paddle number 7, a countdown, a list of latest bids and a QR code.',
+    'The public screen in cream and ink: a large price of 350 dollars, paddle number 12, a countdown, a list of latest bids and a QR code.',
   'mk.shots.receipt.cap': 'Receipt: the winning amount and the rest of the hold, released.',
   'mk.shots.receipt.alt':
-    'The receipt page: item, winning price 350 dollars, a bar with a solid part for the amount taken and a dashed part for the amount released.',
+    'The receipt page: sandbox notice, item, winning price 350 dollars, a total, a bar with a solid part for the amount taken and a dashed part for the amount released.',
   'mk.shots.console.cap':
     'Auctioneer console: lot controls, the bid stream, bidders and their holds.',
   'mk.shots.console.alt':
@@ -208,7 +207,7 @@ export const en = {
     'No. GAVEL runs on the PayPal sandbox, so use sandbox test accounts only. Do not enter a personal PayPal login.',
   'mk.faq.q7': 'What comes next?',
   'mk.faq.a7':
-    'The honor period test (G3) is a timed probe with its final reading about 12 Nov. Voice accuracy (G5) is measured on synthetic speech: voice was tested with synthetic speech clips, the live voice run answered 24 of 24 clips with 0 bids accepted without a confirm, and the noisy held-out set measured wrong accept 0.058 and 0.092 against a target of 0.05. The confirm prompt protects every voice bid. The gate log above lists both.',
+    'The honor period test (G3) passed: a hold stayed usable for at least 5 days on the sandbox. Voice accuracy (G5) is measured on synthetic speech: voice was tested with synthetic speech clips, the live voice run answered 24 of 24 clips with 0 bids accepted without a confirm, and the noisy held-out set measured wrong accept 0.058 and 0.092 against a target of 0.05. The confirm prompt protects every voice bid. The gate log above lists both.',
   'mk.faq.q8': 'Is the code open?',
   'mk.faq.a8':
     'Yes. The source is on GitHub under the MIT license, and the docs explain how an auction settles.',
@@ -344,6 +343,9 @@ export const en = {
   'try.a1.title': 'Try it',
   'try.a1.tag': 'No sign-up',
   'try.a1.body': 'Open the scripted demo with no login, or start a live sandbox room of your own.',
+  'try.a1.fact1': 'No login and no sign-up.',
+  'try.a1.fact2': 'About 30 seconds from opening bid to hammer.',
+  'try.a1.fact3': 'Names and amounts are made up, and no real money is used.',
   'try.a1.script': 'Watch the scripted demo',
   'try.a1.room': 'Start a live demo room',
   'try.a1.creating': 'Creating room',
@@ -373,6 +375,10 @@ export const en = {
   'try.a3.tag': 'Three views of one room',
   'try.a3.body':
     'The auctioneer console, the projection screen and the receipt. Each opens inside a room.',
+  'try.a3.fact.console': 'Console: run the lot',
+  'try.a3.fact.screen': 'Screen: what the room sees',
+  'try.a3.fact.receipt': 'Receipt: the settled receipt',
+  'try.a3.fact.verify': 'Verify: check the audit trail',
   'try.a3.console': 'Console',
   'try.a3.screen': 'Screen',
   'try.a3.receipt': 'Receipt',
@@ -390,11 +396,11 @@ export const en = {
   'try.ev.p4d': 'G4: PayPal webhook signatures verify on real sandbox events.',
   'try.ev.p5': 'A hash-chained audit trail',
   'try.ev.p5d': 'A room exports a ledger that is checked for edits and for truncation.',
+  'try.ev.p6': 'Hold lasts at least 5 days',
+  'try.ev.p6d':
+    'G3 passed: an authorization stayed usable at 3.5, 4 and 5 days and reauthorize was accepted (sandbox, wallet buyer).',
   'try.ev.n1': 'Real money',
-  'try.ev.n1d': 'PayPal sandbox only. No live account is touched.',
-  'try.ev.n2': 'G3: how long a hold lasts',
-  'try.ev.n2d':
-    'A real probe has been running since 7 Nov, final reading about 12 Nov. The result is not in yet. The 30-day run is a simulation.',
+  'try.ev.n1d': 'PayPal sandbox only. No live account is touched. The 30-day run is a simulation.',
   'try.ev.n3': 'G5: voice accuracy',
   'try.ev.n3d':
     'Tested with synthetic speech clips. Live voice run: 24 of 24 clips answered, with 0 bids accepted without a confirm. Measured once on a 120-clip noisy held-out set: wrong accept 0.058 (Groq) and 0.092 (Deepgram) against a target of 0.05. The confirm prompt protects every voice bid.',
@@ -521,7 +527,7 @@ export const en = {
   'scriptedJoin.liveHint': 'The live demo makes a real sandbox room with its own join code and QR.',
   'scriptedDemo.barLabel': 'Scripted demo notice',
   'scriptedDemo.banner':
-    'Simulated demo. Every name, bid and amount is made up and plays in this tab; nothing here is live and no PayPal call is made.',
+    'Simulated demo: every name, bid and amount is made up and plays in this tab.',
   'scriptedDemo.player': 'Scripted demo player',
   'scriptedDemo.caption': 'What is happening',
   'scriptedDemo.progress': 'Step {n} of {total}',
@@ -540,6 +546,7 @@ export const en = {
   'scriptedDemo.duration': 'The whole recording takes about {seconds} seconds at {speed}.',
   'scriptedDemo.steps': 'Steps',
   'scriptedDemo.allSteps': 'All steps',
+  'scriptedDemo.stepsRegion': 'All steps, scrollable list',
   'scriptedDemo.reduced':
     'Reduced motion is on, so the demo waits for you. Use Next step to move on.',
   'scriptedDemo.done': 'End of the demo. Press Play again to watch it once more.',
@@ -860,6 +867,23 @@ export const en = {
   'console.mic.reason.unreachable': 'Could not ask the server about voice. Use manual entry.',
   'console.mic.reason.scripted': 'Voice is not part of the scripted demo. Use manual entry.',
   'console.mic.reason.closed': 'The lot is closed, so the microphone is off.',
+  'console.voice.outcome.confirm':
+    'Paddle {n}: waiting for that bidder to confirm on their phone. Nothing counts until they say yes.',
+  'console.voice.outcome.confirmAny':
+    'Waiting for the bidder to confirm on their phone. Nothing counts until they say yes.',
+  'console.voice.outcome.bid':
+    'Paddle {n}: bid sent to the room. If the room asks, the bidder confirms on their phone.',
+  'console.voice.outcome.bidAny':
+    'Bid sent to the room. If the room asks, the bidder confirms on their phone.',
+  'console.voice.outcome.noPaddle':
+    'No bid: no registered paddle heard. Say the paddle number and the amount, for example "paddle 3, two hundred".',
+  'console.voice.outcome.noAmount':
+    'No bid: no amount heard. Say the paddle and the amount, for example "paddle 3, two hundred".',
+  'console.voice.outcome.notOpen': 'No bid: the lot is not open for bids right now.',
+  'console.voice.outcome.lowConfidence':
+    'No bid: the speech was not clear enough. Say it again, or use manual entry.',
+  'console.voice.outcome.none':
+    'No bid taken from that. Say the paddle and the amount, for example "paddle 3, two hundred", or use manual entry.',
   'console.voice.heard': 'Heard: {text}',
   'console.voice.hearing': 'Hearing: {text}',
   'console.voice.privacy':
@@ -953,26 +977,6 @@ export const en = {
   'instructor.hide': 'Hide the steps',
   'instructor.now': 'You are here:',
   'instructor.lead': 'What to do on this screen, and what comes next.',
-  'instructor.hub.1': 'Put the projection screen up on a big display.',
-  'instructor.hub.2': 'Share the join ticket: people scan the code or type it.',
-  'instructor.hub.3': 'Open the console and open the lot.',
-  'instructor.hub.4': 'The lot is open: join as a bidder, set a limit and bid.',
-  'instructor.hub.5': 'After the hammer, open the receipt and verify the ledger.',
-  'instructor.console.1': 'Open the lot.',
-  'instructor.console.2': 'The lot is open: watch the bids come in.',
-  'instructor.console.3':
-    'Press and hold the hammer button for 3 seconds to sell. Stop auction ends it with no winner.',
-  'instructor.console.4': 'The lot is over. Open the audit trail and check the receipt.',
-  'instructor.bid.1': 'Set a limit: the most you are willing to bid.',
-  'instructor.bid.2': 'Confirm the hold. This is a sandbox: no real money moves.',
-  'instructor.bid.3': 'The lot is open: place a bid, and raise it if you are outbid.',
-  'instructor.bid.4': 'The lot is over: open your receipt.',
-  'instructor.receipt.1': 'Check the lot, the price and the winner.',
-  'instructor.receipt.2': 'Open the audit trail to see every step that led here.',
-  'instructor.receipt.3': 'Verify the ledger to check that the record was not changed.',
-  'instructor.verify.1': 'Get a ledger: from your room, or paste an export.',
-  'instructor.verify.2': 'Check the chain.',
-  'instructor.verify.3': 'A pass means no event was changed or removed.',
   'instructor.try.1': 'Start a demo room.',
   'instructor.try.2': 'On the hub, put the screen up and share the join ticket.',
   'instructor.try.3': 'Bid from a second tab, hold the hammer in the console, open the receipt.',
@@ -1067,6 +1071,8 @@ export const en = {
   'screen.passed': 'No sale',
   'screen.passedNoBids': 'Closed with no bids.',
   'screen.join': 'Join: {code}',
+  'screen.scan': 'Scan to join',
+  'screen.latestLabel': 'Latest bids, scrollable',
   'screen.settleSummary': '{c} charged, {r} released',
   'screen.wonReview': 'Paddle {n} won at {amount}',
   'screen.wonReviewUnknown': 'Won at {amount}',
@@ -1614,19 +1620,13 @@ export const en = {
   'bids.shown': '{shown} of {total} bids, newest at the top',
   'home.logoLabel': 'GAVEL home',
   'home.about': 'About GAVEL',
+  'home.judge': 'Judge guide',
   'home.nav': 'Site',
-  'home.kicker': 'The sale room',
   'home.hello.name': 'Welcome back, {name}.',
   'home.hello.paddle': 'Welcome back, Paddle {paddle}.',
   'home.hello.plain': 'Welcome back.',
-  'home.salute.night': 'Still up?',
-  'home.salute.morning': 'Good morning.',
-  'home.salute.afternoon': 'Good afternoon.',
-  'home.salute.evening': 'Good evening.',
-  'home.sub.open': '{salute} Your last lot is waiting.',
-  'home.sub.won': '{salute} A win to remember. Ready for the next lot?',
-  'home.sub.again': '{salute} Back for another round?',
   'home.last.kicker': 'Last auction',
+  'home.last.caption': 'Room deleted after {minutes} minutes; only this summary stays.',
   'home.last.lot': 'Lot',
   'home.last.untitled': 'Untitled lot',
   'home.last.noBids': 'No bids',
@@ -1656,8 +1656,6 @@ export const en = {
   'home.ago.day': 'Yesterday',
   'home.ago.days': '{n} days ago',
   'home.room.checking': 'Checking whether the room is still there',
-  'home.room.gone':
-    'This room is deleted. Rooms are deleted {minutes} minutes after they are made, so only this summary stays here.',
   'home.room.unknown': 'The room did not answer. The links come back when it does.',
   'home.links.label': 'About the last auction',
   'home.link.receipt': 'Open receipt',
@@ -1667,6 +1665,19 @@ export const en = {
   'home.earlier.kicker': 'Earlier rooms',
   'home.earlier.deleted': 'Room deleted',
   'home.actions.title': 'What next?',
+  'home.tiles.title': 'More to explore',
+  'home.tile.demo.title': 'Scripted demo',
+  'home.tile.demo.hint': 'Watch a full auction play out in 90 seconds. No setup.',
+  'home.tile.demo.tag': 'Try it',
+  'home.tile.judge.title': 'Judge guide',
+  'home.tile.judge.hint': 'The shortest path to checking every claim.',
+  'home.tile.judge.tag': 'For judges',
+  'home.tile.ledger.title': 'Public ledger',
+  'home.tile.ledger.hint': 'Every bid and hold, hash chained and verifiable.',
+  'home.tile.ledger.tag': 'Proof',
+  'home.tile.docs.title': 'Docs',
+  'home.tile.docs.hint': 'How GAVEL works, the API and the evidence map.',
+  'home.tile.docs.tag': 'Read',
   'home.join.title': 'Join a room',
   'home.join.hint': 'Have a code or a QR? Step in as a bidder.',
   'home.join.codeLabel': 'Room code',
@@ -1684,6 +1695,22 @@ export const en = {
   'end.join': 'Join room',
   'end.home': 'Go home',
   'end.announce': 'You won the lot at {amount}. Choose join room, go home, or view the receipt.',
+  // Pop-up for everyone in the room when the lot ends: lost, never in the bidding, and no sale.
+  'end.title.lost': 'You did not win this lot',
+  'end.title.sold': 'The lot is sold',
+  'end.title.noSale': 'Lot closed, no sale',
+  'end.sold.lot': '{lot} sold at {amount}.',
+  'end.sold.price': 'Sold at {amount}.',
+  'end.sold.paddle': 'Paddle {n} won it.',
+  'end.money.lost': 'Your hold is released. This is a sandbox, so no real money moves.',
+  'end.noSale.lot': '{lot} closed with no sale.',
+  'end.noSale.body': 'No bid won the lot, so nobody owes anything.',
+  'end.noSale.hold': 'No hold is taken. A hold you registered is released.',
+  'end.announce.lost':
+    'The lot sold at {amount}. You did not win. Choose join room, go home, or view the receipt.',
+  'end.announce.sold': 'The lot sold at {amount}. Choose join room or go home.',
+  'end.announce.noSale': 'The lot closed with no sale. Choose join room or go home.',
+  'bid.position.title': 'Your position',
 } as const;
 
 export type CopyKey = keyof typeof en;

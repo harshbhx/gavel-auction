@@ -125,14 +125,14 @@
     grid-row: 1 / span 2;
   }
 
+  /* Phone shots show whole: no cropping, no stretching. The card is as tall as the picture needs. */
   .gv-shot--bidder .gv-shot__img,
   .gv-shot--receipt .gv-shot__img {
-    flex: 1 1 auto;
-    min-height: 0;
-    max-width: none;
-    height: 100%;
-    object-fit: cover;
-    object-position: top;
+    width: 100%;
+    max-width: 360px;
+    height: auto;
+    margin-inline: auto;
+    object-fit: contain;
   }
 }
 

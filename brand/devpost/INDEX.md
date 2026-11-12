@@ -2,7 +2,7 @@
 
 `brand/` is the single source for the Devpost entry. Nothing was deleted: GIFs that are not used any more were moved to `brand/archive/` or are listed below with their location. Where each used GIF goes on the page: [`FIELDS.md`](FIELDS.md) ("Where each GIF goes"). Why each one is animated or static: [`../CURATION.md`](../CURATION.md).
 
-Copy-paste submission guide, field by field with character counts and the pre-submit checklist: [`DEVPOST-COPY-PASTE.md`](DEVPOST-COPY-PASTE.md). Note (11 Nov 2026): the partner images (`description/08-partners.png`, `description/11-built-with.png`, `gallery/06-partners.png`) do not name APIMatic, and `description/15-what-is-next.png` shows G3 as RUNNING; the APIMatic SDKs are a GitHub release (`sdk-v0.0.5`), stated in the text, not in these pixels.
+Copy-paste submission guide, field by field with character counts and the pre-submit checklist: [`DEVPOST-COPY-PASTE.md`](DEVPOST-COPY-PASTE.md). Note (11 Nov 2026): the partner images (`description/08-partners.png`, `description/11-built-with.png`, `gallery/06-partners.png`) do not name APIMatic; `description/09-open-data-and-gates.png` and `description/15-what-is-next.png` show G3 as passed (12 Nov 2026); the APIMatic SDKs are a GitHub release (`sdk-v0.0.5`), stated in the text, not in these pixels.
 
 ## Used (in the entry)
 

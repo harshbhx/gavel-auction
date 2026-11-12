@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import { t } from '../../copy/t';
 import { Field } from '../../design/primitives/Field';
@@ -7,8 +7,6 @@ import { formatUsdCompact } from '../../util/money';
 import { customCeilingCents, parseWholeDollars } from './validate';
 
 const CUSTOM = 'custom';
-/** The slider's usual top ($10,000); a typed limit above it stretches it up to the server cap. */
-const DEFAULT_SLIDER_MAX_CENTS = 1_000_000;
 const STEP_CHOICES: readonly number[] = [
   1000, 2500, 5000, 10000, 25000, 50000, 100000, 250000, 500000, 1000000, 2500000, 5000000,
   10000000,
@@ -40,45 +38,20 @@ export function niceCeil(cents: number): number {
   return Math.round(m * pow);
 }
 
-/**
- * The slider's top: its usual span, stretched to the typed limit and rounded up to a clean
- * amount, never past the server cap. It follows the typed value both ways, so lowering the
- * limit shrinks the range back down to the usual span.
- */
-export function sliderMax(
-  minCents: number,
-  maxCents: number,
-  presetsCents: readonly number[],
-  typedCents: number | null,
-): number {
-  // A default range worth sliding: $10,000, or twice the minimum when that is higher (a raise
-  // starts just above the current limit), so the slider never collapses to a sliver.
-  const base = Math.max(niceCeil(minCents * 2), DEFAULT_SLIDER_MAX_CENTS, ...presetsCents);
-  const want = typedCents === null || typedCents <= base ? base : niceCeil(typedCents);
-  return Math.min(maxCents, want);
-}
-
-const SCALED_FRACTIONS: readonly number[] = [0.25, 0.5, 0.75];
+const PRESET_SHARES: readonly number[] = [0.01, 0.1, 0.5, 1];
 
 /**
- * Quick picks that follow a big typed limit: a quarter, half and three quarters of it in whole
- * dollars. They appear only once the typed limit is above every preset and within the cap, stay
- * inside the allowed range and never repeat a preset or each other.
+ * The four quick picks of a room, from its allowed range: about 1%, 10%, 50% and 100% of the
+ * cap, each rounded to a clean whole-dollar amount and kept inside [min, max]. Picks that land
+ * on the same amount (a small range) appear once. Amounts are in cents.
  */
-export function scaledPicks(
-  minCents: number,
-  maxCents: number,
-  presetsCents: readonly number[],
-  anchorCents: number | null,
-): number[] {
-  if (anchorCents === null || anchorCents > maxCents || anchorCents < minCents) return [];
-  if (anchorCents <= Math.max(0, ...presetsCents)) return [];
+export function rangePresets(minCents: number, maxCents: number): number[] {
   const out = new Set<number>();
-  for (const f of SCALED_FRACTIONS) {
-    const cents = Math.round((anchorCents * f) / 100) * 100;
-    if (cents >= minCents && cents < anchorCents && !presetsCents.includes(cents)) out.add(cents);
+  for (const share of PRESET_SHARES) {
+    const clean = Math.max(100, Math.round(niceCeil(maxCents * share) / 100) * 100);
+    out.add(Math.min(maxCents, Math.max(minCents, clean)));
   }
-  return [...out].sort((a, b) => a - b);
+  return [...out].sort((x, y) => x - y);
 }
 
 export interface LimitEntryOptions {
@@ -86,7 +59,6 @@ export interface LimitEntryOptions {
   minCents: number;
   /** The real cap (room snapshot `maxCeilingCents`), in cents. */
   maxCents: number;
-  presetsCents: readonly number[];
   /** False when the room takes only its presets: the number box and the slider are left out. */
   allowCustom: boolean;
   /** A limit chosen earlier, shown again as typed. */
@@ -112,7 +84,8 @@ export interface LimitEntryState {
  * limit is entered the same way everywhere (FEAT-61).
  */
 export function useLimitEntry(opts: LimitEntryOptions): LimitEntryState {
-  const { minCents, maxCents, presetsCents, allowCustom, initialCents } = opts;
+  const { minCents, maxCents, allowCustom, initialCents } = opts;
+  const presetsCents = useMemo(() => rangePresets(minCents, maxCents), [minCents, maxCents]);
   const initialPreset = initialCents !== undefined && presetsCents.includes(initialCents);
   const [choice, setChoice] = useState<string | null>(
     initialCents === undefined
@@ -127,15 +100,6 @@ export function useLimitEntry(opts: LimitEntryOptions): LimitEntryState {
     initialCents === undefined || initialPreset ? '' : String(initialCents / 100),
   );
   const [touched, setTouched] = useState(false);
-  // The widest limit typed so far stretches the slider; the bounds themselves come from the
-  // props on every render, so a room snapshot that arrives later is followed (no stale range).
-  const [stretchCents, setStretchCents] = useState<number | null>(() =>
-    parseWholeDollars(customText),
-  );
-  const rangeMax = sliderMax(minCents, maxCents, presetsCents, stretchCents);
-
-  const scaled = allowCustom ? scaledPicks(minCents, maxCents, presetsCents, stretchCents) : [];
-
   const customCents = customCeilingCents(customText, minCents, maxCents);
   let ceilingCents: number | null = null;
   if (choice === CUSTOM) ceilingCents = customCents;
@@ -167,17 +131,16 @@ export function useLimitEntry(opts: LimitEntryOptions): LimitEntryState {
     setCustomText(digits);
     const cents = parseWholeDollars(digits);
     setChoice(presetsCents.includes(cents ?? -1) ? String(cents) : CUSTOM);
-    setStretchCents(cents);
   };
 
   const fields = (
     <>
       {allowCustom && (
         <CeilingSlider
-          value={ceilingCents ?? (overCap ? rangeMax : minCents)}
+          value={ceilingCents ?? (overCap ? maxCents : minCents)}
           min={minCents}
-          max={rangeMax}
-          step={sliderStep(minCents, rangeMax)}
+          max={maxCents}
+          step={sliderStep(minCents, maxCents)}
           marks={presetsCents}
           onChange={pickFromSlider}
         />
@@ -191,21 +154,6 @@ export function useLimitEntry(opts: LimitEntryOptions): LimitEntryState {
               checked={choice === String(cents)}
               onChange={() => {
                 setChoice(String(cents));
-                setCustomText(String(cents / 100));
-                setTouched(false);
-              }}
-            />
-            <span>{formatUsdCompact(cents)}</span>
-          </label>
-        ))}
-        {scaled.map((cents) => (
-          <label key={`scaled-${cents}`}>
-            <input
-              type="radio"
-              name="ceiling"
-              checked={choice === CUSTOM && customText === String(cents / 100)}
-              onChange={() => {
-                setChoice(CUSTOM);
                 setCustomText(String(cents / 100));
                 setTouched(false);
               }}

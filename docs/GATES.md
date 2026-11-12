@@ -5,11 +5,11 @@ A gate without evidence reads NOT RUN. PASS, PARTIAL and FAIL need an Evidence l
 
 ## Summary: what is proven
 
-- G0, G1, G2 and G4 are PASS on the real PayPal sandbox (app and buyers, partial capture with `final_capture`, wallet and guest card AUTHORIZE, six real webhooks verified).
+- G0, G1, G2, G3 and G4 are PASS on the real PayPal sandbox (app and buyers, partial capture with `final_capture`, wallet and guest card AUTHORIZE, a multi-day capture and reauthorize probe, six real webhooks verified).
 - A real server process kill on a CI runner against the sandbox settled with one capture, two losers voided, a journal equal to PayPal and a verifying ledger of 19 entries (run 42558021614).
 - Live speech through the `/audio` socket: both providers answered 24 of 24 synthetic clips with no spoken bid accepted without a confirm (run 42575018866).
 - Hosted API: webhook route p95 112.03 ms (n=50, runner network included) against a 300 ms target, warmup after 16 minutes idle at most 0.66 s (n=2), security headers on the custom domains.
-- G5 is PARTIAL (tested with synthetic speech clips; the confirm prompt protects every voice bid) and G3 is IN PROGRESS (final reading about 12 Nov 06:17 UTC). Latency is measured at SETTLED p95 6927.43 ms against 6000 ms and CAPTURED p95 3766.67 ms against 2500 ms (run 42563147792, 49 of 50 completed, INCOMPLETE); the owner decision on the targets is open. Scope and detail are in the sections below.
+- G5 is PARTIAL (tested with synthetic speech clips; the confirm prompt protects every voice bid) and G3 is PASS (final probe 12 Nov 2026: capture of 1.00 and reauthorize accepted at 3.5, 4 and 5 days, sandbox, wallet buyer). Latency is measured at SETTLED p95 6927.43 ms against 6000 ms and CAPTURED p95 3766.67 ms against 2500 ms (run 42563147792, 49 of 50 completed, INCOMPLETE); the owner decision on the targets is open. Scope and detail are in the sections below.
 
 ## G0: sandbox app and buyer accounts
 
@@ -90,18 +90,33 @@ Scope: AUTHORIZE only. Void of the guest card authorization and a `final_capture
 
 ## G3: honor period versus validity and reauthorize
 
-Status: NOT RUN
-Run date / by: IN PROGRESS, real probe, day 0 was 7 Nov 2026 03:06 UTC (`.github/workflows/gate-g3.yml`; the earlier attempts on 4-7 Nov never ran, so no earlier day is claimed). Checkpoints at 3.5, 4 and 5 days; the final reading is about 12 Nov 06:17 UTC. Until those results exist the gate reads NOT RUN / IN PROGRESS.
-Early evidence: Additional early reading (not the full 5-day result): two older G2 authorizations are probed by `gate-g3-early.yml` (PR #1929, merged to main). Redacted copies of its artifacts are committed under docs/evidence/G3-early/: g3-early-20261108T173529Z-read.json (sha256 47614397eda0f8d9b2c86ebd11c0414f9cdb8af4800acad90284caa880dc8477, run 42505706359, read only: both authorizations CREATED at ages 3.2374 and 3.234 days), g3-early-20261108T173639Z-probe.json (sha256 8f399464a0f0dd88a61d55f79128aa218507586c04c2dd5ae87078dfd2956b3a, run 42505780514: G2-wallet at 3.2383 days, capture HTTP 201, reauthorize 422 PAYER_CANNOT_PAY, then PARTIALLY_CAPTURED; G2-card not probed) and g3-early-20261109T000920Z-probe.json (sha256 7dfdc5277552d09e163a7e2a3f6800171bba8bce852319c6d917175b424df769, run 42538613566: G2-card at 3.5075 days, still CREATED, capture HTTP 201, reauthorize 422 PAYER_CANNOT_PAY, then PARTIALLY_CAPTURED; G2-wallet already PARTIALLY_CAPTURED and not probed). The artifact copies differ from the committed ones only by the line layout of one array (prettier). What this shows: a partial capture of 1.00 was accepted on both used authorizations after 3 days, and reauthorize was refused on both. What it does not show: the G3 validity window, whether reauthorize extends it (the probe captures 1.00 and then calls reauthorize in the same run, so the refusal is on an authorization that already holds a partial capture, which is not the clean reading), void of a guest card authorization, or a `final_capture`. G3 stays NOT RUN / IN PROGRESS.
-Simulated, not real: We simulated 30 days of auctions with a fake clock: holds, honor-period expiry, reauthorization, crashes and recovery, with the ledger balancing to the cent. This is a simulation, not a real sandbox result; PayPal's 29-day validity was not verified in the real sandbox. Details: [docs/evidence/SIM/SIM-MULTIDAY.md](evidence/SIM/SIM-MULTIDAY.md).
+Status: PASS
+Run date / by: 2026-11-07 (day 0, 03:06 UTC) to 2026-11-12 (final checkpoint) by harshbhx (probe run G3-20261107T030638Z, `.github/workflows/gate-g3.yml`; final checkpoint run 43174780092 on 12 Nov 2026, https://github.com/harshbhx/gavel-auction/actions/runs/43174780092). Checkpoints at 3.5, 4 and 5 days; the earlier attempts on 4-7 Nov never ran, so no earlier day is claimed.
+Early evidence: Additional early reading (before the final result): two older G2 authorizations are probed by `gate-g3-early.yml` (PR #1929, merged to main). Redacted copies of its artifacts are committed under docs/evidence/G3-early/: g3-early-20261108T173529Z-read.json (sha256 47614397eda0f8d9b2c86ebd11c0414f9cdb8af4800acad90284caa880dc8477, run 42505706359, read only: both authorizations CREATED at ages 3.2374 and 3.234 days), g3-early-20261108T173639Z-probe.json (sha256 8f399464a0f0dd88a61d55f79128aa218507586c04c2dd5ae87078dfd2956b3a, run 42505780514: G2-wallet at 3.2383 days, capture HTTP 201, reauthorize 422 PAYER_CANNOT_PAY, then PARTIALLY_CAPTURED; G2-card not probed) and g3-early-20261109T000920Z-probe.json (sha256 7dfdc5277552d09e163a7e2a3f6800171bba8bce852319c6d917175b424df769, run 42538613566: G2-card at 3.5075 days, still CREATED, capture HTTP 201, reauthorize 422 PAYER_CANNOT_PAY, then PARTIALLY_CAPTURED; G2-wallet already PARTIALLY_CAPTURED and not probed). The artifact copies differ from the committed ones only by the line layout of one array (prettier). What this shows: a partial capture of 1.00 was accepted on both used authorizations after 3 days, and reauthorize was refused on both. What it does not show: the G3 validity window, whether reauthorize extends it (the probe captures 1.00 and then calls reauthorize in the same run, so the refusal is on an authorization that already holds a partial capture, which is not the clean reading), void of a guest card authorization, or a `final_capture`. The clean reading is the final probe below.
+Simulated, not real: We simulated 30 days of auctions with a fake clock: holds, honor-period expiry, reauthorization, crashes and recovery, with the ledger balancing to the cent. This is a simulation, not a real sandbox result; the final G3 probe covers 3.5, 4 and 5 days only, so PayPal's 29-day validity was not verified in the real sandbox. Details: [docs/evidence/SIM/SIM-MULTIDAY.md](evidence/SIM/SIM-MULTIDAY.md).
 Question: how long does an authorization stay capturable, and does reauthorize extend it?
-Setup: n/a
-Requests: n/a
-Observed: n/a
-Verdict: n/a
-Decision: n/a
+Setup: sandbox, wallet buyer, script `packages/payments/gates/g3.ts` at e55d401. No passwords recorded.
+Requests: an immediate reauthorize on a fresh authorization (day 0), then at 3.5, 4 and 5 days a partial capture of 1.00 and a reauthorize on each of the three authorizations.
+Observed: the immediate reauthorize answered HTTP 422 UNPROCESSABLE_ENTITY with REAUTHORIZATION_TOO_SOON. At 3.5, 4 and 5 days the capture of 1.00 was accepted (HTTP 201, authorization CREATED to PARTIALLY_CAPTURED) and the reauthorize was accepted (HTTP 201) every time.
+Verdict: PASS. G3 passed: the authorization stayed capturable at 3.5, 4 and 5 days and reauthorize was accepted (sandbox, wallet buyer, 1.00 partial capture). Fallback: none.
+
+| id                                  | expected                         | actual                                                                               | verdict  |
+| ----------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------ | -------- |
+| G3.1 immediate reauthorize          | accepted or rejected             | HTTP 422 UNPROCESSABLE_ENTITY REAUTHORIZATION_TOO_SOON                               | observed |
+| G3.d3.5 capture 1.00 after 3.5 days | accepted or rejected             | HTTP 201, authorization CREATED -> PARTIALLY_CAPTURED                                | observed |
+| G3.d3.5 reauthorize after 3.5 days  | accepted or rejected             | HTTP 201                                                                             | observed |
+| G3.d4 capture 1.00 after 4 days     | accepted or rejected             | HTTP 201, authorization CREATED -> PARTIALLY_CAPTURED                                | observed |
+| G3.d4 reauthorize after 4 days      | accepted or rejected             | HTTP 201                                                                             | observed |
+| G3.d5 capture 1.00 after 5 days     | accepted or rejected             | HTTP 201, authorization CREATED -> PARTIALLY_CAPTURED                                | observed |
+| G3.d5 reauthorize after 5 days      | accepted or rejected             | HTTP 201                                                                             | observed |
+| G3.9 rule                           | PASS, PASS-WITH-FALLBACK or FAIL | capture still succeeds at 3.5, 4 and 5 days: no reauthorization, keep the stale flag | PASS     |
+
+Decision: PASS
+Fallback adopted: none
+Evidence: workflow run https://github.com/harshbhx/gavel-auction/actions/runs/43174780092 (artifacts `g3-entry` and `g3-probe-state`); probe evidence file G3-20261107T030638Z.jsonl (sha256 de67d803f5b28a493e6aa8d5ec5e2e3559fa25d014ac5430779f1bd7227f9a87), kept as a workflow artifact and not committed under docs/evidence.
+Links: spec tags flipped: R-PAY-034, R-PAY-070, R-PAY-071.
+Scope: PayPal sandbox, wallet buyer, partial capture of 1.00 only. Not a card order and not a full-amount capture. The final probe did not test the 29-day validity, a guest card authorization, a `final_capture` or a void; those stay as recorded in G1 and G2.
 Fallback if FAIL: keep auctions shorter than the validity window and reauthorize before hammer.
-Links: n/a
 
 ## G4: real webhook signature verification
 
@@ -295,7 +310,7 @@ confirm at 0.90 or more and wrong accepts at 0.05 or less; PARTIAL needs 0.70 or
 
 ## Decision
 
-Interim decision: GO, with documented fallbacks. This is not a final go: G3 is IN PROGRESS and G5 is PARTIAL (tested with synthetic speech, tuned on the same clips), and the confirm prompt protects every voice bid.
+Interim decision: GO, with documented fallbacks. This is not a final go: G3 passed on 12 Nov 2026 and G5 is PARTIAL (tested with synthetic speech, tuned on the same clips), and the confirm prompt protects every voice bid.
 
 Verified, with evidence above:
 
@@ -304,15 +319,17 @@ Verified, with evidence above:
 - Real webhooks verify through PayPal's endpoint (G4). Tampered-event rejection is covered against the fake only.
 - The sandbox app and buyer accounts work (G0; redacted evidence file committed from the 9 Nov re-run, run 42555610707).
 
-In progress and partial:
+Verified in the final G3 probe (12 Nov 2026, run 43174780092):
 
-- G3 (honor period, validity and reauthorize): NOT RUN / IN PROGRESS (day 0 7 Nov 2026 03:06 UTC, final about 12 Nov 06:17 UTC). Fallback: capture within the verified validity window and use the reauthorize path (spec R3, T-QA-052) before hammer. R3 is the plan, not a result: it is not verified until G3 runs.
+- G3 (honor period, validity and reauthorize): PASS. The authorization stayed capturable at 3.5, 4 and 5 days (partial capture of 1.00 accepted, HTTP 201) and reauthorize was accepted each time; an immediate reauthorize was refused with REAUTHORIZATION_TOO_SOON. Scope: sandbox, wallet buyer, 1.00 partial capture only. Fallback adopted: none.
+
+Partial:
+
 - G5 (speech-to-text accuracy on noisy bids): PARTIAL. On synthetic speech, 24 eSpeak clips and 24 human-like clips, Deepgram nova-3 and Groq whisper-large-v3-turbo with a bid prompt score wrong accept 0.000 and exact plus recoverable 1.000, after fixes chosen on the same clips; the earlier nova-2 run measured 0.083 to 0.167 (nine of eleven wrong accepts were an evaluation label defect). Fallback: voice bids always go through the confirm prompt (assist mode). Scope: synthetic speech clips. One synthetic held-out noisy set was measured once against the pre-registered thresholds: wrong accept 0.058 (Groq) and 0.092 (Deepgram) against 0.05 (run 42567832671).
 
 What changes the decision:
 
-- G3 shows a validity window shorter than the longest planned auction, or reauthorize does not extend it: auctions are capped to the validity window and the demo stays short, or the decision moves to NO-GO for long auctions.
-- G3 passes with a window that covers the planned auctions: the decision becomes GO for card and wallet.
+- G3 (recorded PASS on 12 Nov 2026): the authorization stayed capturable at 3.5, 4 and 5 days and reauthorize was accepted, for a wallet buyer and a 1.00 partial capture on the sandbox. A longer auction than 5 days, a card order or a full-amount capture is not covered by that result; auctions stay within the days tested.
 - G5 PARTIAL (the current state): voice bids stay behind the confirm prompt; the payments decision is unchanged. The synthetic held-out noisy set measured on 9 Nov (run 42567832671) read 0.058 and 0.092 against 0.05, so it leaves the gate open; PASS would need a new noisy clip set that keeps wrong accept at 0.05 or less, together with an owner decision.
 - A later run of G1, G2 or G4 that no longer matches the recorded evidence reopens that gate and the flag that depends on it.
 
@@ -369,7 +386,7 @@ Result: the `nightly` job concluded success, but the report the job wrote (`repo
 | ------------------------------------- | ---- | ---------- | ------------- | ------------------------------------------------------------------------------------------------- |
 | R1 partial capture and remainder      | G1   | pass       | pass          | captured 35000 cents, remainder released (spec's own wording; see G1)                             |
 | R2 card or guest authorize            | G2   | pass       | pass          | card buyer, authorization CREATED (authorize only; no capture)                                    |
-| R3 reauthorize after a delay          | G3   | pass       | inconclusive  | reauthorize answered HTTP 422 UNPROCESSABLE_ENTITY; G3 stays NOT RUN                              |
+| R3 reauthorize after a delay          | G3   | pass       | inconclusive  | reauthorize answered HTTP 422 UNPROCESSABLE_ENTITY; G3 read later (see G3)                        |
 | R4 staging restart                    | G4   | skipped    | skipped       | no staging host configured (`GAVEL_STAGING_URL`)                                                  |
 | R5 idempotent capture                 | G1   | pass       | pass          | second send answered 200 with the same capture                                                    |
 | R6 void each non-winner once          | G1   | pass       | pass          | both voids accepted; a repeat void on the same authorization answered 422 PREVIOUSLY_VOIDED       |
@@ -385,14 +402,14 @@ What this run does not prove:
 
 - G1: the remainder release is still inferred, not read from a buyer balance (decision A stands as written).
 - G2: R2 stops at CREATED; no void of a card authorization ran in the nightly. A 1.00 partial capture on the guest card authorization was accepted only in the early G3 probe (run 42538613566, 9 Nov).
-- G3: no honor-period or validity-window result; those results are still pending. The G3 probe runs every 6 hours (`gate-g3.yml`, cron `17 */6 * * *`) and the final reading is about 12 Nov 06:17 UTC. R3 answered 422, so reauthorize is unproven on this run.
+- G3: no honor-period or validity-window result on this run. The G3 probe (`gate-g3.yml`) ran separately and its final checkpoint passed on 12 Nov 2026 (see the G3 section). R3 answered 422 on this run, so reauthorize is unproven here.
 - G4 staging: R4 was skipped. A real server kill ran later in workflow `evidence-server-kill` (run 42558021614, 9 Nov 2026; see "Real server kill" below); R10 is the in-process crash only.
 - G5: no audio ran, so no speech-to-text accuracy exists.
 - R9 is not in the report counts; its pass comes from vitest output only.
 - Latency: this run recorded no timings for the targets, so the table above is unchanged. The void p95 caveat stands: 1235.96 ms against the 1000 ms budget, and, as of 6 Nov, the SETTLED budget assumption (each call under 1 s at p95) failed; the Latency section above records SETTLED as MISSED on the 49-of-50 run 42563147792 (the earlier n=20 run 42346811713 had it within 6 s).
 - The raw job log and the summary artifact stay in Actions only (artifacts expire); the redacted report copy is committed (see Evidence below), so the figures can be checked against its sha256, but the raw log cannot.
 
-Decision: no change. G1 PASS (decision A), G2 PASS, G3 NOT RUN / IN PROGRESS, G5 PARTIAL on synthetic speech (confirm prompt kept).
+Decision: no change as of this run. G1 PASS (decision A), G2 PASS, G3 NOT RUN at the time (it later passed, see the G3 section), G5 PARTIAL on synthetic speech (confirm prompt kept).
 Evidence: redacted copies of the report are committed as `docs/evidence/nightly/NIGHTLY-42200708552.json` (sha256 d52637150b0fa9a4e6eafc8a2bb873227a75e797cef2093d19eb1e56e944de5b) and `docs/evidence/nightly/NIGHTLY-42317068784.json` (sha256 d3f4add63b30e08066daa83c0a7d289fae880472e94d98582065d859a7a05652); they hold spec ids, statuses and observed summaries only. The raw job logs remain Actions logs.
 
 ## Run entries

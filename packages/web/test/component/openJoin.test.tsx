@@ -247,12 +247,12 @@ describe('two ways to hold on a judge room (SRV-34)', () => {
     render(<App initialPath={`/r/${ROOM}/register`} api={API} />);
     fireEvent.change(screen.getByLabelText(t('reg.name')), { target: { value: 'Priya' } });
     fireEvent.click(screen.getByRole('button', { name: t('reg.continue') }));
-    fireEvent.click(screen.getByLabelText('$250'));
+    fireEvent.click(screen.getByLabelText('$100'));
     confirmHold();
     await waitFor(() => expect(calls.some((c) => c.url.endsWith('/sim-hold'))).toBe(true));
     const sim = calls.find((c) => c.url.endsWith('/sim-hold'));
     expect(sim?.url).toBe(`http://api.test/api/judge/rooms/${ROOM}/sim-hold`);
-    expect(JSON.parse(sim?.body ?? '{}')).toEqual({ ceilingCents: 25_000, name: 'Priya' });
+    expect(JSON.parse(sim?.body ?? '{}')).toEqual({ ceilingCents: 10_000, name: 'Priya' });
     expect(calls.some((c) => c.url.endsWith('/api/holds'))).toBe(false);
   });
 });

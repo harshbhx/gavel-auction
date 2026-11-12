@@ -55,6 +55,12 @@ export interface VoiceState {
   problem: VoiceProblem | null;
   /** A short notice that is not a failure. */
   note: 'confirmExpired' | 'maxClip' | null;
+  /** What became of the last spoken utterance; null before the first one. */
+  outcome: {
+    kind: 'bid' | 'confirm' | 'drop';
+    paddle: number | null;
+    reason: string | null;
+  } | null;
   /** The recorded demo is playing: the host reads its own cached transcripts, no microphone is used. */
   replay: boolean;
 }
@@ -76,6 +82,7 @@ const IDLE: VoiceState = {
   stt: null,
   problem: null,
   note: null,
+  outcome: null,
   replay: false,
 };
 
@@ -230,6 +237,7 @@ export class VoiceController {
       stt: null,
       problem: null,
       note: null,
+      outcome: null,
     });
     try {
       this.socket = openAudioSocket(audioSocketUrl(this.o.apiBase, this.o.roomId), this.o.token, {
@@ -296,6 +304,7 @@ export class VoiceController {
       stt: null,
       problem: null,
       note: null,
+      outcome: null,
       replay: true,
     });
     try {
@@ -374,7 +383,9 @@ export class VoiceController {
   private onFeed(msg: AudioFeed): void {
     if (msg.t === 'caption') this.set({ caption: { text: msg.text, final: msg.final } });
     else if (msg.t === 'status') this.set({ stt: msg.stt });
-    else this.set({ note: 'confirmExpired' });
+    else if (msg.t === 'outcome') {
+      this.set({ outcome: { kind: msg.kind, paddle: msg.paddle, reason: msg.reason } });
+    } else this.set({ note: 'confirmExpired' });
   }
 
   private sendAudio(pcm: Int16Array, flags: number): void {

@@ -31,8 +31,31 @@ THEME = {
 }
 SLOTS = list(THEME)
 
+P14 = "http://schemas.microsoft.com/office/powerpoint/2010/main"
+
+
+def timed(inner, ms, speed="med"):
+    """A transition of a set length (PowerPoint 2010 and later); older readers get the speed word."""
+    return (
+        '<mc:AlternateContent xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">'
+        f'<mc:Choice xmlns:p14="{P14}" Requires="p14">'
+        f'<p:transition spd="{speed}" p14:dur="{ms}">{inner}</p:transition></mc:Choice>'
+        f'<mc:Fallback><p:transition spd="{speed}">{inner}</p:transition></mc:Fallback>'
+        "</mc:AlternateContent>"
+    )
+
+
 TRANSITIONS = {
     None: "",
+    # Chosen by what the section means: push moves the story on, a black dip marks the turning
+    # points (the idea, the proof), a black cut is the hammer, pull peels back to the screens,
+    # cover stacks the layers of the architecture, morph glides shared shapes.
+    "push": timed('<p:push dir="l"/>', 700),
+    "pushup": timed('<p:push dir="u"/>', 700),
+    "pull": timed('<p:pull dir="r"/>', 700),
+    "cover": timed('<p:cover dir="r"/>', 700),
+    "blackfade": timed('<p:fade thruBlk="1"/>', 800, "slow"),
+    "blackcut": '<p:transition spd="fast"><p:cut thruBlk="1"/></p:transition>',
     "fade": '<p:transition spd="med"><p:fade/></p:transition>',
     "morph": (
         '<mc:AlternateContent xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006">'
@@ -51,6 +74,7 @@ PRESETS = {
     "float": (42, "entr", 0),
     "wipe": (22, "entr", None),
     "zoom": (53, "entr", 16),
+    "pop": (53, "entr", 16),
     "zoomTurn": (31, "entr", 0),
     "wheel": (21, "entr", 1),
     "path": (0, "path", 0),
@@ -99,6 +123,16 @@ def anim(ids, spid, attr, frm, to, dur, ease=""):
     )
 
 
+def anim_keys(ids, spid, attr, keys, dur, ease=""):
+    tavs = "".join(f'<p:tav tm="{tm}"><p:val>{val(v)}</p:val></p:tav>' for tm, v in keys)
+    return (
+        f'<p:anim calcmode="lin" valueType="num"><p:cBhvr additive="base">'
+        f'<p:cTn id="{ids()}" dur="{dur}" fill="hold"{ease}/>{tgt(spid)}'
+        f"<p:attrNameLst><p:attrName>{attr}</p:attrName></p:attrNameLst></p:cBhvr>"
+        f"<p:tavLst>{tavs}</p:tavLst></p:anim>"
+    )
+
+
 def effect_filter(ids, spid, filt, dur, direction="in"):
     return (
         f'<p:animEffect transition="{direction}" filter="{filt}"><p:cBhvr>'
@@ -131,6 +165,15 @@ def behaviours(ids, a, spid):
         if a.get("rotate"):
             out += anim(ids, spid, "style.rotation", a["rotate"], 0, dur, decel)
         return out + effect_filter(ids, spid, "fade", max(1, int(dur * 0.7)))
+    if kind == "pop":
+        f = a.get("from", 0.5)
+        keys = lambda attr: [(0, f"#{attr}*{f}"), (70000, f"#{attr}*1.1"), (100000, f"#{attr}")]
+        return (
+            set_vis(ids, spid, "visible")
+            + anim_keys(ids, spid, "ppt_w", keys("ppt_w"), dur, decel)
+            + anim_keys(ids, spid, "ppt_h", keys("ppt_h"), dur, decel)
+            + effect_filter(ids, spid, "fade", max(1, int(dur * 0.5)))
+        )
     if kind == "wheel":
         return set_vis(ids, spid, "visible") + effect_filter(ids, spid, "wheel(1)", dur)
     if kind == "path":

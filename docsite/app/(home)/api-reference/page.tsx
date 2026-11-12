@@ -2,12 +2,19 @@ import type { Metadata } from 'next';
 import { loadSpec, type J } from '@/lib/openapi';
 import { OperationView } from '@/components/api/operation';
 import { Prose } from '@/components/api/text';
+import { socialMeta } from '@/lib/meta';
 import { repoUrl } from '@/lib/shared';
 
 export const metadata: Metadata = {
   title: 'API reference',
   description:
     'Every HTTP endpoint of the GAVEL host, grouped by tag, with parameters, request and response schemas, examples, authentication and error codes. Rendered from openapi/gavel.yaml at build time.',
+  ...socialMeta({
+    title: 'API reference',
+    description:
+      'Every HTTP endpoint of the GAVEL host with parameters, schemas, examples, authentication and error codes.',
+    path: '/api-reference',
+  }),
 };
 
 export default function ApiReferencePage() {

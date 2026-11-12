@@ -86,6 +86,34 @@ function problemText(problem: VoiceProblem | null): string | null {
   }
 }
 
+/** Plain words for what became of a spoken utterance. A held bid's amount is never shown here. */
+export function outcomeText(o: NonNullable<VoiceState['outcome']>): string {
+  if (o.kind === 'confirm') {
+    return o.paddle === null
+      ? t('console.voice.outcome.confirmAny')
+      : t('console.voice.outcome.confirm', { n: o.paddle });
+  }
+  if (o.kind === 'bid') {
+    return o.paddle === null
+      ? t('console.voice.outcome.bidAny')
+      : t('console.voice.outcome.bid', { n: o.paddle });
+  }
+  switch (o.reason) {
+    case 'unknown_bidder':
+    case 'unregistered_paddle':
+      return t('console.voice.outcome.noPaddle');
+    case 'no_amount':
+    case 'uninterpretable_number':
+      return t('console.voice.outcome.noAmount');
+    case 'not_open':
+      return t('console.voice.outcome.notOpen');
+    case 'low_confidence':
+      return t('console.voice.outcome.lowConfidence');
+    default:
+      return t('console.voice.outcome.none');
+  }
+}
+
 /** A stop the user or a limit asked for is a status; the rest is something that went wrong. */
 const PLAIN_ENDS: readonly VoiceProblem[] = ['silence', 'idle', 'maxSession', 'hidden', 'closed'];
 
@@ -232,6 +260,11 @@ export function VoiceControl({
           {t(state.caption.final ? 'console.voice.heard' : 'console.voice.hearing', {
             text: state.caption.text,
           })}
+        </p>
+      )}
+      {state.outcome !== null && (
+        <p role="status" data-slot="voice-outcome" data-kind={state.outcome.kind}>
+          {outcomeText(state.outcome)}
         </p>
       )}
       {state.stt === 'degraded' && <p role="status">{t('console.voice.sttDegraded')}</p>}

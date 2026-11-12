@@ -42,13 +42,13 @@ A wallet buyer and a guest with a sandbox card were both authorized through the 
 
 <GateBadge id="G3" />
 
-<Held title="In progress">
+<Charged title="PASS">
 
-A real probe started on 7 Nov 2026 at 03:06 UTC. Checkpoints are at 3.5, 4 and 5 days; the final reading is about 12 Nov 06:17 UTC. Earlier attempts on 4 to 7 Nov never ran, so no earlier day is claimed. Until the readings exist the gate is not marked passed.
+G3 passed: the authorization stayed capturable at 3.5, 4 and 5 days and reauthorize was accepted (sandbox, wallet buyer, 1.00 partial capture). The probe started on 7 Nov 2026 at 03:06 UTC; the earlier attempts on 4 to 7 Nov never ran, so no earlier day is claimed. Final checkpoint: [run 43174780092](https://github.com/harshbhx/gavel-auction/actions/runs/43174780092).
 
-</Held>
+</Charged>
 
-The planned fallback if the window is short: capture within the verified validity window and reauthorize before the <Term id="hammer">hammer</Term>. That is the plan, not a result.
+Fallback adopted: none. Reauthorize stays available (off by default) before the <Term id="hammer">hammer</Term> if an auction ever needs it.
 
 ## G4: real webhook signature verification
 
@@ -71,8 +71,7 @@ Tested with synthetic clips; the confirm step stays. After the evaluation label 
 
 ## What changes the decision
 
-- <Term id="gate-g3">G3</Term> shows a validity window shorter than the longest planned auction: auctions are capped, or the decision moves to NO-GO for long auctions.
-- G3 passes with a window that covers the planned auctions: GO for card and wallet.
+- <Term id="gate-g3">G3</Term> is recorded PASS for 3.5, 4 and 5 days (wallet buyer, 1.00 partial capture): auctions up to that length are inside what was tested. A longer auction, a card order or a full-amount capture would need its own reading.
 - <Term id="gate-g5">G5</Term> stays tested with synthetic clips only: voice bids stay behind the confirm prompt. The payments decision is unchanged.
 
 <CodePaths

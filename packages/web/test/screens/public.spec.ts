@@ -130,7 +130,7 @@ test.describe('judge panel', () => {
   test('rooms on', async ({ page, shoot }) => {
     await mockApi(page, () => caps(true, true));
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.goto('/try');
+    await page.goto('/try?instructor=1');
     await expect(page.getByText(t('try.status.on'))).toBeVisible();
     await shoot('try', 'rooms-on');
   });
@@ -222,7 +222,7 @@ test.describe('judge panel', () => {
       .getByRole('button', { name: new RegExp(`^${t('try.bar.join')}`) })
       .click();
     await page.getByRole('tab', { name: t('try.tab.proven') }).click();
-    await expect(page.getByRole('tabpanel').getByText(t('try.ev.n2'))).toBeVisible();
+    await expect(page.getByRole('tabpanel').getByText(t('try.ev.p6'))).toBeVisible();
     await shoot('try', 'dialog-proven');
   });
 

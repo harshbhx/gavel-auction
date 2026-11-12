@@ -235,9 +235,9 @@ export function TrustSection() {
     {
       title: t('mk.trust.g3.title'),
       body: t('mk.trust.g3.body'),
-      status: t('mk.trust.progress'),
-      tone: 'neutral',
-      icon: 'clock',
+      status: t('mk.trust.passed'),
+      tone: 'success',
+      icon: 'check',
       href: `${DOCS_URL}/docs/proof/gate-g3`,
     },
     {

@@ -141,8 +141,7 @@ describe('marketing landing', () => {
     expect(items).toHaveLength(8);
     const labels = items.map((li) => li.querySelector('.gv-chip')?.textContent ?? '');
     const count = (label: string): number => labels.filter((l) => l.includes(label)).length;
-    expect(count(t('mk.trust.passed'))).toBe(4);
-    expect(count(t('mk.trust.progress'))).toBe(1);
+    expect(count(t('mk.trust.passed'))).toBe(5);
     expect(count(t('mk.trust.partial'))).toBe(2);
     expect(count(t('mk.trust.simulated'))).toBe(1);
     for (const li of items) {
@@ -152,14 +151,13 @@ describe('marketing landing', () => {
     expect(screen.getByText(t('mk.trust.note'))).toBeTruthy();
   });
 
-  it('keeps the open gates honest: measured stays measured, G3 stays a running probe', () => {
+  it('keeps the open gates honest: measured stays measured, G3 is shown as passed', () => {
     expect(t('mk.trust.partial')).toMatch(/measured/i);
-    expect(t('mk.trust.progress')).toMatch(/running/i);
-    for (const key of ['mk.trust.g3.body', 'mk.trust.g5.body', 'mk.trust.lat.body'] as const) {
+    for (const key of ['mk.trust.g5.body', 'mk.trust.lat.body'] as const) {
       expect(t(key), key).not.toMatch(/\b(full|fully|passed|complete)\b/i);
     }
-    expect(t('mk.trust.g3.body')).toMatch(/probe is running/);
-    expect(t('mk.trust.g3.body')).toMatch(/final reading is due/);
+    expect(t('mk.trust.g3.body')).toMatch(/3\.5, 4 and 5 days/);
+    expect(t('mk.trust.g3.body')).not.toMatch(/running|not in yet|final reading/);
     expect(t('mk.trust.g5.body')).toMatch(/synthetic/);
     expect(t('mk.trust.g5.body')).toMatch(
       /0\.058 \(Groq\) and 0\.092 \(Deepgram\) against a target of 0\.05/,

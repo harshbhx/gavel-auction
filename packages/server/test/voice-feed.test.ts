@@ -115,4 +115,33 @@ describe('voice bridge feed (issue 1863)', () => {
     await r.bridge.close();
     expect(r.feed.filter((m) => m.t === 'status' && m.stt !== 'ok')).toEqual([]);
   });
+
+  it('tells the console what became of an utterance, without the amount (UIX-77)', async () => {
+    const said = (text: string): Timeline =>
+      parseTimeline({
+        utterances: [
+          {
+            startMs: 0,
+            endMs: 500,
+            expected: { kind: 'accept', bidderId: null, amountCents: null },
+            events: [{ atMs: 600, event: { ...final, text } }],
+          },
+        ],
+      });
+    const ok = rig(said('paddle seven three fifty'));
+    for (let i = 0; i < 20; i++) await ok.step(100, 0);
+    await ok.bridge.close();
+    const bid = ok.feed.filter((m) => m.t === 'outcome');
+    expect(bid).toHaveLength(1);
+    expect(bid[0]).toMatchObject({ t: 'outcome', paddle: 7 });
+    expect(['bid', 'confirm']).toContain((bid[0] as { kind: string }).kind);
+    expect(JSON.stringify(bid[0])).not.toContain('350');
+
+    const none = rig(said('paddle nine three fifty'));
+    for (let i = 0; i < 20; i++) await none.step(100, 0);
+    await none.bridge.close();
+    const dropped = none.feed.filter((m) => m.t === 'outcome');
+    expect(dropped).toHaveLength(1);
+    expect(dropped[0]).toMatchObject({ t: 'outcome', kind: 'drop' });
+  });
 });

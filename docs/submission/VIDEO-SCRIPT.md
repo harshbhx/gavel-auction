@@ -17,7 +17,7 @@ Source legend: UI = needs the web app (to be filled by the UI owner); TERM = ter
 | 7   | 1:55-2:15 | Terminal: the G1 and G4 evidence lines and the GATES status table                               | EVID, TERM        | Real sandbox evidence                                   | "These are real sandbox runs: capture 350 of a 500 hold released the remainder, and six real webhooks verified."         |
 | 8   | 2:15-2:30 | Crash mid-settlement then resume, still one capture                                             | FAKE              | Fake PayPal, test run                                   | "Stop the server mid-settlement and resume: still exactly one capture. This is shown against our fake PayPal."           |
 | 9   | 2:30-2:42 | Ledger verify output and the audit screen                                                       | TERM or UI        | UI owner fills for the screen                           | "Every accepted bid sits in a hash-chained ledger anyone can re-verify."                                                 |
-| 10  | 2:42-2:50 | Closing card with repo URL and the honest status line                                           | TERM (title card) | G3 in progress, G5 partial (synthetic speech only)      | "GAVEL: PayPal sandbox, open source, MIT. Two gates are still open, and we say so."                                      |
+| 10  | 2:42-2:50 | Closing card with repo URL and the honest status line                                           | TERM (title card) | G3 passed, G5 partial (synthetic speech only)           | "GAVEL: PayPal sandbox, open source, MIT. What is still open, we say so."                                                |
 
 Timings sum to 2:50 (170 s).
 
@@ -31,7 +31,7 @@ Timings sum to 2:50 (170 s).
 | Full multi-bidder settlement          | Fake PayPal                 | Sandbox nightly R7 and R9 only; not run through the hosted app      |
 | Crash and resume                      | Fake PayPal, test hook      | Kill on a CI runner (run 42558021614); none on the host             |
 | Voice bid                             | Recorded replay             | G5 partial, synthetic clips only; confirm prompt; no real-room test |
-| Honor period and reauthorize          | Not shown as a result       | G3 in progress                                                      |
+| Honor period and reauthorize          | Shown as PASS only          | G3 passed                                                           |
 | Any money                             | Never a live charge         | Sandbox only                                                        |
 
 ## Open items for the UI owner

@@ -15,6 +15,8 @@ export interface InstructorProps {
   readonly roomId?: string;
   /** Query string that can force the panel on (?instructor=1) or off (?instructor=0). */
   readonly search?: string;
+  /** Keeps the steps open: no hide button, and a collapsed choice saved earlier is ignored. */
+  readonly alwaysOpen?: boolean;
 }
 
 const storeKey = (screen: InstructorScreen): string => `gavel:instructor:${screen}`;
@@ -101,10 +103,18 @@ function useIsJudgeRoom(
  * next. The current step follows the room, not a button. A region with a heading, not a dialog,
  * so it never covers a control.
  */
-export function Instructor({ screen, current = null, judge, roomId, search }: InstructorProps) {
+export function Instructor({
+  screen,
+  current = null,
+  judge,
+  roomId,
+  search,
+  alwaysOpen = false,
+}: InstructorProps) {
   const enabled = instructorEnabled(search ?? window.location.search);
   const isJudge = useIsJudgeRoom(enabled, judge, roomId);
-  const [collapsed, setCollapsed] = useState(() => readCollapsed(screen));
+  const [saved, setCollapsed] = useState(() => readCollapsed(screen));
+  const collapsed = alwaysOpen ? false : saved;
   const headingId = useId();
   const listId = useId();
   if (!enabled || !isJudge) return null;
@@ -124,15 +134,17 @@ export function Instructor({ screen, current = null, judge, roomId, search }: In
         <h2 className="gv-instructor__title ui-kicker" id={headingId}>
           {t('instructor.title')}
         </h2>
-        <button
-          type="button"
-          className="gv-instructor__toggle"
-          aria-expanded={!collapsed}
-          aria-controls={listId}
-          onClick={toggle}
-        >
-          {collapsed ? t('instructor.show') : t('instructor.hide')}
-        </button>
+        {!alwaysOpen && (
+          <button
+            type="button"
+            className="gv-instructor__toggle"
+            aria-expanded={!collapsed}
+            aria-controls={listId}
+            onClick={toggle}
+          >
+            {collapsed ? t('instructor.show') : t('instructor.hide')}
+          </button>
+        )}
       </div>
       <div id={listId} hidden={collapsed}>
         <p className="gv-instructor__lead">{t('instructor.lead')}</p>

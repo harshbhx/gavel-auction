@@ -21,6 +21,7 @@ const OFF: VoiceState = {
   stt: null,
   problem: null,
   note: null,
+  outcome: null,
   replay: false,
 };
 

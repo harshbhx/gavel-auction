@@ -3,33 +3,51 @@
  * weight in place, and the caption box has a fixed height so a longer caption never shifts it. */
 
 .gv-scripted-frame {
-  /* Space taken above the stage: the shell notice row plus the demo strip. */
-  --scripted-top: 132px;
+  /* Space taken above the stage: the one slim header bar. */
+  --scripted-top: 56px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
   grid-template-rows: auto minmax(0, 1fr);
   background: var(--color-bg);
 }
 
-/* One calm strip: the shell notice row and the demo strip share a rule instead of stacking boxes. */
-body:has(.gv-scripted-frame) .gv-chrome > .gv-banner {
+/* One slim header bar: home, sandbox note, recording chip and the demo note on the left, the two
+ * buttons on the right. The notice and the chip drop their own boxes so they read as one line. */
+.gv-scripted-frame > .gv-scripted-bar .gv-banner {
+  flex: 0 0 auto;
+  padding: 0;
   border: 0;
-  border-radius: 0;
   background: transparent;
 }
 
+.gv-scripted-frame > .gv-scripted-bar .gv-home {
+  flex: 0 0 auto;
+  padding: 0;
+}
+
+.gv-scripted-frame > .gv-scripted-bar > p {
+  order: 3;
+}
+
+.gv-scripted-frame > .gv-scripted-bar .gv-scripted-bar__links {
+  margin-inline-start: auto;
+  order: 4;
+}
+
 .gv-scripted-frame > .gv-scripted-bar {
-  gap: var(--space-2) var(--space-5);
-  padding: var(--space-2) var(--space-5);
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-1) var(--space-4);
+  padding: var(--space-1) var(--space-4);
   border-block: var(--border-width) solid var(--color-fg);
   background: var(--color-surface);
 }
 
 .gv-scripted-frame > .gv-scripted-bar > p {
-  flex: 1 1 24rem;
+  flex: 1 1 14rem;
   min-width: 0;
-  font-size: var(--font-size-2);
-  line-height: 1.35;
+  font-size: var(--font-size-1);
+  line-height: 1.2;
   text-wrap: pretty;
 }
 
@@ -39,7 +57,7 @@ body:has(.gv-scripted-frame) .gv-chrome > .gv-banner {
 }
 
 .gv-scripted-frame > .gv-scripted-bar .gv-scripted-bar__links .ui-link {
-  min-height: 40px;
+  min-height: 32px;
   padding: 0 var(--space-3);
   border: var(--border-width) solid var(--color-fg);
   border-radius: var(--radius-md);
@@ -95,10 +113,6 @@ body:has(.gv-scripted-frame) .gv-chrome > .gv-banner {
 
 .gv-scripted-frame .gv-screen__lot {
   font-size: clamp(24px, 3.2vw, 40px);
-}
-
-.gv-scripted-frame .gv-screen__join svg {
-  width: clamp(96px, 12vw, 160px);
 }
 
 /* The scripted clock counts a wall clock against recorded times, so it is kept out of sight. The
@@ -158,11 +172,9 @@ body:has(.gv-scripted-frame) .gv-chrome > .gv-banner {
 }
 
 @media (min-width: 901px) {
-  /* The player keeps its own scroll, so a long step list never stretches the page. */
+  /* No inner scrollbar: the step list starts folded on a short window, so the panel fits. */
   .gv-scripted-frame .gv-player {
-    max-height: calc(100vh - var(--scripted-top));
-    max-height: calc(100dvh - var(--scripted-top));
-    overflow-y: auto;
+    gap: var(--space-2);
     position: sticky;
     top: 0;
     align-self: start;
@@ -185,7 +197,7 @@ body:has(.gv-scripted-frame) .gv-chrome > .gv-banner {
 
 .gv-player__caption {
   box-sizing: border-box;
-  min-height: 11rem;
+  min-height: 9rem;
   padding: var(--space-3) var(--space-4);
   border: var(--border-width) solid var(--color-fg);
   border-inline-start-width: 8px;
@@ -247,6 +259,30 @@ body:has(.gv-scripted-frame) .gv-chrome > .gv-banner {
   min-height: 44px;
   padding-inline: var(--space-2);
   font-size: var(--font-size-2);
+}
+
+/* About five rows tall; the rest scrolls. The fade at the bottom edge says there is more. */
+.gv-player__scroll {
+  max-height: calc(5 * 45px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-snap-type: y proximity;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+}
+
+.gv-player__scroll[data-end='true'] {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.gv-player__scroll:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.gv-player__scroll .gv-player__step {
+  scroll-snap-align: start;
 }
 
 .gv-player__steps {
@@ -359,11 +395,12 @@ body:has(.gv-scripted-frame) .gv-chrome > .gv-banner {
   }
 }
 
-.gv-player__more > summary {
+.gv-player__more-title {
+  margin: 0;
   min-height: 44px;
   display: flex;
   align-items: center;
-  cursor: pointer;
+  font-weight: inherit;
   font-size: var(--font-size-2);
   color: var(--color-fg-muted);
 }

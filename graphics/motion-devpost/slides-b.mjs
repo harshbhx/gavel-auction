@@ -94,6 +94,8 @@ ${ln('evidence', { x: 58, y: 246, size: 150, a: 0.2, d: 0.85 })}
 ${ln('is <span class="or">open.</span>', { x: 58, y: 374, size: 150, a: 0.3, d: 0.85 })}
 ${ln('Real or simulated,', { x: 64, y: 568, size: 30, fam: 'b', a: 1.0, d: 0.7, w: 480 })}
 ${ln('every file says which.', { x: 64, y: 608, size: 30, fam: 'b', a: 1.08, d: 0.7, w: 480 })}
+${ln('G3 passed: hold capturable at 3.5, 4 and 5 days,', { x: 64, y: 672, size: 14, fam: 'm', color: '#6f6250', a: 1.3, d: 0.6, w: 520, lh: 1.6 })}
+${ln('reauthorize accepted (sandbox, wallet buyer).', { x: 64, y: 695, size: 14, fam: 'm', color: '#6f6250', a: 1.38, d: 0.6, w: 520, lh: 1.6 })}
 <div id="led"></div>
 `,
   js: `

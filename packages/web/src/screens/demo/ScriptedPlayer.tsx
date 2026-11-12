@@ -154,10 +154,15 @@ const say = (key: Beat['label'] | Beat['body']): string => t(key as 'scriptedDem
 /** Speed labels have no placeholders, so a union of their keys is safe to look up. */
 const speedText = (s: PlaybackSpeed): string => t(SPEED_LABEL[s] as 'scriptedDemo.speed1');
 
-/** Phones fold the step list so the screen and the controls stay in view; wide pages show it. */
-function stepsStartOpen(): boolean {
-  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return true;
-  return window.matchMedia('(min-width: 901px)').matches;
+/**
+ * scrollTop that centres `item` inside `list`. Measured from bounding boxes, because offsetTop is
+ * relative to the nearest positioned ancestor (the sticky player on desktop, not the list), which
+ * overshot and clamped the list to its last step. Clamped to the scrollable range.
+ */
+export function centeredScrollTop(list: HTMLElement, item: HTMLElement): number {
+  const offset = item.getBoundingClientRect().top - list.getBoundingClientRect().top;
+  const top = list.scrollTop + offset - (list.clientHeight - item.offsetHeight) / 2;
+  return Math.min(Math.max(0, top), Math.max(0, list.scrollHeight - list.clientHeight));
 }
 
 /** Caption, transport controls and the step list that sit beside the scripted screen. */
@@ -168,7 +173,29 @@ export function ScriptedPlayer({
   playback: Playback;
   beats?: readonly Beat[];
 }) {
-  const { beat, playing, speed, finished } = playback;
+  const { beat, playing, speed, finished, reduced } = playback;
+  const scroller = useRef<HTMLDivElement>(null);
+  const [atEnd, setAtEnd] = useState(false);
+
+  const syncEnd = useCallback((): void => {
+    const el = scroller.current;
+    if (el) setAtEnd(el.scrollHeight - el.scrollTop - el.clientHeight <= 2);
+  }, []);
+
+  // Keep the current step inside the region. Only the region scrolls, never the page.
+  useEffect(() => {
+    const el = scroller.current;
+    const now = el?.querySelector<HTMLElement>('[data-status="now"]');
+    if (el && now && el.clientHeight > 0) {
+      const to = centeredScrollTop(el, now);
+      if (typeof el.scrollTo === 'function') {
+        el.scrollTo({ top: to, behavior: reduced ? 'auto' : 'smooth' });
+      } else {
+        el.scrollTop = to;
+      }
+    }
+    syncEnd();
+  }, [beat, reduced, syncEnd]);
   const current = beats[beat];
   const total = beats.length;
   const playLabel = finished
@@ -236,27 +263,37 @@ export function ScriptedPlayer({
           speed: speedText(speed),
         })}
       </p>
-      <details className="gv-player__more" open={stepsStartOpen()}>
-        <summary>{t('scriptedDemo.allSteps')}</summary>
-        <ol className="gv-player__steps" aria-label={t('scriptedDemo.steps')}>
-          {beats.map((b, i) => (
-            <li
-              key={b.at}
-              className="gv-player__step"
-              data-status={i < beat ? 'done' : i === beat ? 'now' : 'next'}
-            >
-              <button
-                type="button"
-                className="gv-player__jump tabular"
-                aria-current={i === beat ? 'step' : undefined}
-                onClick={() => playback.jump(i)}
+      <div className="gv-player__more">
+        <h3 className="gv-player__more-title">{t('scriptedDemo.allSteps')}</h3>
+        <div
+          ref={scroller}
+          className="gv-player__scroll"
+          role="region"
+          aria-label={t('scriptedDemo.stepsRegion')}
+          tabIndex={0}
+          data-end={atEnd}
+          onScroll={syncEnd}
+        >
+          <ol className="gv-player__steps" aria-label={t('scriptedDemo.steps')}>
+            {beats.map((b, i) => (
+              <li
+                key={b.at}
+                className="gv-player__step"
+                data-status={i < beat ? 'done' : i === beat ? 'now' : 'next'}
               >
-                {`${i + 1}. ${say(b.label)}`}
-              </button>
-            </li>
-          ))}
-        </ol>
-      </details>
+                <button
+                  type="button"
+                  className="gv-player__jump tabular"
+                  aria-current={i === beat ? 'step' : undefined}
+                  onClick={() => playback.jump(i)}
+                >
+                  {`${i + 1}. ${say(b.label)}`}
+                </button>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
     </section>
   );
 }

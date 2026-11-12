@@ -101,7 +101,7 @@ const criteria = [
       ['Settlement saga', '/docs/how-it-works/settlement-saga'],
       ['Webhooks', '/docs/safety/webhooks'],
     ],
-    state: 'G0, G1, G2, G4 PASS on the sandbox. Whole-auction settlement is fake-PayPal only.',
+    state: 'G0, G1, G2, G3, G4 PASS on the sandbox. Whole-auction settlement is fake-PayPal only.',
     chip: 'pass',
   },
   {

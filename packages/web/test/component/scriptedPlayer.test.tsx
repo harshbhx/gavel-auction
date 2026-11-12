@@ -11,7 +11,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../../src/App';
 import { t } from '../../src/copy/t';
 import { BEATS, BEAT_MS } from '../../src/screens/demo/scriptedBeats';
-import { useScriptedPlayback } from '../../src/screens/demo/ScriptedPlayer';
+import { centeredScrollTop, useScriptedPlayback } from '../../src/screens/demo/ScriptedPlayer';
 import { happy } from '../../src/testing/scenarios/happy';
 
 afterEach(() => {
@@ -233,5 +233,47 @@ describe('/demo/scripted player', () => {
       t('scriptedDemo.b6.label'),
     );
     await waitFor(() => expect(screen.getByTestId('sold')).toBeTruthy());
+  });
+
+  it('puts the step list in a focusable, labelled scroll region that follows the current step', async () => {
+    reducedMotion(true);
+    const scrollTo = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+      configurable: true,
+      value: scrollTo,
+    });
+    render(<App initialPath="/demo/scripted" gallery={false} />);
+    const region = await screen.findByRole('region', { name: t('scriptedDemo.stepsRegion') });
+    expect(region.getAttribute('tabindex')).toBe('0');
+    expect(region.querySelectorAll('li').length).toBe(BEATS.length);
+    expect(region.contains(screen.getByRole('list', { name: t('scriptedDemo.steps') }))).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: t('scriptedDemo.next') }));
+    await waitFor(() => expect(region.querySelector('[data-status="now"]')).toBeTruthy());
+    delete (HTMLElement.prototype as { scrollTo?: unknown }).scrollTo;
+  });
+});
+
+describe('centeredScrollTop', () => {
+  function box(top: number, extra: Partial<HTMLElement> = {}): HTMLElement {
+    const el = document.createElement('div');
+    el.getBoundingClientRect = () => ({ top }) as DOMRect;
+    for (const [k, v] of Object.entries(extra)) {
+      Object.defineProperty(el, k, { value: v, configurable: true, writable: true });
+    }
+    return el;
+  }
+
+  it('centres the item by its position in the list, not its offsetTop', () => {
+    // List top at y=500, scrolled 100; item top at y=700 (200 below list top), 40 tall.
+    const list = box(500, { scrollTop: 100, clientHeight: 225, scrollHeight: 2000 });
+    // offsetTop is relative to a far-away positioned ancestor and must be ignored.
+    const item = box(700, { offsetHeight: 40, offsetTop: 9999 });
+    expect(centeredScrollTop(list, item)).toBe(100 + 200 - (225 - 40) / 2);
+  });
+
+  it('clamps to the scrollable range', () => {
+    const list = box(0, { scrollTop: 0, clientHeight: 200, scrollHeight: 300 });
+    expect(centeredScrollTop(list, box(0, { offsetHeight: 40 }))).toBe(0);
+    expect(centeredScrollTop(list, box(5000, { offsetHeight: 40 }))).toBe(100);
   });
 });

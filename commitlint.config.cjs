@@ -13,6 +13,7 @@ const SCOPES = [
   'repo',
   'hf',
   'api',
+  'og',
 ];
 
 // Merge commits (agents update PR branches with 'merge main into X', git writes 'Merge branch ...')
