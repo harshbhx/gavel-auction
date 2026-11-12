@@ -39,6 +39,14 @@ describe('Instructor', () => {
     expect(here[0]?.textContent).toContain(t('instructor.now'));
   });
 
+  it('stays open with no hide button when asked to, even if a collapsed choice was saved', () => {
+    sessionStorage.setItem('gavel:instructor:try', 'closed');
+    render(<Instructor screen="try" judge current={0} search={ON} alwaysOpen />);
+    expect(screen.queryByRole('button', { name: t('instructor.hide') })).toBeNull();
+    expect(screen.queryByRole('button', { name: t('instructor.show') })).toBeNull();
+    expect(screen.getAllByRole('listitem')).toHaveLength(INSTRUCTOR_STEPS.try.length);
+  });
+
   it('remembers a collapsed screen for the session, per screen', () => {
     const first = render(<Instructor screen="bid" judge current={0} search={ON} />);
     fireEvent.click(screen.getByRole('button', { name: t('instructor.hide') }));

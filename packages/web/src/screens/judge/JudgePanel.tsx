@@ -334,9 +334,32 @@ export function JudgePanel({
             </h1>
             <p className="gv-judge__deck">{t('try.deck')}</p>
             <p className="gv-judge__by">{t('try.by')}</p>
+            <div className="gv-judge__stack">
+              {scriptPrimary ? [scriptLink, startButton] : [startButton, scriptLink]}
+            </div>
+            {startable && !goalOk && phase !== 'busy' && (
+              <p className="gv-judge__note" role="status">
+                {t('try.a1.goalFirst')}
+              </p>
+            )}
+            {(phase === 'failed' || (!startable && rooms !== 'checking')) && (
+              <div className="gv-flow__error" role="alert">
+                <p>
+                  {phase === 'failed'
+                    ? `${t('try.a1.failed')} ${failureText(failure, retryAfterS)}`
+                    : t('try.a1.open')}
+                </p>
+              </div>
+            )}
           </section>
 
-          <Instructor screen="try" judge current={0} />
+          <div className="gv-judge__guide">
+            <Instructor screen="try" judge current={0} alwaysOpen />
+            <blockquote className="gv-judge__quote">
+              <p>{t('try.quote')}</p>
+              <cite>{t('try.quoteCite')}</cite>
+            </blockquote>
+          </div>
         </div>
 
         <section className="gv-judge__acts" aria-labelledby="gv-judge-acts">
@@ -355,23 +378,6 @@ export function JudgePanel({
               </div>
             </header>
             <p className="gv-judge__lead">{t('try.a1.body')}</p>
-            <div className="gv-judge__stack">
-              {scriptPrimary ? [scriptLink, startButton] : [startButton, scriptLink]}
-            </div>
-            {startable && !goalOk && phase !== 'busy' && (
-              <p className="gv-judge__note" role="status">
-                {t('try.a1.goalFirst')}
-              </p>
-            )}
-            {(phase === 'failed' || (!startable && rooms !== 'checking')) && (
-              <div className="gv-flow__error" role="alert">
-                <p>
-                  {phase === 'failed'
-                    ? `${t('try.a1.failed')} ${failureText(failure, retryAfterS)}`
-                    : t('try.a1.open')}
-                </p>
-              </div>
-            )}
             <details className="gv-judge__more" {...(keyOffered ? { open: true } : {})}>
               <summary>{t('try.help.opts')}</summary>
               <div className="gv-judge__morebody">
@@ -486,10 +492,6 @@ export function JudgePanel({
 
         <div className="gv-judge__right">
           <JudgeStage state={script.state} />
-          <blockquote className="gv-judge__quote">
-            <p>{t('try.quote')}</p>
-            <cite>{t('try.quoteCite')}</cite>
-          </blockquote>
         </div>
       </div>
 
