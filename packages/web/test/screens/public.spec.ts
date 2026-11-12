@@ -222,7 +222,7 @@ test.describe('judge panel', () => {
       .getByRole('button', { name: new RegExp(`^${t('try.bar.join')}`) })
       .click();
     await page.getByRole('tab', { name: t('try.tab.proven') }).click();
-    await expect(page.getByRole('tabpanel').getByText(t('try.ev.n2'))).toBeVisible();
+    await expect(page.getByRole('tabpanel').getByText(t('try.ev.p6'))).toBeVisible();
     await shoot('try', 'dialog-proven');
   });
 
