@@ -130,7 +130,7 @@ test.describe('judge panel', () => {
   test('rooms on', async ({ page, shoot }) => {
     await mockApi(page, () => caps(true, true));
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.goto('/try');
+    await page.goto('/try?instructor=1');
     await expect(page.getByText(t('try.status.on'))).toBeVisible();
     await shoot('try', 'rooms-on');
   });

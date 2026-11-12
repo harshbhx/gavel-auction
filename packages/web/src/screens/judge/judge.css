@@ -79,6 +79,15 @@
 .gv-judge__kicker,
 .gv-judge__tag,
 .gv-judge__meta,
+.gv-judge__guide {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.gv-judge__headline .gv-judge__stack {
+  margin-top: var(--space-2);
+}
+
 .gv-judge__rule {
   font-family: var(--font-mono);
   font-size: var(--font-size-1);
@@ -1440,7 +1449,7 @@ html:has(.gv-judge) {
    * below, so neither column leaves an empty area beside the other. */
   .gv-judge__grid {
     grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
-    align-items: start;
+    align-items: stretch;
     row-gap: var(--space-5);
   }
 
@@ -1452,6 +1461,49 @@ html:has(.gv-judge) {
   .gv-judge__right {
     grid-column: 2;
     grid-row: 1;
+  }
+
+  /* The left column is as tall as the run panel: the steps take the spare height and spread out,
+   * so nothing is left empty beside the run. */
+  .gv-judge__left {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+
+  .gv-judge__guide {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    min-height: 0;
+  }
+
+  .gv-judge__guide .gv-judge__quote {
+    margin-top: auto;
+  }
+
+  .gv-judge__guide .gv-instructor {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    margin: 0;
+  }
+
+  .gv-judge__guide .gv-instructor > div:last-child {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+  }
+
+  .gv-judge__guide .gv-instructor__steps {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    justify-content: space-between;
+    margin: 0;
+    font-size: var(--font-size-3, 18px);
+  }
+
+  .gv-judge__guide .gv-instructor__steps li {
+    padding: var(--space-3) 0;
   }
 
   .gv-judge__grid > .gv-judge__acts {
