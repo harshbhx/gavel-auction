@@ -1,4 +1,4 @@
-import { BookOpenText, FileJson, FlaskConical } from 'lucide-react';
+import { BookOpenText, FileJson, FlaskConical, Gavel } from 'lucide-react';
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
 import { Wordmark } from '@/components/holdline/wordmark';
 import { repoUrl } from './shared';
@@ -35,6 +35,13 @@ export function baseOptions({
         icon: <FlaskConical />,
         text: 'Proof',
         url: '/docs/proof',
+        active: 'nested-url',
+        on: 'nav',
+      },
+      {
+        icon: <Gavel />,
+        text: 'For judges',
+        url: '/docs/judges',
         active: 'nested-url',
         on: 'nav',
       },
