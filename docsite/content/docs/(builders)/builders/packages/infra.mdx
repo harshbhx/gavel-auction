@@ -114,7 +114,7 @@ The workflow files are in `.github/workflows`. Grouped by purpose, with the trig
 
 <NotVerified title="The sandbox-nightly environment">
 
-`infra/environments.md` describes the `sandbox-nightly` environment as having a required reviewer and branch limits. The header comment of `nightly-sandbox.yml` says the environment currently has no reviewer, no branch rule and no secrets, and that the secrets are repository-level. The workflow comment is the more recent statement; treat the sandbox secrets as readable by a workflow on any pushed branch and keep only throwaway sandbox values in them.
+Reading the environment through the GitHub API on 11 Nov 2026 shows no protection rules, no deployment branch policy and no environment secrets, which matches the header comment of `nightly-sandbox.yml` and `infra/environments.md`. The sandbox secrets are repository-level, so treat them as readable by a workflow on any pushed branch and keep only throwaway sandbox values in them. A required reviewer and a branch rule are still to be set by the repository admin.
 
 </NotVerified>
 

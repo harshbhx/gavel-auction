@@ -53,7 +53,7 @@ const paths = [
     href: '/docs/safety',
     icon: ShieldCheck,
     title: 'Safety',
-    text: 'Sandbox-only rules, the security review checklist (all open), webhooks, backups.',
+    text: 'Sandbox-only rules, the security review checklist (13 of 24 PASS, the rest with a named residual), webhooks, backups.',
   },
   {
     href: '/docs/run',
@@ -98,7 +98,7 @@ export default function HomePage() {
     {
       value: gatesPassed(),
       of: ' of 6',
-      label: 'PayPal sandbox gates passed: G0, G1, G2, G4. G3 is a timed probe in progress, G5 is partial (tested with synthetic speech).',
+      label: 'PayPal sandbox gates passed: G0, G1, G2, G4. G3 is a timed probe still running, G5 is tested with synthetic speech clips.',
       chip: <Chip kind="solid">Sandbox, PASS</Chip>,
     },
     {

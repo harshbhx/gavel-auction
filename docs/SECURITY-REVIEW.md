@@ -102,9 +102,9 @@ Paths are under `packages/server/` (code in `src/http/`, tests in `test/`).
   also carries a read-only `reviewerToken` and `reviewerLink` (`:511-512`); the row is corrected by
   this PR. The per-address map is never pruned (`perIp`, one small entry per address that created a
   room, so growth is bounded by the host-wide hourly limit). Per-address limits depend on the client
-  address being right behind the proxy (issues #2067 and #2069, unconfirmed). No live create was made
-  for this review.
-- Why PARTIAL and not PASS: no human review, and the proxy question above is open.
+  address being right behind the proxy; the hop count was settled at 2 by run 42578306983 (see SEC-14).
+  No live create was made for this review.
+- Why PARTIAL and not PASS: no human review. The proxy question is settled (run 42578306983).
 
 ### SEC-20 Shareable receipt link: agent verdict PARTIAL
 
@@ -136,13 +136,14 @@ Paths are under `packages/server/` (code in `src/http/`, tests in `test/`).
   including the right key, shared strikes with wrong room codes, recovery after the window),
   `:158-213` (bounds and burst), `:290` (audit holds no key or address), `:365` (the judge key is not
   an operator key); `config-judge-key.test.ts:29`; `boot-judge-key.test.ts:36,84`.
-- Gaps: the lockout is keyed by a hash of the resolved client address. If the host sees the Cloudflare
-  edge address instead of the client (issues #2067 and #2069, unconfirmed), five wrong keys from one
+- Gaps: the lockout is keyed by a hash of the resolved client address. If the host saw the Cloudflare
+  edge address instead of the client (the hop count is 2 since run 42578306983, which logged the
+  runner addresses correctly), five wrong keys from one
   edge could lock the right key out for others on that edge, and the per-address limits would act per
   edge. The request body is parsed before the key is checked (`:428` before `:434`), which costs a
   little work for an unauthenticated caller; the body limits apply. No live wrong-key request was made,
   to avoid taking a strike on the live lockout.
-- Why PARTIAL: no human review, and the proxy question is open.
+- Why PARTIAL: no human review. The proxy question is settled (run 42578306983).
 
 ### SEC-22 Reviewer token and ledger route: agent verdict PARTIAL
 

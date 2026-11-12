@@ -108,5 +108,15 @@ Run it once, read it, and do not loop it: it spends the host's hourly room allow
 
 ## Results
 
-Not run yet. No numbers are published here until a real run has been made; the figures must be
-copied from the `traffic-report` artifact of a named run, with its link.
+One run is recorded: https://github.com/harshbhx/gavel-auction/actions/runs/42582589995 (workflow
+`traffic-sim`, 9 Nov 2026, the job concluded success). Its report verdict is **aborted** (request
+budget spent), so it is not a completed capacity measurement. Figures are copied from its
+`traffic-report` artifact.
+
+- Asked: 3 rooms, 6 bidders per room, 5 minutes, budget 2094 requests; all 2094 were used in 389 s.
+- Rooms: 3 created, 0 settled, 3 not final in time. The hammer call answered 409 in all 3 rooms.
+- Success over 2130 samples: 99.9 percent. No rate limit was hit (`firstRateLimit` null).
+- p95 per step in milliseconds: create_room 118, join 142, sim_hold 115, ws_join 461, bid 107,
+  snapshot_poll 106, hammer 105, settle_poll 105.
+
+A run that settles its rooms has not been recorded yet.

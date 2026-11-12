@@ -35,7 +35,7 @@ acts and what to re-run. It holds names only: no secret values, logins or buyer 
 
 ## Evidence and where to look (all gates)
 
-- Evidence files: `docs/evidence/<gate>/` (G1 and G4 hold one today), each named in the gate's
+- Evidence files: `docs/evidence/<gate>/` (G0, G1, G2, G4 and G5 hold files today), each named in the gate's
   Evidence line with its sha256. A mismatch between file and recorded sha256 fails
   `test/gates/gatesResultEvidence.test.ts`.
 - Workflow runs: the Actions tab, workflow named `gate-g0`, `gate-g1`, `gate-g3` or `gate-g4`,
@@ -73,8 +73,8 @@ and open a pull request. Do not edit a gate to PASS by hand.
 ## G0: sandbox connectivity and credentials
 
 - Failure signals: `gate-g0` red; auth errors (401) on token request; no G0 evidence file.
-  `docs/GATES.md` has a G0 section (PASS, run 41815593520); the evidence is the run log, as no file
-  is committed under `docs/evidence/G0/`.
+  `docs/GATES.md` has a G0 section (PASS, runs 41815593520 and 42555610707); the evidence file is
+  `docs/evidence/G0/G0-20261109T031839Z.jsonl`.
 - Check: the `gate-g0` run log; Apps and Credentials in the PayPal dashboard (app exists, mode is
   sandbox); the four repository secrets exist.
 - Fallback decision: none for payments. Without G0 no later real-sandbox gate is meaningful, so

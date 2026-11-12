@@ -28,8 +28,8 @@ Timings sum to 2:50 (170 s).
 | Hold, capture 350, remainder released | Real sandbox, evidence file | G1 PASS, wallet and card                                            |
 | Card and guest authorize              | Real sandbox                | G2 PASS                                                             |
 | Webhook verification                  | Real sandbox, 6 events      | G4 PASS; tampered-event rejection is fake only                      |
-| Full multi-bidder settlement          | Fake PayPal                 | Not run end to end on the sandbox                                   |
-| Crash and resume                      | Fake PayPal, test hook      | In-process hook; no trigger on a hosted server                      |
+| Full multi-bidder settlement          | Fake PayPal                 | Sandbox nightly R7 and R9 only; not run through the hosted app      |
+| Crash and resume                      | Fake PayPal, test hook      | Kill on a CI runner (run 42558021614); none on the host             |
 | Voice bid                             | Recorded replay             | G5 partial, synthetic clips only; confirm prompt; no real-room test |
 | Honor period and reauthorize          | Not shown as a result       | G3 in progress                                                      |
 | Any money                             | Never a live charge         | Sandbox only                                                        |
