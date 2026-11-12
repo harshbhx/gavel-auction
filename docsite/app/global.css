@@ -1576,3 +1576,12 @@ body {
     transform: none;
   }
 }
+
+/* search filter chips: the active section is filled and carries a check, so it reads as a filter */
+[role='dialog'] button[data-active='true']:not([aria-label]) {
+  background: var(--hl-fg);
+  color: var(--hl-bg);
+}
+[role='dialog'] button[data-active='true']:not([aria-label])::before {
+  content: '\2713\00a0';
+}
