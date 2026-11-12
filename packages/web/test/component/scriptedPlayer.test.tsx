@@ -234,4 +234,21 @@ describe('/demo/scripted player', () => {
     );
     await waitFor(() => expect(screen.getByTestId('sold')).toBeTruthy());
   });
+
+  it('puts the step list in a focusable, labelled scroll region that follows the current step', async () => {
+    reducedMotion(true);
+    const scrollTo = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, 'scrollTo', {
+      configurable: true,
+      value: scrollTo,
+    });
+    render(<App initialPath="/demo/scripted" gallery={false} />);
+    const region = await screen.findByRole('region', { name: t('scriptedDemo.stepsRegion') });
+    expect(region.getAttribute('tabindex')).toBe('0');
+    expect(region.querySelectorAll('li').length).toBe(BEATS.length);
+    expect(region.contains(screen.getByRole('list', { name: t('scriptedDemo.steps') }))).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: t('scriptedDemo.next') }));
+    await waitFor(() => expect(region.querySelector('[data-status="now"]')).toBeTruthy());
+    delete (HTMLElement.prototype as { scrollTo?: unknown }).scrollTo;
+  });
 });

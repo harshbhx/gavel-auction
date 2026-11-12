@@ -168,7 +168,30 @@ export function ScriptedPlayer({
   playback: Playback;
   beats?: readonly Beat[];
 }) {
-  const { beat, playing, speed, finished } = playback;
+  const { beat, playing, speed, finished, reduced } = playback;
+  const scroller = useRef<HTMLDivElement>(null);
+  const [atEnd, setAtEnd] = useState(false);
+
+  const syncEnd = useCallback((): void => {
+    const el = scroller.current;
+    if (el) setAtEnd(el.scrollHeight - el.scrollTop - el.clientHeight <= 2);
+  }, []);
+
+  // Keep the current step inside the region. Only the region scrolls, never the page.
+  useEffect(() => {
+    const el = scroller.current;
+    const now = el?.querySelector<HTMLElement>('[data-status="now"]');
+    if (el && now && el.clientHeight > 0) {
+      const top = now.offsetTop - (el.clientHeight - now.offsetHeight) / 2;
+      const to = Math.max(0, top);
+      if (typeof el.scrollTo === 'function') {
+        el.scrollTo({ top: to, behavior: reduced ? 'auto' : 'smooth' });
+      } else {
+        el.scrollTop = to;
+      }
+    }
+    syncEnd();
+  }, [beat, reduced, syncEnd]);
   const current = beats[beat];
   const total = beats.length;
   const playLabel = finished
@@ -238,24 +261,34 @@ export function ScriptedPlayer({
       </p>
       <details className="gv-player__more" open={stepsStartOpen()}>
         <summary>{t('scriptedDemo.allSteps')}</summary>
-        <ol className="gv-player__steps" aria-label={t('scriptedDemo.steps')}>
-          {beats.map((b, i) => (
-            <li
-              key={b.at}
-              className="gv-player__step"
-              data-status={i < beat ? 'done' : i === beat ? 'now' : 'next'}
-            >
-              <button
-                type="button"
-                className="gv-player__jump tabular"
-                aria-current={i === beat ? 'step' : undefined}
-                onClick={() => playback.jump(i)}
+        <div
+          ref={scroller}
+          className="gv-player__scroll"
+          role="region"
+          aria-label={t('scriptedDemo.stepsRegion')}
+          tabIndex={0}
+          data-end={atEnd}
+          onScroll={syncEnd}
+        >
+          <ol className="gv-player__steps" aria-label={t('scriptedDemo.steps')}>
+            {beats.map((b, i) => (
+              <li
+                key={b.at}
+                className="gv-player__step"
+                data-status={i < beat ? 'done' : i === beat ? 'now' : 'next'}
               >
-                {`${i + 1}. ${say(b.label)}`}
-              </button>
-            </li>
-          ))}
-        </ol>
+                <button
+                  type="button"
+                  className="gv-player__jump tabular"
+                  aria-current={i === beat ? 'step' : undefined}
+                  onClick={() => playback.jump(i)}
+                >
+                  {`${i + 1}. ${say(b.label)}`}
+                </button>
+              </li>
+            ))}
+          </ol>
+        </div>
       </details>
     </section>
   );

@@ -261,6 +261,30 @@
   font-size: var(--font-size-2);
 }
 
+/* About five rows tall; the rest scrolls. The fade at the bottom edge says there is more. */
+.gv-player__scroll {
+  max-height: calc(5 * 45px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-snap-type: y proximity;
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+}
+
+.gv-player__scroll[data-end='true'] {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.gv-player__scroll:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.gv-player__scroll .gv-player__step {
+  scroll-snap-align: start;
+}
+
 .gv-player__steps {
   display: flex;
   flex-direction: column;
