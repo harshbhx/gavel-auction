@@ -378,7 +378,7 @@ export function JudgePanel({
               </div>
             </header>
             <p className="gv-judge__lead">{t('try.a1.body')}</p>
-            <ul className="gv-judge__facts">
+            <ul className="gv-judge__pts">
               {(['try.a1.fact1', 'try.a1.fact2', 'try.a1.fact3'] as const).map((k) => (
                 <li key={k}>{t(k)}</li>
               ))}
@@ -478,7 +478,7 @@ export function JudgePanel({
                 <p className="gv-judge__tag">{t('try.a3.tag')}</p>
               </div>
             </header>
-            <ul className="gv-judge__facts">
+            <ul className="gv-judge__pts">
               {(
                 [
                   'try.a3.fact.console',
