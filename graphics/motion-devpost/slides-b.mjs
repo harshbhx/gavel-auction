@@ -56,18 +56,18 @@ ${ln('Built with the <span class="or">best.</span>', { x: 62, y: 108, size: 60, 
 <div id="names"></div>
 `,
   js: `
-var P = [['PayPal','Payments'],['Cloudflare','Web and docs'],['Render','API hosting'],['AG Grid','Data tables'],['Hugging Face','Open datasets']];
-var Y0 = 200, RH = 100;
+var P = [['PayPal','Payments'],['Cloudflare','Web and docs'],['Render','API hosting'],['AG Grid','Data tables'],['APIMatic','Typed SDKs, GitHub release'],['Hugging Face','Open datasets']];
+var Y0 = 196, RH = 86;
 function lerp3(a,b,p){ return 'rgb(' + Math.round(a[0]+(b[0]-a[0])*p) + ',' + Math.round(a[1]+(b[1]-a[1])*p) + ',' + Math.round(a[2]+(b[2]-a[2])*p) + ')'; }
 function setup(h){
   var html = '';
   P.forEach(function(p,i){
     var y = Y0 + i*RH;
     html += '<div class="rl rr" style="left:64px;top:' + y + 'px;width:1072px"></div>';
-    html += '<div class="ln" style="left:60px;top:' + (y+8) + 'px;width:760px;height:84px"><span class="d nm" style="font-size:98px;line-height:84px">' + p[0] + '</span></div>';
-    html += '<div class="ln" style="left:836px;top:' + (y+36) + 'px;width:300px;height:26px"><span class="m ro" style="font-size:16px;line-height:26px;color:#6f6250;text-align:right">' + p[1] + '</span></div>';
+    html += '<div class="ln" style="left:60px;top:' + (y+6) + 'px;width:760px;height:74px"><span class="d nm" style="font-size:84px;line-height:74px">' + p[0] + '</span></div>';
+    html += '<div class="ln" style="left:836px;top:' + (y+30) + 'px;width:300px;height:26px"><span class="m ro" style="font-size:16px;line-height:26px;color:#6f6250;text-align:right">' + p[1] + '</span></div>';
   });
-  html += '<div class="rl rr" style="left:64px;top:' + (Y0 + 5*RH) + 'px;width:1072px"></div>';
+  html += '<div class="rl rr" style="left:64px;top:' + (Y0 + 6*RH) + 'px;width:1072px"></div>';
   h.$('#names').innerHTML = html;
 }
 function update(t,h){
@@ -92,8 +92,11 @@ ${frame({ lot: '07' })}
 ${ln('The', { x: 58, y: 118, size: 150, a: 0.1, d: 0.85 })}
 ${ln('evidence', { x: 58, y: 246, size: 150, a: 0.2, d: 0.85 })}
 ${ln('is <span class="or">open.</span>', { x: 58, y: 374, size: 150, a: 0.3, d: 0.85 })}
-${ln('Real or simulated,', { x: 64, y: 568, size: 30, fam: 'b', a: 1.0, d: 0.7, w: 480 })}
-${ln('every file says which.', { x: 64, y: 608, size: 30, fam: 'b', a: 1.08, d: 0.7, w: 480 })}
+${ln('Real or simulated,', { x: 64, y: 528, size: 30, fam: 'b', a: 1.0, d: 0.7, w: 480 })}
+${ln('every file says which.', { x: 64, y: 568, size: 30, fam: 'b', a: 1.08, d: 0.7, w: 480 })}
+${ln('G0 G1 G2 G4  pass on the sandbox', { x: 64, y: 640, size: 14, fam: 'm', color: 'var(--ink);text-transform:none', w: 560, a: 1.3, d: 0.6 })}
+${ln('G3  RUNNING, final reading 12 Nov', { x: 64, y: 674, size: 14, fam: 'm', color: 'var(--orange);text-transform:none', w: 560, a: 1.4, d: 0.6 })}
+${ln('G5  tested with synthetic voice clips, confirm on every voice bid', { x: 64, y: 708, size: 14, fam: 'm', color: 'var(--ink);text-transform:none', w: 560, a: 1.5, d: 0.6 })}
 <div id="led"></div>
 `,
   js: `

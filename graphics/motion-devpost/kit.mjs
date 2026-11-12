@@ -36,7 +36,7 @@ const CSS = `
 html,body{margin:0;background:var(--bg);overflow:hidden;color:var(--ink);font-family:var(--body);-webkit-font-smoothing:antialiased}
 .stage{position:relative;width:${W}px;height:${H}px;overflow:hidden;background:var(--bg)}
 .a{position:absolute}
-.ln{position:absolute;overflow:hidden;white-space:nowrap}
+.ln{position:absolute;clip-path:inset(-24px 0 0 0);white-space:nowrap}
 .ln>span{display:block;will-change:transform}
 .d{font-family:var(--display);font-weight:800;text-transform:uppercase;letter-spacing:.004em}
 .m{font-family:var(--mono);font-weight:600;text-transform:uppercase;letter-spacing:.08em}

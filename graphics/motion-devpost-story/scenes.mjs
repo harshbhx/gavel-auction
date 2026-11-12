@@ -10,7 +10,7 @@ const ORANGE = 'var(--orange)';
 
 /** Display line revealed through a mask: the text rises out of a clipped box. */
 const M = (t, style, inner, d = 0.8) =>
-  `<div class="a mk" data-t="${t}" data-d="${d}" style="overflow:hidden;padding-bottom:.09em;${style}"><span style="display:block">${inner}</span></div>`;
+  `<div class="a mk" data-t="${t}" data-d="${d}" style="clip-path:inset(-.25em -.1em 0 -.1em);padding-bottom:.09em;${style}"><span style="display:block">${inner}</span></div>`;
 /** Hairline rule that draws itself left to right. */
 const R = (t, d, style, color = 'var(--ink)', h = 1.5) =>
   `<div class="a rl" data-t="${t}" data-d="${d}" style="height:${h}px;background:${color};transform-origin:0 50%;transform:scaleX(0);${style}"></div>`;
@@ -75,7 +75,7 @@ export const inspiration = {
   T: 4.4,
   poster: 3.3,
   html: `${frame('Inspiration', '01')}
-<div class="a mk" data-t=".05" data-d="1" style="left:48px;top:76px;overflow:hidden;font:800 330px/.84 var(--display);padding-bottom:.06em"><span style="display:block"><span class="cn" data-t=".15" data-d="1.1" data-f="0" data-v="20" data-p="$">$0</span></span></div>
+<div class="a mk" data-t=".05" data-d="1" style="left:48px;top:76px;clip-path:inset(-.25em 0 -.05em 0);font:800 330px/.84 var(--display);padding-bottom:.06em"><span style="display:block"><span class="cn" data-t=".15" data-d="1.1" data-f="0" data-v="20" data-p="$">$0</span></span></div>
 ${M(0.3, 'left:650px;top:110px;' + disp(64) + 'width:300px', 'A bid is')}
 ${M(0.42, 'left:650px;top:172px;' + disp(64) + 'width:300px', 'a promise.')}
 ${R(0.9, 0.9, 'left:56px;width:888px;top:392px')}
@@ -91,10 +91,10 @@ function update(t,h){ L(t,h); }
 
 /* ---------- 02 what it does ---------- */
 const shots = [
-  ['readme/see-it-run-2-hold.png', 'Hold', 'Approve a hold for your ceiling.'],
-  ['readme/see-it-run-3-bids.png', 'Bid', 'Prices only go up.'],
-  ['readme/see-it-run-4-hammer.png', 'Hammer', 'The winner is named.'],
-  ['readme/see-it-run-6-receipt.png', 'Receipt', 'A proof you can share.'],
+  ['hold.png', 'Hold', 'Approve a hold for your ceiling.'],
+  ['bid.png', 'Bid', 'Prices only go up.'],
+  ['hammer.png', 'Hammer', 'The winner is named.'],
+  ['receipt.png', 'Receipt', 'A proof you can share.'],
 ];
 export const whatItDoes = {
   name: '02-what-it-does',
@@ -106,15 +106,15 @@ export const whatItDoes = {
 <div id="steps"></div>
 `,
   js: `${LIB}
-var SH = ${JSON.stringify(shots.map(([f, k, c]) => [asset('docs/assets/' + f), k, c]))};
+var SH = ${JSON.stringify(shots.map(([f, k, c]) => [asset('graphics/motion-devpost-story/assets/' + f), k, c]))};
 var act = [.35, 1.35, 2.35, 3.35];
 var imgs = [], rows = [], cap = [], num = [];
 function setup(h){
   var s = '';
-  SH.forEach(function(f,i){ s += '<div class="im a" style="left:0;top:0;width:590px;height:484px;overflow:hidden;z-index:' + i + '"><img src="' + f[0] + '" style="position:absolute;left:0;top:0;width:820px;height:auto;display:block"></div>'; });
+  SH.forEach(function(f,i){ s += '<div class="im a" style="left:0;top:0;width:590px;height:484px;overflow:hidden;z-index:' + i + '"><img src="' + f[0] + '" style="position:absolute;left:0;top:0;width:590px;height:484px;object-fit:contain;object-position:center;display:block"></div>'; });
   h.$('#shots').innerHTML = s; imgs = h.$$('.im');
   var r = '';
-  SH.forEach(function(f,i){ r += '<div class="a rw" style="left:56px;top:' + (84 + i*100) + 'px;width:340px"><div class="lab nm" style="margin-bottom:8px;color:var(--muted)">0' + (i+1) + '</div><div style="font:800 76px/.88 var(--display);text-transform:uppercase;letter-spacing:.004em">' + f[1] + '</div><div class="cap" style="margin-top:6px">' + f[2] + '</div></div>'; });
+  SH.forEach(function(f,i){ r += '<div class="a rw" style="left:56px;top:' + (82 + i*112) + 'px;width:340px"><div class="lab nm" style="margin-bottom:8px;color:var(--muted)">0' + (i+1) + '</div><div style="font:800 66px/.88 var(--display);text-transform:uppercase;letter-spacing:.004em">' + f[1] + '</div><div class="cap" style="margin-top:6px">' + f[2] + '</div></div>'; });
   h.$('#steps').innerHTML = r; rows = h.$$('.rw');
 }
 function update(t,h){
@@ -195,8 +195,8 @@ ${M(0.22, 'left:56px;top:140px;' + disp(66) + 'width:800px', '<span class="or">O
 <div class="a" id="vr" style="left:500px;top:228px;width:1.5px;height:230px;background:var(--ink);transform-origin:50% 0;transform:scaleY(0)"></div>
 ${F(0.9, 0.4, 'left:56px;top:238px', '<span class="lab">Paddle 12</span>')}
 ${F(0.9, 0.4, 'left:524px;top:238px', '<span class="lab">Paddle 7</span>')}
-<div class="a" id="na" style="left:0;top:262px;overflow:hidden;font:800 214px/.84 var(--display);padding-bottom:.06em;white-space:nowrap">$25</div>
-<div class="a" id="nb" style="left:0;top:262px;overflow:hidden;font:800 214px/.84 var(--display);padding-bottom:.06em;white-space:nowrap">$25</div>
+<div class="a" id="na" style="left:0;top:262px;overflow:visible;font:800 214px/.84 var(--display);padding-bottom:.06em;white-space:nowrap">$25</div>
+<div class="a" id="nb" style="left:0;top:262px;overflow:visible;font:800 214px/.84 var(--display);padding-bottom:.06em;white-space:nowrap">$25</div>
 <div class="a" id="sk" style="left:524px;top:352px;width:0;height:6px;background:var(--ink)"></div>
 <div class="a" id="ua" style="left:56px;top:452px;width:0;height:6px;background:var(--orange)"></div>
 ${F(2.3, 0.4, 'left:56px;top:470px', '<span class="lab">Entry 41 &nbsp;/&nbsp; accepted</span>')}
@@ -264,7 +264,7 @@ export const learned = {
   html: `${frame('What we learned', '06')}
 ${M(0.1, 'left:56px;top:84px;' + disp(66) + 'width:700px', 'Events arrive twice.')}
 ${M(0.22, 'left:56px;top:148px;' + disp(66) + 'width:700px', 'We count once.')}
-<div class="a mk" data-t=".2" data-d=".9" style="right:56px;top:70px;overflow:hidden;font:800 270px/.84 var(--display);padding-bottom:.06em;color:var(--orange);text-align:right"><span style="display:block"><span class="cn" data-t="2.4" data-d=".01" data-f="2" data-v="1">2</span></span></div>
+<div class="a mk" data-t=".2" data-d=".9" style="right:56px;top:70px;clip-path:inset(-.25em 0 -.05em 0);font:800 270px/.84 var(--display);padding-bottom:.06em;color:var(--orange);text-align:right"><span style="display:block"><span class="cn" data-t="2.4" data-d=".01" data-f="2" data-v="1">2</span></span></div>
 ${R(0.9, 0.8, 'left:56px;width:888px;top:292px')}
 ${F(1.0, 0.4, 'left:56px;top:312px', '<span class="mono" style="font:600 22px/1 var(--mono)">capture.done</span>')}
 ${F(1.05, 0.4, 'left:330px;top:314px', '<span class="cap">evt_8f2a</span>')}
@@ -287,8 +287,8 @@ function update(t,h){
 
 /* ---------- 07 what is next ---------- */
 const nexts = [
-  ['G3 probe', 'Honor period and reauthorize, measured for real.', 'Running'],
-  ['Real-room voice', 'Speech on noisy, real bids (G5).', 'Next'],
+  ['G3 probe', 'Honor period and reauthorize, measured for real. Never passed yet.', 'Running, final reading 12 Nov'],
+  ['Real-room voice', 'G5 so far: synthetic voice clips, confirm on every voice bid.', 'Next'],
   ['Deployed-host kill', 'A whole auction on the live host, killed and resumed.', 'Next'],
 ];
 export const next = {
@@ -335,6 +335,7 @@ const tools = [
   ['Render', 'The auction API'],
   ['Hugging Face', 'Open datasets'],
   ['AG Grid', 'The ledger grid'],
+  ['APIMatic', 'TypeScript, Python and C# SDKs, GitHub release'],
 ];
 export const builtWith = {
   name: '08-built-with',
@@ -345,32 +346,32 @@ export const builtWith = {
 ${tools
   .map(
     ([n, r], i) =>
-      R(0.1 + i * 0.12, 0.7, `left:56px;width:888px;top:${68 + i * 74}px`) +
+      R(0.1 + i * 0.12, 0.7, `left:56px;width:888px;top:${68 + i * 63}px`) +
       F(
         0.2 + i * 0.12,
         0.4,
-        `left:56px;top:${96 + i * 74}px`,
+        `left:56px;top:${88 + i * 63}px`,
         `<span class="lab" style="color:var(--muted)">0${i + 1}</span>`,
       ) +
       M(
         0.2 + i * 0.12,
-        `left:100px;top:${76 + i * 74}px;${disp(66)}width:620px;white-space:nowrap`,
+        `left:100px;top:${72 + i * 63}px;${disp(56)}width:620px;white-space:nowrap`,
         `<span class="ln">${n}</span>`,
         0.7,
       ) +
-      F(0.5 + i * 0.12, 0.4, `right:56px;top:${96 + i * 74}px`, `<span class="cap">${r}</span>`),
+      F(0.5 + i * 0.12, 0.4, `right:56px;top:${88 + i * 63}px`, `<span class="cap">${r}</span>`),
   )
   .join('')}
-${R(0.8, 0.7, 'left:56px;width:888px;top:438px')}
-${F(1.2, 0.5, 'left:56px;top:456px', '<span class="cap" style="color:var(--ink)">TypeScript &nbsp;/&nbsp; Node 22 &nbsp;/&nbsp; React &nbsp;/&nbsp; Vite &nbsp;/&nbsp; Vitest &nbsp;/&nbsp; Playwright &nbsp;/&nbsp; GitHub Actions</span>')}
-${F(1.3, 0.5, 'left:56px;top:482px', '<span class="cap">PayPal APIs: Orders v2, Payments v2, Webhooks, JS SDK v6</span>')}
+${R(0.8, 0.7, 'left:56px;width:888px;top:446px')}
+${F(1.2, 0.5, 'left:56px;top:462px', '<span class="cap" style="color:var(--ink)">TypeScript &nbsp;/&nbsp; Node 22 &nbsp;/&nbsp; React &nbsp;/&nbsp; Vite &nbsp;/&nbsp; Vitest &nbsp;/&nbsp; Playwright &nbsp;/&nbsp; GitHub Actions</span>')}
+${F(1.3, 0.5, 'left:56px;top:488px', '<span class="cap">PayPal APIs: Orders v2, Payments v2, Webhooks, JS SDK v6</span>')}
 `,
   js: `${LIB}
 function update(t,h){
   L(t,h);
   var lns = h.$$('.ln');
   var k = Math.floor(((t - 1.0) / .5));
-  lns.forEach(function(el,i){ el.style.color = (t > 1.0 && i === k % 5 && k < 5 + 0) ? '#ff6a1f' : '#1d1712'; });
+  lns.forEach(function(el,i){ el.style.color = (t > 1.0 && i === k && k < 6) ? '#ff6a1f' : '#1d1712'; });
 }
 `,
 };
