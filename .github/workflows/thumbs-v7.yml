@@ -1,0 +1,33 @@
+name: thumbs-v7
+# Renders the three launch-film YouTube thumbnails in CI (brand/thumbnails/v7).
+on:
+  workflow_dispatch:
+  push:
+    branches: [GFX-21]
+    paths:
+      - 'brand/thumbnails/v7/**'
+      - '.github/workflows/thumbs-v7.yml'
+permissions:
+  contents: read
+jobs:
+  render:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+        with:
+          node-version: 22
+      - name: Render
+        run: |
+          mkdir -p "$RUNNER_TEMP/pw" && cd "$RUNNER_TEMP/pw"
+          npm init -y >/dev/null && npm install --no-audit --no-fund playwright@1.49.1
+          npx playwright install chromium
+          cd "$GITHUB_WORKSPACE"
+          PW_DIR="$RUNNER_TEMP/pw" node brand/thumbnails/v7/render.mjs "$PWD/out"
+          ls -l out
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: thumbs-v7
+          path: out
+          retention-days: 7

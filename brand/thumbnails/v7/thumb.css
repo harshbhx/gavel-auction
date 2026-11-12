@@ -1,0 +1,17 @@
+@font-face{font-family:"BSD";src:url("../../../packages/web/src/design/fonts/big-shoulders-display-latin-wght-normal.woff2") format("woff2");font-weight:100 900}
+@font-face{font-family:"JBM";src:url("../../../packages/web/src/design/fonts/jetbrains-mono-latin-wght-normal.woff2") format("woff2");font-weight:100 800}
+:root{--paper:#EFE6D3;--ink:#1D1712;--sig:#FF6A13;--win:#1F6B3A;--amber:#FFB020;--paper2:#E3D8C0}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:1280px;height:720px;overflow:hidden;background:var(--paper)}
+body{position:relative;font-family:"BSD",sans-serif;color:var(--ink)}
+.abs{position:absolute}
+.disp{font-family:"BSD",sans-serif;font-weight:900;line-height:.8;letter-spacing:-.01em;white-space:nowrap;text-transform:uppercase}
+.mono{font-family:"JBM",monospace;font-weight:800;text-transform:uppercase;letter-spacing:.06em}
+/* sponsor band */
+.band{position:absolute;left:0;right:0;bottom:0;height:76px;background:var(--ink);display:flex;align-items:center;padding:0 40px;gap:30px;color:var(--paper);border-top:6px solid var(--sig)}
+.band img{height:40px;filter:brightness(0) invert(1)}
+.band .sp{font-family:"BSD";font-weight:800;font-size:34px;letter-spacing:.14em;text-transform:uppercase;line-height:1}
+.band .dv{width:3px;height:34px;background:var(--paper);opacity:.45}
+.band .lb{font-family:"JBM";font-weight:700;font-size:15px;letter-spacing:.12em;opacity:.8;text-transform:uppercase}
+.hatch{background-image:repeating-linear-gradient(135deg,var(--ink) 0 3px,transparent 3px 14px)}
+.rule{background-image:repeating-linear-gradient(0deg,transparent 0 39px,rgba(29,23,18,.09) 39px 40px)}
