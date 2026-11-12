@@ -25,7 +25,6 @@ import { HoldCard, PriceRoll, Skeleton, SkeletonGroup } from '../../ui';
 import './bid.css';
 import { CeilingMeter } from './CeilingMeter';
 import { CustomBid } from './CustomBid';
-import { LotBlock } from './LotBlock';
 import { QuickBid, useSendGuard } from './QuickBid';
 import { RaiseLimit } from './RaiseLimit';
 import { Rejection, REJECTION_CLEAR_MS, type BidRejection } from './Rejection';
@@ -317,7 +316,6 @@ export function BidScreen({
           )}
 
           <section className="bid__lot">
-            <LotBlock title={lotTitle ?? lotTitleFallback} />
             {price === null && <p className="bid__wait">{t('bid.waitingLot')}</p>}
           </section>
         </div>
