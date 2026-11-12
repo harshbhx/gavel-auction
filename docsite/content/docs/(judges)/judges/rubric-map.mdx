@@ -8,7 +8,7 @@ The PayPal AI Hackathon scores five equally weighted criteria from 1 to 5 in Sta
 
 <Held title="Not scored here">
 
-The map shows where to look. It makes no claim about the score. Open items (<Term id="gate-g5">G5</Term>, hosted demo not yet walked end to end with real holds) are repeated in each row where they matter.
+The map shows where to look. It makes no claim about the score. Open items (<Term id="gate-g5">G5</Term>, a hosted walk with real sandbox holds) are repeated in each row where they matter.
 
 </Held>
 
@@ -20,8 +20,8 @@ The map shows where to look. It makes no claim about the score. Open items (<Ter
 | --- | --- | --- |
 | Public repository | [github.com/harshbhx/gavel-auction](https://github.com/harshbhx/gavel-auction) | Public (checked 5 Nov in [`docs/SUBMISSION.md`](https://github.com/harshbhx/gavel-auction/blob/main/docs/SUBMISSION.md)) |
 | Detectable open-source license | [`LICENSE`](https://github.com/harshbhx/gavel-auction/blob/main/LICENSE) (MIT) | Detected by GitHub |
-| Working build, with run instructions | `README.md` "Quick start" and the [ten-minute path](/docs/judges/ten-minute-path) | Runs on the <Term id="fake-paypal">fake PayPal</Term>. The web app is hosted in sandbox mode (gavel.dualmindlab.tech); the live judge smoke walked it end to end with simulated holds (17 steps passed on 9 Nov); a walk with real sandbox holds is not recorded yet. |
-| Public video under 3:00 | [Demo screens](/docs/start/demo) and [Real, simulated, recorded](/docs/judges/real-vs-simulated) | The launch film is public at https://youtu.be/S5TrcJO-E9o; entering it in the Devpost video field is an open item in `docs/SUBMISSION.md` |
+| Working build, with run instructions | `README.md` "Quick start" and the [ten-minute path](/docs/judges/ten-minute-path) | Runs locally on the <Term id="fake-paypal">test PayPal</Term> and is hosted in sandbox mode at gavel.dualmindlab.tech. The live judge smoke walked the hosted app end to end with test holds (17 steps passed on 9 Nov); a walk with real sandbox holds is not recorded. |
+| Public video under 3:00 | [Demo screens](/docs/start/demo) and [Real, simulated, recorded](/docs/judges/real-vs-simulated) | The film (v3.2, 2:56) is public at https://youtu.be/S5TrcJO-E9o (`brand/devpost/FIELDS.md`); the submission checklist in `docs/SUBMISSION.md` still has the signed-out check of the public link open |
 | Meaningful use of PayPal and AI | Rows 1 and 2 below | See below |
 
 ## The five criteria
@@ -35,7 +35,7 @@ Thorough, skilled use of the PayPal platform and AI, a genuine and non-trivial i
 | [Gates G0 to G5](/docs/proof/gates) | Real sandbox runs for authorize, partial <Term id="capture">capture</Term>, card and guest authorize and webhook verification | PASS for G0, G1, G2, G3, G4 |
 | [Settlement saga](/docs/how-it-works/settlement-saga), [Idempotency](/docs/how-it-works/idempotency) | A pure state machine, a <Term id="journal">journal</Term> saved before each call, deterministic request ids | Tested against the fake PayPal; one lot of three holds and one in-process crash on the real sandbox |
 | [Webhooks](/docs/safety/webhooks) | Signature verification through PayPal's endpoint | PASS on six real events (G4); tampered-event rejection is fake only |
-| [Voice and the confirm gate](/docs/how-it-works/voice-and-confirm) | Speech-to-text, a parser and a validator that never decides a winner or moves money | G5 tested with synthetic voice clips, synthetic audio only; every spoken bid confirms |
+| [Voice and the confirm gate](/docs/how-it-works/voice-and-confirm) | Speech-to-text, a parser and a validator that never decides a winner or moves money | G5 partial: tested on machine-generated test voice clips only; every spoken bid confirms |
 | [Quality checks](/docs/proof/quality-checks) | Unit, property, scenario and differential checks run in CI | See the page for what is and is not measured |
 
 ### 2. Design
@@ -46,7 +46,7 @@ A complete, coherent product experience, not only a technical proof of concept.
 | --- | --- | --- |
 | [Accessibility](/docs/proof/accessibility) | What was checked and what was not | See the page |
 | [Concepts](/docs/start/concepts) and the [beginner path](/docs/start/beginner-path) | The hold, charge and release model in plain words | Explanation |
-| [Demo](/docs/start/demo) | Screens and roles: big screen, auctioneer console, bidders, audit trail | Screens are built in `packages/web`; the web app is hosted in sandbox mode and walked end to end with simulated holds (17-step judge smoke, 9 Nov); a real-hold walk is not recorded yet |
+| [Demo](/docs/start/demo) | Screens and roles: big screen, auctioneer console, bidders, audit trail | Screens are built in `packages/web`; the web app is hosted in sandbox mode and walked end to end with test holds (17-step judge smoke, 9 Nov); a real-hold walk is not recorded |
 
 ### 3. Potential Impact
 
@@ -73,12 +73,12 @@ The video shows it working end to end, and the pitch states the problem, the aud
 
 | What to open | What it shows | Status |
 | --- | --- | --- |
-| [Demo screens](/docs/start/demo) | The demo path a viewer can follow, screen by screen | Walkable on the fake PayPal; the launch film is public at https://youtu.be/S5TrcJO-E9o |
-| [Real, simulated, recorded](/docs/judges/real-vs-simulated) | The label sheet, so nothing shown is mistaken for something else | Matches `docs/submission/VIDEO-SCRIPT.md` |
+| [Demo screens](/docs/start/demo) | The demo path a viewer can follow, screen by screen | Walkable live at /try and in the scripted demo; the film is public at https://youtu.be/S5TrcJO-E9o |
+| [Real, simulated, recorded](/docs/judges/real-vs-simulated) | The label sheet, so nothing shown is mistaken for something else | Mirrors the label sheet in `docs/submission/VIDEO-SCRIPT.md` |
 | [Evidence index](/docs/judges/evidence-index) | Every claim and the file that backs it | Index |
 
 ## Where the evidence grows next
 
-- The hosted app (gavel.dualmindlab.tech, sandbox mode) is live; a recorded walk of the whole flow is the next step. A judge can open it, read the evidence, and run the fake-PayPal demo locally.
-- G3 passed (sandbox, wallet buyer, 1.00 partial capture only). G5 is tested with synthetic voice clips: wrong accept 0.000 on synthetic, noise-free clips (tuned on them), and a synthetic held-out noisy set measured once read 0.058 and 0.092 against 0.05; the confirm prompt protects every voice bid.
+- The hosted app (gavel.dualmindlab.tech, sandbox mode) is live and a judge can open it at /try. A walk of the whole flow with real sandbox holds is not recorded yet.
+- G3 passed (sandbox, wallet buyer, 1.00 partial capture only). G5 is partial: wrong accept 0.000 on noise-free test clips (tuned on them), and a held-out noisy set measured once read 0.058 and 0.092 against 0.05; the confirm prompt protects every voice bid.
 - Security review: all eight P0 items PASS as of 2026-11-07; SEC-19 and SEC-20 are the open items; SEC-09, SEC-10, SEC-14, SEC-15 (one S01 server log scanned, 0 findings, not yet reviewed by someone other than the author) and SEC-21 to SEC-24 are checked with a named residual, the last four agent-only. See [Tough questions](/docs/judges/tough-questions).

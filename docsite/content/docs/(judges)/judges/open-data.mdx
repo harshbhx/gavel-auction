@@ -1,7 +1,8 @@
 ---
-title: Open data
-description: Five small datasets and an Evidence Explorer Space, live on Hugging Face, each labelled for what it is.
+title: Open data and data engineering
+description: Five small datasets and an Evidence Explorer Space on Hugging Face, and the checked pipeline that builds, validates and verifies them.
 icon: Database
+status: ongoing
 ---
 
 Status: **published on Hugging Face.** The five datasets, the Evidence Explorer Space and the collection are live: [the collection](https://huggingface.co/collections/harshbhx/gavel-evidence-auction-holds-hammer-and-receipts-6af0afebebb37eb4c9184504) groups them.
@@ -10,12 +11,72 @@ Five small datasets are built in CI from evidence that is committed in this repo
 
 | Dataset | What it holds | Label |
 | --- | --- | --- |
-| [`gavel-gates`](https://huggingface.co/datasets/harshbhx/gavel-gates) | Index of <Term id="gate">gates</Term> G0 to G5 with status, date, run links and evidence file hashes | real sandbox, synthetic audio, G3 passed |
+| [`gavel-gates`](https://huggingface.co/datasets/harshbhx/gavel-gates) | Index of <Term id="gate">gates</Term> G0 to G5 with status, date, run links and evidence file hashes | real sandbox, test voice clips, G3 passed |
 | [`gavel-latency`](https://huggingface.co/datasets/harshbhx/gavel-latency) | Settlement and per-call latency of the PayPal sandbox | real sandbox, small n |
 | [`gavel-sim-30d`](https://huggingface.co/datasets/harshbhx/gavel-sim-30d) | <Term id="simulated">Simulated</Term> 30-day <Term id="settlement">settlement</Term>, per <Term id="lot">lot</Term> and per hold | simulated, fake clock |
-| [`gavel-stt-bids`](https://huggingface.co/datasets/harshbhx/gavel-stt-bids) | 24 synthetic bid clips, speech-to-text outputs and scores | synthetic audio |
-| [`gavel-audit-demo`](https://huggingface.co/datasets/harshbhx/gavel-audit-demo) | Event, <Term id="ledger">ledger</Term> and outcome records of <Term id="scripted-demo">scripted demo</Term> auctions | synthetic, <Term id="fake-paypal">fake PayPal</Term> |
+| [`gavel-stt-bids`](https://huggingface.co/datasets/harshbhx/gavel-stt-bids) | 24 machine-generated test voice clips, speech-to-text outputs and scores | test voice clips |
+| [`gavel-audit-demo`](https://huggingface.co/datasets/harshbhx/gavel-audit-demo) | Event, <Term id="ledger">ledger</Term> and outcome records of <Term id="scripted-demo">scripted demo</Term> auctions | scripted demo, <Term id="fake-paypal">test PayPal</Term> |
 
-A read-only static Space, [`gavel-evidence-explorer`](https://huggingface.co/spaces/harshbhx/gavel-evidence-explorer), charts them (gate status, sandbox latency, the simulated 30-day run, speech-to-text on synthetic audio), each section labelled. The collection is titled "GAVEL Evidence: auction holds, hammer and receipts".
+A read-only static Space, [`gavel-evidence-explorer`](https://huggingface.co/spaces/harshbhx/gavel-evidence-explorer), charts them (gate status, sandbox latency, the simulated 30-day run, speech-to-text on test voice clips), each section labelled. The collection is titled "GAVEL Evidence: auction holds, hammer and receipts".
 
 Nothing here is production data, no real person or real money is involved, and the sandbox numbers say nothing about production PayPal. The full description of each dataset, and how they are built and published, is in `docs/HF_COLLECTION.md`. See also [Real, simulated, recorded](/docs/judges/real-vs-simulated).
+
+## Data engineering: how the datasets are built
+
+The datasets come out of a checked pipeline, not a one-off export. Everything below runs in GitHub Actions on every change to the build and on each manual run of the `hf-datasets` workflow.
+
+<svg role="img" aria-labelledby="pipe-title pipe-desc" viewBox="0 0 760 250" width="100%" fill="none" stroke="currentColor" strokeWidth="1.5">
+  <title id="pipe-title">Data pipeline</title>
+  <desc id="pipe-desc">Six sources flow into transforms, then schema validation and quality checks, then datasets with manifests and checksums. The dataset artifact is always produced; Hugging Face receives it only on a manual run with dry run off and the secrets present.</desc>
+  <rect x="8" y="10" width="190" height="230" rx="6" />
+  <text x="20" y="32" fill="currentColor" stroke="none" fontSize="13" fontWeight="bold">Sources</text>
+  <text x="20" y="62" fill="currentColor" stroke="none" fontSize="12">Engine ledger events</text>
+  <text x="20" y="88" fill="currentColor" stroke="none" fontSize="12">Payment journals, audit rows</text>
+  <text x="20" y="114" fill="currentColor" stroke="none" fontSize="12">Speech-to-text outputs</text>
+  <text x="20" y="140" fill="currentColor" stroke="none" fontSize="12">Sandbox reports</text>
+  <text x="20" y="166" fill="currentColor" stroke="none" fontSize="12">Simulated runs (fake clock)</text>
+  <text x="20" y="192" fill="currentColor" stroke="none" fontSize="12">Issue counts (aggregates)</text>
+  <path d="M198 125 H236" />
+  <rect x="236" y="70" width="120" height="110" rx="6" />
+  <text x="248" y="100" fill="currentColor" stroke="none" fontSize="13" fontWeight="bold">Transforms</text>
+  <text x="248" y="124" fill="currentColor" stroke="none" fontSize="12">one build script</text>
+  <text x="248" y="144" fill="currentColor" stroke="none" fontSize="12">sorted, seeded</text>
+  <path d="M356 125 H394" />
+  <rect x="394" y="40" width="150" height="170" rx="6" />
+  <text x="406" y="66" fill="currentColor" stroke="none" fontSize="13" fontWeight="bold">Validators</text>
+  <text x="406" y="94" fill="currentColor" stroke="none" fontSize="12">table schemas</text>
+  <text x="406" y="114" fill="currentColor" stroke="none" fontSize="12">money in cents</text>
+  <text x="406" y="134" fill="currentColor" stroke="none" fontSize="12">ledger balance</text>
+  <text x="406" y="154" fill="currentColor" stroke="none" fontSize="12">time order, no dupes</text>
+  <text x="406" y="174" fill="currentColor" stroke="none" fontSize="12">privacy and secret scan</text>
+  <path d="M544 125 H582" />
+  <rect x="582" y="40" width="170" height="170" rx="6" />
+  <text x="594" y="66" fill="currentColor" stroke="none" fontSize="13" fontWeight="bold">Datasets</text>
+  <text x="594" y="94" fill="currentColor" stroke="none" fontSize="12">jsonl, csv, parquet</text>
+  <text x="594" y="114" fill="currentColor" stroke="none" fontSize="12">card and changelog</text>
+  <text x="594" y="134" fill="currentColor" stroke="none" fontSize="12">manifest with sha256,</text>
+  <text x="594" y="152" fill="currentColor" stroke="none" fontSize="12">commit and run URL</text>
+  <text x="594" y="178" fill="currentColor" stroke="none" fontSize="12">then: artifact, and on a</text>
+  <text x="594" y="194" fill="currentColor" stroke="none" fontSize="12">manual go, Hugging Face</text>
+</svg>
+
+### What is checked
+
+| Area | Check |
+| --- | --- |
+| Schema | Every table has a schema (types, nulls, ranges, enums, key); wrong or missing fields fail the build |
+| Money | Integer cents, never negative |
+| Ledger | Held equals captured plus released plus open, per lot and per hold, in the simulated run |
+| Time | Timestamps and sequence numbers never go backwards; percentiles are ordered |
+| Consistency | Scores recompute from outputs; evidence hashes equal the ones in `docs/GATES.md`; counts add up |
+| Privacy | No emails, tokens, key-like strings, IPs or payment-object-like ids; demo actors anonymised |
+
+### Reproducible and verifiable
+
+- One command, `scripts/hf/build.sh`, runs the chain. The workflow runs it twice and fails if the two `MANIFEST.json` files differ.
+- Every dataset carries `MANIFEST.json` (version, repository commit, build run URL, sha256 and row count of every file, source files) and `verify.py`, which recomputes the hashes.
+- Every dataset has a version and a `CHANGELOG.md`; the data dictionary and a data-quality report are generated in CI and are in the run artifact.
+
+### Honest labels
+
+Real <Term id="sandbox">sandbox</Term> (PayPal sandbox, small samples, never production), simulated (fake clock, a model of PayPal), test voice clips (machine-generated speech), test PayPal (scripted demo auctions). The pipeline shows the data is well formed and traceable; it does not turn a simulation into a measurement. The full write-up is `docs/DATA-ENGINEERING.md` in the repository.

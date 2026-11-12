@@ -7,6 +7,12 @@ status: ongoing
 
 The repository was reviewed in repeated adversarial passes: red-team rounds 1 to 13, plus separate audit passes. Every finding is a GitHub issue with a file, a line, a scenario and a suggested fix. This page shows the six findings labelled critical, the 96 labelled high grouped by theme, and the numbers behind both. It is a snapshot taken on 7 Nov 2026. Titles are quoted from the issues; nothing here is secret, because the issues are public.
 
+## In short
+
+GAVEL was reviewed in 13 adversarial red-team rounds plus separate audit passes. Every finding is a public GitHub issue with a file, a scenario and a suggested fix. As of 11 Nov 2026, 626 of 636 red-team issues are closed and 10 are open: two trackers, two older findings and six later UX findings. All six critical findings are closed (five distinct defects), and 93 of the 96 high findings were closed when the severity counts were taken on 7 Nov. Money, realtime state and the wire contract between packages held most of the high findings. Seven were about CI that passed without testing anything, the kind of problem a green badge hides.
+
+"Closed" means a fix PR merged and, where the issue asked for one, a regression test. It does not mean an independent reviewer checked it. The sections below hold the numbers, the chart and the detail; the six critical findings and the high findings by theme are folded, so open one when you want it.
+
 ## The numbers
 
 Counted with `gh` on 7 Nov 2026 (queries at the end of the page); the totals and the open issues were counted again on 11 Nov 2026.
@@ -134,11 +140,14 @@ A round is the tag in the issue title: `RT` for the first pass, then `R2` to `R1
 </svg>
 </div>
 
-## The six critical findings
+## Detail by finding
+
+<Accordions type="multiple">
+<Accordion title="The six critical findings">
 
 There are six critical issues but five distinct defects, because #698 and #700 report the same break. All six issues were found by reading the code in a red-team round, and each cites file and line. All six are closed. None was found by a failing test; in the web cases the existing tests passed because they only used the web package's own copy of the contract.
 
-### 1. The web app could not talk to the server
+#### 1. The web app could not talk to the server
 
 - What was wrong: the web package kept its own copy of the wire protocol. Every frame it sent lacked the `v` field and used different names, so the server closed the socket. Every frame the server sent failed the web guard and was dropped without an error. A live <Term id="room">room</Term> could never render and no bid could be placed.
 - Found: red-team round 1, on 4 Nov 2026.
@@ -147,7 +156,7 @@ There are six critical issues but five distinct defects, because #698 and #700 r
 - Regression test: `delivers frames encoded by the shared codec` and `does not send a message the shared schema rejects` in [`packages/web/test/unit/connection.test.tsx`](https://github.com/harshbhx/gavel-auction/blob/main/packages/web/test/unit/connection.test.tsx).
 - Evidence: [issue #700](https://github.com/harshbhx/gavel-auction/issues/700), [issue #698](https://github.com/harshbhx/gavel-auction/issues/698), [PR #869](https://github.com/harshbhx/gavel-auction/pull/869).
 
-### 2. Registration called hold routes that did not exist
+#### 2. Registration called hold routes that did not exist
 
 - What was wrong: the web adapter posted to `/api/rooms/{roomId}/orders` and `/holds`, but the payments contract defines `POST /api/holds` and `POST /api/holds/{holdId}/approve`. Every registration would have hit a 404 and shown `order_failed`. The adapter also sent the bidder id and the <Term id="ceiling">ceiling</Term> from the browser, so the browser chose the <Term id="hold">hold</Term> amount.
 - Found: red-team round 1, on 4 Nov 2026.
@@ -156,7 +165,7 @@ There are six critical issues but five distinct defects, because #698 and #700 r
 - Regression test: `sends bodies the shared hold contract accepts and names no bidder (WEB-RT-03)` in [`packages/web/test/unit/paypalAdapter.test.ts`](https://github.com/harshbhx/gavel-auction/blob/main/packages/web/test/unit/paypalAdapter.test.ts), plus the schema tests in [`packages/shared/test/hold-contract.test.ts`](https://github.com/harshbhx/gavel-auction/blob/main/packages/shared/test/hold-contract.test.ts).
 - Evidence: [issue #699](https://github.com/harshbhx/gavel-auction/issues/699), [PR #1477](https://github.com/harshbhx/gavel-auction/pull/1477).
 
-### 3. Three frames shared one sequence number and all but one were dropped
+#### 3. Three frames shared one sequence number and all but one were dropped
 
 - What was wrong: the server sends `bid_accepted`, `price` and `audit_event` with the same `seq`. The web reducer discarded any frame with `seq <= lastSeq`, so after the first one the others were lost. A bidder's own screen kept the old price and showed the wrong status. Other clients never received a live audit row. An existing test, `replay of seq [1,2,2,3] equals [1,2,3]`, encoded the wrong rule.
 - Found: red-team round 2, on 4 Nov 2026.
@@ -165,7 +174,7 @@ There are six critical issues but five distinct defects, because #698 and #700 r
 - Regression test: `applies bid_accepted, price and audit_event that share one seq` in [`packages/web/test/unit/roundTwoBlocking.test.ts`](https://github.com/harshbhx/gavel-auction/blob/main/packages/web/test/unit/roundTwoBlocking.test.ts). A second test in the same file, `still drops a repeat of the same type at one seq`, keeps the original protection.
 - Evidence: [issue #890](https://github.com/harshbhx/gavel-auction/issues/890), [PR #1017](https://github.com/harshbhx/gavel-auction/pull/1017).
 
-### 4. A fallback sale could be charged but never booked
+#### 4. A fallback sale could be charged but never booked
 
 - What was wrong: when the winner's <Term id="capture">capture</Term> was declined, the <Term id="saga">saga</Term> captured the runner-up. The <Term id="engine">engine</Term> still had the first bidder as winner, so `SettlementBridge.finish` threw `winner_mismatch`. The runner-up had been charged, the lot stayed in SETTLING forever, `CloseAuction` was never sent and every resume repeated the same error.
 - Found: red-team round 3, on 4 Nov 2026.
@@ -174,7 +183,7 @@ There are six critical issues but five distinct defects, because #698 and #700 r
 - Regression test: `promotes the engine to the charged runner-up, completes the lot and closes` and `resumes after a crash that happened between the promote and CompleteLot` in [`packages/payments/test/bridge/settlement-bridge.test.ts`](https://github.com/harshbhx/gavel-auction/blob/main/packages/payments/test/bridge/settlement-bridge.test.ts).
 - Evidence: [issue #1060](https://github.com/harshbhx/gavel-auction/issues/1060), [PR #1134](https://github.com/harshbhx/gavel-auction/pull/1134).
 
-### 5. One bad registration could make an auction impossible to load
+#### 5. One bad registration could make an auction impossible to load
 
 - What was wrong: `Room.registerBidder` appended the registration to the log first and asked the engine afterwards. A ceiling the engine refuses (above its maximum) was therefore stored, the call threw, and every later <Term id="replay">replay</Term> hit the same throw. The room could never load again, and neither could its settlement or any other bidder's hold.
 - Found: red-team round 3, on 4 Nov 2026.
@@ -183,7 +192,8 @@ There are six critical issues but five distinct defects, because #698 and #700 r
 - Regression test: `does not store a registration the engine refuses, so replay still loads (SERVICE-R3-01)` and `skips an already stored registration the engine refuses instead of failing the load (SERVICE-R3-01)` in [`packages/server/test/room.test.ts`](https://github.com/harshbhx/gavel-auction/blob/main/packages/server/test/room.test.ts).
 - Evidence: [issue #1061](https://github.com/harshbhx/gavel-auction/issues/1061), [PR #1139](https://github.com/harshbhx/gavel-auction/pull/1139).
 
-## High findings by theme
+</Accordion>
+<Accordion title="High findings by theme (96)">
 
 The 96 high findings are grouped by the main thing each one was about. Each issue is counted once, so the groups add up to 96. Two readers could file a few of them differently, so treat the split as a guide. The "open" column counts issues still open today.
 
@@ -212,6 +222,9 @@ The filter links open the GitHub issue list for high red-team issues with a keyw
 - Engine and ledger: #1063, #1188
 
 Money, realtime state and the wire contract between packages hold most of the high findings. Webhooks are a small group (3). Seven were about CI that passed without testing anything, which is the kind of problem a green badge hides.
+
+</Accordion>
+</Accordions>
 
 ## What is still open
 

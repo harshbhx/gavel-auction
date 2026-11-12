@@ -6,12 +6,14 @@ icon: MessageCircleQuestion
 
 Each answer says what is known, what is not, and where the evidence is. Where this page and `docs/GATES.md` disagree, the gate record wins.
 
+Two terms, defined once. **Test voice clips** are machine-generated speech (eSpeak and a human-like text-to-speech voice), not recordings of people. The **test PayPal** is the built-in fake PayPal in `packages/payments/src/fake/`, a test double used for local runs and tests.
+
 <Accordions type="multiple">
 <Accordion title="How accurate is voice bidding, and why does every spoken bid still confirm?">
 
-Gate G5 was tested with synthetic voice clips: voice bidding was tested with synthetic speech clips, and the confirm prompt protects every voice bid. After the parser fixes and the provider options (Deepgram nova-3, Groq whisper-large-v3-turbo with a bid prompt), wrong accept is 0.000 and exact plus recoverable is 1.000 on all four runs: 24 synthetic eSpeak clips and 24 human-like synthetic clips, against a limit of 0.05. Those clips were used to choose the fixes. A separate synthetic held-out noisy set (120 clips, simulated room and babble noise), measured once, read wrong accept 0.058 (Groq) and 0.092 (Deepgram) against 0.05.
+Gate G5 is partial: it was tested on test voice clips, and the confirm prompt protects every voice bid. After the parser fixes and the provider options (Deepgram nova-3, Groq whisper-large-v3-turbo with a bid prompt), wrong accept is 0.000 and exact plus recoverable is 1.000 on all four runs: 24 eSpeak clips and 24 human-like clips, against a limit of 0.05. Those clips were used to choose the fixes. A separate held-out noisy set (120 clips with added room and babble noise), measured once, read wrong accept 0.058 (Groq) and 0.092 (Deepgram) against 0.05.
 
-The first run, on Deepgram nova-2 and Groq without a prompt, scored a wrong-accept rate of 0.125 and 0.083 on the eSpeak set and 0.083 and 0.167 on the second set. Nine of the eleven wrong accepts were a label defect in our own evaluation; the parser and provider options fixed the rest. Those fixes were chosen on the same clips, and the clips are noise-free, so the gate is not marked passed and the numbers are a strong result on synthetic speech.
+The first run, on Deepgram nova-2 and Groq without a prompt, scored a wrong-accept rate of 0.125 and 0.083 on the eSpeak set and 0.083 and 0.167 on the second set. Nine of the eleven wrong accepts were a label defect in our own evaluation; the parser and provider options fixed the rest. The fixes were chosen on the same noise-free clips, so the gate is not marked passed; the numbers show the parser and providers on this speech only, not on people.
 
 The decision recorded in `docs/GATES.md` is that spoken bids always go through the <Term id="confirm-prompt">confirm prompt</Term>. The parser never decides a winner and never moves money; typed entry and QR bids are the other input paths, so the auction works if speech fails. At the text level (transcripts through the parser, no audio) wrong accepts are 0.000 on 169 cases, which measures the parser only.
 
@@ -26,16 +28,16 @@ An early reading on an older G2 wallet authorization, taken on 8 Nov 17:36 UTC a
 
 PayPal's documentation names an <Term id="honor-period">honor period</Term> (3 days) and a validity window (29 days, with one <Term id="reauthorization">reauthorization</Term>), and the G3 probe tested 3.5, 4 and 5 days only; the 29-day validity was not probed. Captures stay within the days tested, and a reauthorize before the hammer is available if an auction ever needs it. Meanwhile holds older than two hours at settlement are flagged stale, and a stale hold is still captured.
 
-The 30-day run is a simulation on a fake clock against a model of PayPal. It shows our code is consistent with that model.
+The 30-day run is a simulation on a fake clock against a model of PayPal. It checks our code against that model only.
 
 See [honor period](/docs/how-it-works/honor-period) and [gate G3](/docs/proof/gate-g3).
 
 </Accordion>
-<Accordion title="Is any of this real PayPal, or is it all the fake?">
+<Accordion title="Is any of this real PayPal, or is it all a test double?">
 
 Both exist and they are labelled. Real on the PayPal <Term id="sandbox">sandbox</Term>: G0 (connectivity, committed evidence file from 9 Nov), G1 (authorize 500, capture 350 with final capture, two PayPal-account buyers, one funded by a card), G2 (wallet and guest card authorize), G4 (six real webhooks verified) and one lot of three holds plus one in-process crash in the nightly specs R7, R8 and R10.
 
-Fake: whole-auction settlement with many holds, crash and resume, and rejection of a tampered webhook. The <Term id="fake-paypal">fake PayPal</Term> is a test double in `packages/payments/src/fake/`; it says nothing about the real PayPal.
+Test PayPal only: whole-auction settlement with many holds, crash and resume, and rejection of a tampered webhook. The <Term id="fake-paypal">test PayPal</Term> says nothing about the real PayPal.
 
 Never real: money. Every PayPal call is against the sandbox.
 
@@ -51,12 +53,12 @@ Inferred from the evidence. After the final capture the authorization reads CAPT
 
 GAVEL runs in sandbox mode today, and the next steps are listed on [Limits and next steps](/docs/roadmap/limits). In short:
 
-- The hosted app (https://gavel.dualmindlab.tech, sandbox mode) is live with key-less judge rooms; a recorded walk of the hosted flow is the next step. The fake-PayPal run is the local path.
+- The hosted app (https://gavel.dualmindlab.tech, sandbox mode) is live with key-less judge rooms; a walk of the hosted flow with real sandbox holds is not recorded. The local path runs on the test PayPal.
 - The file stores run on one instance with a persistent disk.
 - Latency: both targets are missed on the latest run (42563147792, n=49 settlements of 6 holds, INCOMPLETE: 1 timeout and 3 failed capture calls): hammer to settled <Term id="p95">p95</Term> 6.93 s against 6 s and hammer to captured p95 3.77 s against 2.5 s. An earlier n=20 run had 5.59 s and 3.01 s. Owner decision open: keep the targets, raise them with a reason, or reduce latency.
 - A real server process kill ran once on a CI runner against the sandbox (run 42558021614: one SIGKILL after the capture request and before the response, restart on the same data folder, one capture of 12500, two losers voided, journal equals PayPal, ledger verifies). Whole-auction settlement through the deployed Render server, and a kill on that host, are the next sandbox runs.
 - Rejected bids are kept in the room log, and the ledger holds accepted bids.
-- One live run of the `/audio` socket is recorded (run 42575018866: the 24 synthetic clips streamed in real time to the real server with fake PayPal; both providers answered 24 of 24 and no spoken bid was accepted without a confirm). The web console now has an audio sender for the auctioneer (enabled only when the server reports a live speech provider; see [Voice bidding in the web](/docs/how-it-works/voice-in-the-web)); it has been tested with a fake microphone and fake socket.
+- One live run of the `/audio` socket is recorded (run 42575018866: the 24 test voice clips streamed in real time to the real server on the test PayPal; both providers answered 24 of 24 and no spoken bid was accepted without a confirm). The web console has an audio sender for the auctioneer (enabled only when the server reports a live speech provider; see [Voice bidding in the web](/docs/how-it-works/voice-in-the-web)); it has been tested with a stand-in microphone and socket, not a real one.
 - Accessibility: automated checks run; the manual screen reader and zoom pass is next.
 
 </Accordion>

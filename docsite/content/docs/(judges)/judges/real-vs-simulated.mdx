@@ -4,7 +4,7 @@ description: What each claim in the video and on this site is backed by. Mirrors
 icon: Tags
 ---
 
-This is the label sheet from `docs/submission/VIDEO-SCRIPT.md`, with each row linked to its evidence. Every shot in the video carries one of these labels on screen.
+This is the label sheet from `docs/submission/VIDEO-SCRIPT.md`, with each row linked to its evidence. The launch film (v3.2, 2:56) is public at https://youtu.be/S5TrcJO-E9o, and its shots carry these labels on screen. "Fake PayPal" in the film's labels means the test PayPal, a built-in test double (`PAYMENTS=fake`).
 
 ## The label sheet
 
@@ -15,7 +15,7 @@ This is the label sheet from `docs/submission/VIDEO-SCRIPT.md`, with each row li
 | <Term id="webhook">Webhook</Term> verification | Real sandbox, 6 events | <Term id="gate-g4">G4</Term> PASS; tampered-event rejection is fake only |
 | Full multi-bidder <Term id="settlement">settlement</Term> | Fake PayPal | Shown on the fake PayPal. On the sandbox one lot of three holds and a 20-settlement measurement have run; a whole auction through a server is the next step |
 | Crash and resume | Fake PayPal, test hook | In-process hook on the fake PayPal, and one in-process crash recovered on the sandbox; a trigger on a hosted server is the next step |
-| Voice bid | Recorded replay | <Term id="gate-g5">G5</Term> tested with synthetic speech clips, confirm prompt on every spoken bid |
+| Voice bid | Recorded replay | <Term id="gate-g5">G5</Term> partial: test voice clips, confirm prompt on every spoken bid |
 | <Term id="honor-period">Honor period</Term> and reauthorize | Real sandbox result in the probe; not shown in a room | <Term id="gate-g3">G3</Term> passed (3.5, 4 and 5 days; sandbox, wallet buyer, 1.00 partial capture only) |
 | Any money | Never a live charge | Sandbox only |
 
@@ -49,13 +49,13 @@ This is the label sheet from `docs/submission/VIDEO-SCRIPT.md`, with each row li
 | Settlement of a whole auction | Fake, plus one lot of three holds and a 20-settlement measurement on the sandbox | [Settlement saga](/docs/how-it-works/settlement-saga) |
 | Crash recovery | Fake, plus one in-process crash on the sandbox | [Crash recovery](/docs/how-it-works/crash-recovery) |
 | Honor period | Timed sandbox probe passed (G3, 3.5, 4 and 5 days, wallet buyer, 1.00 partial capture); the 30-day run is simulated | [Gate G3](/docs/proof/gate-g3), [simulation](/docs/proof/simulation) |
-| Voice | Recorded transcripts and cached provider outputs; G5 tested with synthetic voice clips | [Gate G5](/docs/proof/gate-g5) |
+| Voice | Recorded transcripts and cached provider outputs; G5 partial, on test voice clips | [Gate G5](/docs/proof/gate-g5) |
 | <Term id="replay">Replay</Term> | Recorded events, read only, labelled on screen | [Demo](/docs/start/demo) |
-| Hosted demo | Hosted in sandbox mode with a persistent disk; walked with simulated holds (17-step judge smoke); a real-hold walk is the next step | [Demo](/docs/start/demo) |
+| Hosted demo | Hosted in sandbox mode with a persistent disk; walked with test holds (17-step judge smoke); a real-hold walk is a next step | [Demo](/docs/start/demo) |
 
-<NotVerified title="The label sheet is a script note, not a result">
+<NotVerified title="The label sheet is not a result">
 
-The sheet describes the planned shots. The launch film is public at https://youtu.be/S5TrcJO-E9o; entering it in the Devpost form is an open item in `docs/SUBMISSION.md`. If the video and this page ever differ, the gate record in `docs/GATES.md` decides.
+The sheet labels what the film shows; it proves nothing by itself. The signed-out check of the public film link is still an open item in `docs/SUBMISSION.md`. If the video and this page ever differ, the gate record in `docs/GATES.md` decides.
 
 </NotVerified>
 

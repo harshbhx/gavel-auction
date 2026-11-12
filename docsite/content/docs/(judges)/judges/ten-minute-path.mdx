@@ -1,17 +1,17 @@
 ---
 title: Ten-minute path
-description: The deep path. Read the raw evidence, verify the ledger, run the fake-PayPal demo and check the quality gates.
+description: The deep path. Read the raw evidence, verify the ledger, try the live sandbox room and check the quality gates.
 icon: Route
 ---
 
-Everything here is PayPal <Term id="sandbox">sandbox</Term> only. The commands run on a normal developer machine with Node 22 and npm. This site never needs a build on a shared machine; the repository runs its own checks in GitHub Actions.
+Everything here is PayPal <Term id="sandbox">sandbox</Term> only. You can do most of this in a browser. Only the optional ledger check needs a developer machine with Node 22 and npm. The repository runs its own builds and tests in GitHub Actions.
 
 <Steps>
 <Step>
 
 ### Minutes 0 to 2: the status and the gates
 
-Follow the [two-minute path](/docs/judges/two-minute-path). It gives you the shape: five real passes, one result tested with synthetic voice clips (G5, speech accuracy) with a confirm-step fallback.
+Follow the [two-minute path](/docs/judges/two-minute-path). It gives you the shape: five real passes (G0 to G4) and one partial result (G5, speech accuracy, measured on test voice clips) with a confirm-step fallback.
 
 </Step>
 <Step>
@@ -64,13 +64,11 @@ Rejected bids are not in the ledger. The server keeps them in the room log only 
 </Step>
 <Step>
 
-### Minutes 8 to 10: run the fake-PayPal demo and read the open items
+### Minutes 8 to 10: try it live and read the open items
 
-1. Follow the [Run it locally](/docs/run) page (the "Quick start" section of `README.md` has the same command). The default run is `npm ci`, then `npm start -w @gavel/server` with `PAYMENTS=fake` and `PAYPAL_ENV=sandbox`; `TOKEN_SECRET` and `ADMIN_KEY` are generated with `openssl rand`. For the web app, copy `packages/web/.env.example` to `packages/web/.env.local` beforehand.
-2. `PAYMENTS=fake` uses the built-in fake PayPal: no network access and no PayPal account are needed. Production mode refuses fake payments.
-3. The <Term id="scripted-demo">scripted</Term> `/api/demo/*` routes are mounted only with `DEMO_MODE=1` and `PAYMENTS=fake`.
-
-The fake PayPal is a test double. What you see there says nothing about the real sandbox; the gates do.
+1. Open [/try](https://gavel.dualmindlab.tech/try) and run a sandbox room: start it, join as a bidder, bid, hold the hammer on the console and open the receipt (the [two-minute path](/docs/judges/two-minute-path) has the steps).
+2. Prefer no room? Open the [scripted demo](https://gavel.dualmindlab.tech/demo/scripted): it replays recorded events in your browser with no server and no PayPal calls.
+3. Want to run it yourself? The [Run it locally](/docs/run) page has the commands. Local runs use `PAYMENTS=fake`, the built-in test PayPal, so no network access or PayPal account is needed. It is a test double and says nothing about the real sandbox; the gates do.
 
 Then read [Tough questions](/docs/judges/tough-questions) and [Security review](/docs/safety/security-review), which lists the open items.
 
