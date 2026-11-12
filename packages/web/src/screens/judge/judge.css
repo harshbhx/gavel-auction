@@ -871,7 +871,7 @@
   max-width: 52ch;
 }
 
-.gv-judge__facts {
+.gv-judge__pts {
   display: grid;
   gap: var(--space-2);
   margin: 0;
@@ -879,7 +879,7 @@
   list-style: none;
 }
 
-.gv-judge__facts li {
+.gv-judge__pts li {
   display: flex;
   align-items: center;
   padding: var(--space-2) var(--space-3);
@@ -1569,7 +1569,7 @@ html:has(.gv-judge) {
   }
 
   /* The fact lists take the spare height in even rows, so no card has an empty block. */
-  .gv-judge__acts > .gv-judge__col > .gv-judge__facts {
+  .gv-judge__acts > .gv-judge__col > .gv-judge__pts {
     flex: 1 1 auto;
     grid-auto-rows: 1fr;
   }
