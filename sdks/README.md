@@ -30,7 +30,7 @@ dotnet add package GavelSdk --version 0.0.5 --source .
 
 ## Release process
 
-`.github/workflows/sdk-release.yml` builds both packages on every pull request that touches
+`.github/workflows/sdk-release.yml` builds all three packages (TypeScript, Python and C#) on every pull request that touches
 `sdks/`, and creates the GitHub Release when a tag `sdk-v<version>` is pushed. It needs no
 secret beyond the built-in `GITHUB_TOKEN`.
 

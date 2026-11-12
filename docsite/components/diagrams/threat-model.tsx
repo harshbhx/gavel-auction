@@ -296,7 +296,7 @@ export function ThreatModelDiagram() {
         <>
           Read from <code>packages/server/src/auth</code> (token.ts, rotation.ts, authorize.ts), <code>packages/server/src/http/ops.ts</code>, <code>http/auctions.ts</code>, <code>http/security-headers.ts</code>,{' '}
           <code>packages/server/src/config.ts</code>, <code>host/audio-ws.ts</code>, <code>packages/payments/src/guard.ts</code>, <code>render.yaml</code> and <code>docs/SECURITY-REVIEW.md</code>. This is a design map, not an audit:
-          all 18 items of the security checklist are still OPEN and no item has been signed off. Everything here targets the PayPal sandbox.
+          13 of the 24 items of the security checklist are PASS, the others carry a named residual, and the owner has not signed any item off. Everything here targets the PayPal sandbox.
         </>
       }
       transcript={

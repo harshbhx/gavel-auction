@@ -1,9 +1,11 @@
 # Live speech through the /audio socket: what the check needs
 
-Status: not run. Issue #2194 stays open. Today the speech path is scored from cached provider
-transcripts (`packages/voice/fixtures/README.md`), and no live run through the `/audio` socket is
-recorded. This page says what such a run needs and whether Actions can do it without a person
-speaking. It records no result.
+Status: run once on synthetic clips. Issue #2194 stays open. The speech path is scored from cached
+provider transcripts (`packages/voice/fixtures/README.md`), and one live run through the `/audio`
+socket is recorded: run 42575018866 (9 Nov 2026), 24 synthetic clips, fake PayPal, a local server,
+no human voice (`docs/evidence/voice-live-socket/README.md`). This page says what such a run needs
+and whether Actions can do it without a person speaking. A run with a person speaking is not
+recorded.
 
 ## What the socket expects
 

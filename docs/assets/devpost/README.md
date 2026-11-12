@@ -35,7 +35,7 @@ All gallery PNGs are 1500x1000 (3:2) and well under 1 MB. Every file is far belo
 | `intro.gif`, `architecture.gif`, `closing.gif`                      | 1000x600  | Description text                                      |
 | `intro-static.png`, `architecture-static.png`, `closing-static.png` | 1000x600  | Fallback for reduced motion or if GIFs are refused    |
 
-Honesty notes: example hashes in gallery 05 are labelled as an illustration; gallery 07 shows G3 as in progress and G5 as partial; APIMatic reads "spec ready, SDK pending"; no sponsor logos are used.
+Honesty notes: example hashes in gallery 05 are labelled as an illustration; gallery 07 shows G3 as in progress and G5 as partial; the gallery 06 pixels read "spec ready, SDK pending" although the SDKs are now a GitHub release (sdk-v0.0.5); no sponsor logos are used.
 
 ## Animated gallery (GFX-07)
 

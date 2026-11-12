@@ -156,7 +156,7 @@ A trust boundary is a line where data passes from something we do not control to
 - Security checklist: all eight P0 items are PASS as of 2026-11-07, and 13 of the 24 rows are PASS. SEC-19 and SEC-20 are open and wait for an independent reviewer; SEC-09, SEC-10, SEC-14 and SEC-21 to SEC-24 are CHECKED with a named residual; SEC-15 (log scan) is CHECKED (one S01 server log scanned, 0 findings, run 42566851766); automated checks exist for most items.
 - Tampered-webhook rejection is tested against the fake PayPal only. Retry behaviour of real PayPal deliveries is unverified.
 - The sandbox accounts hold no real money, so the stakes of a leaked sandbox secret are low, but they are still kept out of the repository, logs and the web bundle.
-- Staging security tests and load tests stay unverified until a staging URL exists.
+- Security tests and load tests against the hosted URL are not recorded yet; the one traffic simulation run (run 42582589995) ended with verdict aborted and no room settled.
 
 </NotVerified>
 
@@ -179,7 +179,7 @@ Report a vulnerability privately as described in `SECURITY.md`. Do not include r
     { path: 'packages/server/src/http/security-headers.ts', note: 'baseline response headers' },
     { path: 'packages/payments/src/guard.ts', note: 'sandbox host only' },
     { path: 'packages/payments/src/webhooks/verify.ts', note: 'webhook verification' },
-    { path: 'docs/SECURITY-REVIEW.md', note: 'the checklist, all items OPEN' },
+    { path: 'docs/SECURITY-REVIEW.md', note: 'the checklist, 13 of 24 items PASS, the rest CHECKED, OPEN or ACCEPTED' },
     { path: 'SECURITY.md', note: 'how to report a vulnerability' },
   ]}
 />

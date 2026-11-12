@@ -66,10 +66,10 @@ The service `gavel-host` (`render.yaml`): one instance, Node 22, a health check 
 </Tab>
 <Tab value="Cloudflare">
 
-`docs/DEPLOY.md` (step 7) hosts the web app on a Cloudflare Pages project built with the API origin in `VITE_API_BASE` and `VITE_WS_BASE`. This documentation site is a static export published to Cloudflare by `docsite.yml`.
+`docs/DEPLOY.md` (step 7) hosts the web app as a Cloudflare Worker with static assets (`gavel-web`), built with the API origin in `VITE_API_BASE` and `VITE_WS_BASE`. This documentation site is a static export published to Cloudflare by `docsite.yml`.
 
 <NotVerified title="Web app hosting">
-The repository has no workflow that deploys the web app. The hosting choice is documented, not automated here.
+The workflow `deploy-web.yml` builds the web app and uploads the artifact `web-dist`; it runs `wrangler deploy` only when the Cloudflare secrets exist in the repository. Today the Worker is deployed by hand from that artifact, so the automated deploy has not run.
 </NotVerified>
 
 </Tab>

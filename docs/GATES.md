@@ -407,7 +407,7 @@ What this run does not prove:
 - G5: no audio ran, so no speech-to-text accuracy exists.
 - R9 is not in the report counts; its pass comes from vitest output only.
 - Latency: this run recorded no timings for the targets, so the table above is unchanged. The void p95 caveat stands: 1235.96 ms against the 1000 ms budget, and, as of 6 Nov, the SETTLED budget assumption (each call under 1 s at p95) failed; the Latency section above records SETTLED as MISSED on the 49-of-50 run 42563147792 (the earlier n=20 run 42346811713 had it within 6 s).
-- Only the run log and the summary artifact exist; no redacted evidence file is committed, so the figures are reported, not independently verifiable, until one is.
+- The raw job log and the summary artifact stay in Actions only (artifacts expire); the redacted report copy is committed (see Evidence below), so the figures can be checked against its sha256, but the raw log cannot.
 
 Decision: no change as of this run. G1 PASS (decision A), G2 PASS, G3 NOT RUN at the time (it later passed, see the G3 section), G5 PARTIAL on synthetic speech (confirm prompt kept).
 Evidence: redacted copies of the report are committed as `docs/evidence/nightly/NIGHTLY-42200708552.json` (sha256 d52637150b0fa9a4e6eafc8a2bb873227a75e797cef2093d19eb1e56e944de5b) and `docs/evidence/nightly/NIGHTLY-42317068784.json` (sha256 d3f4add63b30e08066daa83c0a7d289fae880472e94d98582065d859a7a05652); they hold spec ids, statuses and observed summaries only. The raw job logs remain Actions logs.

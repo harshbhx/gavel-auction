@@ -8,7 +8,7 @@ value is committed.
 | ----------------- | -------------------------------------------------------------------- | -------------- | ---------------------------------------------------- |
 | `staging`         | the optional `deploy-staging` run (manual only), the R7 and R8 specs | PayPal sandbox | Own data and URL. Not configured today.              |
 | `production`      | the public demo                                                      | PayPal sandbox | Same PayPal sandbox as staging; data and URL differ. |
-| `sandbox-nightly` | the gate workflows and the nightly run                               | PayPal sandbox | Required reviewer, deployments limited to `main`.    |
+| `sandbox-nightly` | the gate workflows and the nightly run                               | PayPal sandbox | No reviewer, no branch rule, no secrets (11 Nov).    |
 
 Both app environments point at the sandbox: `PAYMENTS=sandbox` and `PAYPAL_ENV=sandbox`. There is
 no live PayPal account in this project.
