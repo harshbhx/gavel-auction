@@ -6,11 +6,14 @@ import { DOCS_URL, Section } from './LandingSections';
 /** Plain text chips of the technology the project really uses. No logos, no partner claims. */
 const TECH: readonly string[] = [
   'PayPal sandbox',
+  'AG Grid',
+  'APIMatic',
   'Deepgram',
   'Groq',
   'Cloudflare',
   'Render',
   'Fumadocs',
+  'Hugging Face',
   'React',
   'TypeScript',
 ];
