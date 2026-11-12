@@ -39,7 +39,7 @@ _How it works: a ceiling is held, bids come in under it, the hammer captures the
 3. Bid, then press and hold the hammer on the console.
 4. Read the receipt, then open the audit page and verify the ledger chain in your browser.
 5. The [scripted demo](https://gavel.dualmindlab.tech/demo/scripted) plays a recorded room in about a minute.
-6. Prefer HTTP? Use the shared judge key in the Devpost testing instructions (optional, the steps above need no key) and follow [Call the API as a judge](https://docs.gavel.dualmindlab.tech/docs/judges/call-the-api): open a room, bid, hammer and read the ledger with curl. The [API reference](https://docs.gavel.dualmindlab.tech/api-reference) has a Try it panel, and the [docs](https://docs.gavel.dualmindlab.tech) cover the rest.
+6. Prefer HTTP? Use the shared judge key in the Devpost testing instructions (optional, the steps above need no key) and follow [Call the API as a judge](https://docs.gavel.dualmindlab.tech/docs/judges/call-the-api): open a room, bid, hammer and read the ledger with curl. The live Try it panel is on that page, the [API reference](https://docs.gavel.dualmindlab.tech/api-reference) lists every endpoint with code samples, and the [docs](https://docs.gavel.dualmindlab.tech) cover the rest.
 
 ![Animated slide: the real room at /try and the scripted demo.](https://raw.githubusercontent.com/harshbhx/gavel-auction/main/brand/devpost/description/06-judge-flow.png)
 
