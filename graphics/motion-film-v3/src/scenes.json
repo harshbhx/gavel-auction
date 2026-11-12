@@ -1,0 +1,250 @@
+{
+  "scenes": [
+    {
+      "id": "hook",
+      "dur": 5.5,
+      "world": "ink",
+      "caps": []
+    },
+    {
+      "id": "title",
+      "dur": 6,
+      "world": "ink",
+      "caps": []
+    },
+    {
+      "id": "problem",
+      "dur": 8,
+      "world": "ink",
+      "caps": []
+    },
+    {
+      "id": "mechanism",
+      "dur": 13,
+      "world": "paper",
+      "caps": []
+    },
+    {
+      "id": "join",
+      "dur": 7,
+      "world": "ink",
+      "caps": [
+        {
+          "a": 0.5,
+          "b": 4,
+          "text": "Join with / a **code.**"
+        },
+        {
+          "a": 4,
+          "b": 7,
+          "text": "Or scan / the **QR.**"
+        }
+      ]
+    },
+    {
+      "id": "hold",
+      "dur": 11,
+      "world": "paper",
+      "caps": [
+        {
+          "a": 0.4,
+          "b": 3.6,
+          "text": "Pick a / **limit.**"
+        },
+        {
+          "a": 3.6,
+          "b": 7.6,
+          "text": "Approve / a **hold.**"
+        },
+        {
+          "a": 7.6,
+          "b": 11,
+          "text": "**Held,** / not charged."
+        }
+      ]
+    },
+    {
+      "id": "bid",
+      "dur": 14,
+      "world": "ink",
+      "caps": [
+        {
+          "a": 0.3,
+          "b": 2.5,
+          "text": "**Open** / the lot."
+        },
+        {
+          "a": 2.5,
+          "b": 6.5,
+          "text": "Bids / arrive."
+        },
+        {
+          "a": 6.5,
+          "b": 10,
+          "text": "Only / **up.**"
+        },
+        {
+          "a": 10,
+          "b": 14,
+          "text": "Every screen / **agrees.**"
+        }
+      ]
+    },
+    {
+      "id": "voice",
+      "dur": 9,
+      "world": "ink",
+      "caps": [
+        {
+          "a": 0.3,
+          "b": 2.5,
+          "text": "Or **say** it."
+        },
+        {
+          "a": 2.5,
+          "b": 5.5,
+          "text": "\"three fifty for / paddle twelve\""
+        },
+        {
+          "a": 5.5,
+          "b": 9,
+          "text": "Did you mean / **$350** for paddle 12?"
+        }
+      ]
+    },
+    {
+      "id": "hammer",
+      "dur": 11,
+      "world": "ink",
+      "caps": [
+        {
+          "a": 0.3,
+          "b": 4,
+          "text": "Hold the / **hammer.**"
+        },
+        {
+          "a": 4,
+          "b": 6,
+          "text": "Going once. / Going twice."
+        },
+        {
+          "a": 6,
+          "b": 8.3,
+          "text": "**Sold.**"
+        },
+        {
+          "a": 8.3,
+          "b": 11,
+          "text": "Paddle 12, / **$350.**"
+        }
+      ]
+    },
+    {
+      "id": "settle",
+      "dur": 11,
+      "world": "paper",
+      "caps": [
+        {
+          "a": 0.4,
+          "b": 5.5,
+          "text": "Capture only the / **winning price.**"
+        },
+        {
+          "a": 5.5,
+          "b": 11,
+          "text": "Release / **every other** hold."
+        }
+      ]
+    },
+    {
+      "id": "receipt",
+      "dur": 12,
+      "world": "paper",
+      "caps": [
+        {
+          "a": 0.4,
+          "b": 3.5,
+          "text": "A **receipt** / for everyone."
+        },
+        {
+          "a": 3.5,
+          "b": 6,
+          "text": "Share link. / **QR.**"
+        },
+        {
+          "a": 6,
+          "b": 9,
+          "text": "Chain / **verified.**"
+        },
+        {
+          "a": 9,
+          "b": 12,
+          "text": "Chain / **broken.**"
+        }
+      ]
+    },
+    {
+      "id": "proof",
+      "dur": 12.5,
+      "world": "ink",
+      "caps": []
+    },
+    {
+      "id": "speed",
+      "dur": 8,
+      "world": "paper",
+      "caps": [
+        {
+          "a": 0.4,
+          "b": 4.5,
+          "text": "The landing page: / **100. 100. 100. 100.**"
+        },
+        {
+          "a": 4.5,
+          "b": 8,
+          "text": "Mobile / **and desktop.**"
+        }
+      ]
+    },
+    {
+      "id": "judges",
+      "dur": 10,
+      "world": "ink",
+      "caps": [
+        {
+          "a": 0.3,
+          "b": 1.9,
+          "text": "For / **judges.**"
+        },
+        {
+          "a": 1.9,
+          "b": 6.2,
+          "text": "One shared key, / in the Devpost / testing instructions."
+        },
+        {
+          "a": 6.2,
+          "b": 10,
+          "text": "No key needed / to **try it.**"
+        }
+      ]
+    },
+    {
+      "id": "builtWith",
+      "dur": 7,
+      "world": "paper",
+      "caps": []
+    },
+    {
+      "id": "open",
+      "dur": 9,
+      "world": "ink",
+      "caps": []
+    },
+    {
+      "id": "outro",
+      "dur": 10.5,
+      "world": "ink",
+      "caps": []
+    }
+  ]
+}

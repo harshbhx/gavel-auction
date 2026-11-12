@@ -1,0 +1,111 @@
+name: film-v3-render
+# GFX-17 launch film v3: the full render. Four matrix jobs render a quarter of the frames each with Remotion
+# (graphics/motion-film-v3, SHARD=i/4); the finish job stitches them, keeps the MP4 under the size cap, adds the
+# narration (audio/voiceover.mp3) to a copy and writes the 720p share copies, SRT, poster, contact sheets and
+# report. Captions are burned into the picture. No secrets.
+# Artifact film-v3: gavel-launch-film-v3.mp4 (silent, captions), -voiceover.mp4, the two -720p30 copies, .en.srt,
+# poster, timeline.json, contact sheets, report.txt.
+on:
+  # A push that changes graphics/motion-film-v3/RENDER starts a render from the film branch (a workflow can only
+  # be dispatched by hand once it is on the default branch).
+  push:
+    branches: [feat/GFX-17-film-v3]
+    paths:
+      - 'graphics/motion-film-v3/RENDER'
+  workflow_dispatch:
+    inputs:
+      fps:
+        description: 'Frames per second (60 for the final, 30 for a quick pass)'
+        required: false
+        default: '60'
+        type: choice
+        options: ['60', '30']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: film-v3-render-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  render:
+    if: ${{ github.repository == 'harshbhx/gavel-auction' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: true
+      matrix:
+        shard: [0, 1, 2, 3]
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+        with:
+          node-version-file: .nvmrc
+      - name: Install
+        working-directory: graphics/motion-film-v3
+        run: npm ci --no-audit --no-fund
+      - name: Render shard ${{ matrix.shard }}
+        working-directory: graphics/motion-film-v3
+        env:
+          FPS: ${{ inputs.fps || '60' }}
+          SHARD: ${{ matrix.shard }}/4
+          CONCURRENCY: '4'
+        run: |
+          sudo apt-get install -y -qq ffmpeg >/dev/null
+          node compose.mjs "$GITHUB_WORKSPACE/out/chunks"
+          ls -la "$GITHUB_WORKSPACE/out/chunks"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: film-v3-chunk-${{ matrix.shard }}
+          path: out/chunks/chunk-*.mp4
+          retention-days: 3
+          compression-level: 0
+
+  finish:
+    needs: render
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af
+        with:
+          node-version-file: .nvmrc
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          pattern: film-v3-chunk-*
+          path: out/chunks
+          merge-multiple: true
+      - name: Stitch, cap, narration, share copies, SRT, sheets, report
+        working-directory: graphics/motion-film-v3
+        env:
+          FPS: ${{ inputs.fps || '60' }}
+          CHUNKS: ${{ github.workspace }}/out/chunks
+        run: |
+          sudo apt-get install -y -qq ffmpeg >/dev/null
+          ffmpeg -version | head -1
+          node compose.mjs "$GITHUB_WORKSPACE/out/final"
+          ls -la "$GITHUB_WORKSPACE/out/final"
+      - name: Check the files
+        run: |
+          cd out/final
+          for f in *.mp4; do
+            echo "== $f"
+            ffprobe -v error -show_entries format=duration,size:stream=codec_name,width,height,r_frame_rate -of default=nw=1 "$f"
+          done
+          cat report.txt >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: ${{ !cancelled() }}
+        with:
+          name: film-v3
+          path: out/final
+          retention-days: 30
+          compression-level: 0

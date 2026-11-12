@@ -1,0 +1,335 @@
+{
+  "duration": 164.5,
+  "cues": [
+    {
+      "a": 0.5,
+      "b": 2.896,
+      "text": "$500, held.",
+      "scene": "hook"
+    },
+    {
+      "a": 2.938,
+      "b": 5.36,
+      "text": "Charged so far: nothing.",
+      "scene": "hook"
+    },
+    {
+      "a": 6.223,
+      "b": 7.823,
+      "text": "This is GAVEL.",
+      "scene": "title"
+    },
+    {
+      "a": 7.823,
+      "b": 9.823,
+      "text": "Every bid is a hold.",
+      "scene": "title"
+    },
+    {
+      "a": 9.823,
+      "b": 11.804,
+      "text": "The hammer is the payment.",
+      "scene": "title"
+    },
+    {
+      "a": 11.844,
+      "b": 14.548,
+      "text": "Charge bidders up front, and they hold back.",
+      "scene": "problem"
+    },
+    {
+      "a": 14.588,
+      "b": 17.081,
+      "text": "Skip the hold, and winners walk away.",
+      "scene": "problem"
+    },
+    {
+      "a": 17.121,
+      "b": 19.393,
+      "text": "Paper sheets prove nothing.",
+      "scene": "problem"
+    },
+    {
+      "a": 20.063,
+      "b": 23.044,
+      "text": "So each bidder authorizes a ceiling.",
+      "scene": "mechanism"
+    },
+    {
+      "a": 23.084,
+      "b": 25.076,
+      "text": "Bids climb underneath it.",
+      "scene": "mechanism"
+    },
+    {
+      "a": 25.9,
+      "b": 27.16,
+      "text": "When the hammer falls,",
+      "scene": "mechanism"
+    },
+    {
+      "a": 27.16,
+      "b": 29.44,
+      "text": "GAVEL captures only the winning price,",
+      "scene": "mechanism"
+    },
+    {
+      "a": 29.44,
+      "b": 31.565,
+      "text": "and releases everything else.",
+      "scene": "mechanism"
+    },
+    {
+      "a": 33.134,
+      "b": 35.694,
+      "text": "Bidders join from their phone with a room code,",
+      "scene": "join"
+    },
+    {
+      "a": 35.694,
+      "b": 37.889,
+      "text": "or by scanning the QR code.",
+      "scene": "join"
+    },
+    {
+      "a": 40.6,
+      "b": 41.444,
+      "text": "Pick a limit,",
+      "scene": "hold"
+    },
+    {
+      "a": 41.444,
+      "b": 44.804,
+      "text": "then press and hold to approve a PayPal hold.",
+      "scene": "hold"
+    },
+    {
+      "a": 46.529,
+      "b": 49.071,
+      "text": "The money is held, not charged.",
+      "scene": "hold"
+    },
+    {
+      "a": 51.335,
+      "b": 53.095,
+      "text": "The auctioneer opens the lot,",
+      "scene": "bid"
+    },
+    {
+      "a": 53.095,
+      "b": 55.44,
+      "text": "and bids arrive in real time.",
+      "scene": "bid"
+    },
+    {
+      "a": 57.2,
+      "b": 58.931,
+      "text": "The price only moves up,",
+      "scene": "bid"
+    },
+    {
+      "a": 58.931,
+      "b": 61.655,
+      "text": "and every screen in the room agrees.",
+      "scene": "bid"
+    },
+    {
+      "a": 64.919,
+      "b": 67.998,
+      "text": "The auctioneer can also call a bid out loud.",
+      "scene": "voice"
+    },
+    {
+      "a": 68.664,
+      "b": 69.824,
+      "text": "GAVEL hears it,",
+      "scene": "voice"
+    },
+    {
+      "a": 69.824,
+      "b": 73.308,
+      "text": "and always asks to confirm before anything counts.",
+      "scene": "voice"
+    },
+    {
+      "a": 73.861,
+      "b": 77.3,
+      "text": "To close the lot, hold the hammer for three seconds.",
+      "scene": "hammer"
+    },
+    {
+      "a": 77.529,
+      "b": 78.504,
+      "text": "Going once.",
+      "scene": "hammer"
+    },
+    {
+      "a": 78.544,
+      "b": 79.603,
+      "text": "Going twice.",
+      "scene": "hammer"
+    },
+    {
+      "a": 79.643,
+      "b": 83.675,
+      "text": "Sold, to paddle 12, at $350.",
+      "scene": "hammer"
+    },
+    {
+      "a": 84.963,
+      "b": 86.896,
+      "text": "Settlement is a single step.",
+      "scene": "settle"
+    },
+    {
+      "a": 86.936,
+      "b": 89.616,
+      "text": "The winner's hold is captured for the winning price,",
+      "scene": "settle"
+    },
+    {
+      "a": 89.616,
+      "b": 91.016,
+      "text": "the remainder is released,",
+      "scene": "settle"
+    },
+    {
+      "a": 91.016,
+      "b": 93.452,
+      "text": "and every other hold is voided.",
+      "scene": "settle"
+    },
+    {
+      "a": 96.081,
+      "b": 98.55,
+      "text": "Everyone gets a receipt they can share.",
+      "scene": "receipt"
+    },
+    {
+      "a": 101.578,
+      "b": 104.311,
+      "text": "Every event is written to a hash-chained ledger.",
+      "scene": "receipt"
+    },
+    {
+      "a": 104.351,
+      "b": 107.434,
+      "text": "Change a single entry, and the chain breaks.",
+      "scene": "receipt"
+    },
+    {
+      "a": 108.002,
+      "b": 109.796,
+      "text": "Measured, not promised.",
+      "scene": "proof"
+    },
+    {
+      "a": 109.836,
+      "b": 113.422,
+      "text": "A server kill in the middle of settlement: survived.",
+      "scene": "proof"
+    },
+    {
+      "a": 113.462,
+      "b": 116.339,
+      "text": "Webhooks: six of six verified.",
+      "scene": "proof"
+    },
+    {
+      "a": 116.379,
+      "b": 120.177,
+      "text": "Latency: both targets missed, and we say so.",
+      "scene": "proof"
+    },
+    {
+      "a": 120.549,
+      "b": 124.389,
+      "text": "The landing page scores 100 in every Lighthouse category,",
+      "scene": "speed"
+    },
+    {
+      "a": 124.389,
+      "b": 126.694,
+      "text": "on mobile and on desktop.",
+      "scene": "speed"
+    },
+    {
+      "a": 128.522,
+      "b": 131.042,
+      "text": "For judges: one shared key,",
+      "scene": "judges"
+    },
+    {
+      "a": 131.042,
+      "b": 133.498,
+      "text": "in the Devpost testing instructions.",
+      "scene": "judges"
+    },
+    {
+      "a": 134.4,
+      "b": 137.122,
+      "text": "And the try page needs no key at all.",
+      "scene": "judges"
+    },
+    {
+      "a": 139.048,
+      "b": 141.607,
+      "text": "Payments run in the PayPal sandbox.",
+      "scene": "builtWith"
+    },
+    {
+      "a": 141.647,
+      "b": 144.252,
+      "text": "The API is hosted on Render.",
+      "scene": "builtWith"
+    },
+    {
+      "a": 145.528,
+      "b": 148.768,
+      "text": "Still open: the honor period test is in progress,",
+      "scene": "open"
+    },
+    {
+      "a": 148.768,
+      "b": 150.776,
+      "text": "and speech accuracy is partial.",
+      "scene": "open"
+    },
+    {
+      "a": 150.816,
+      "b": 152.416,
+      "text": "Sandbox only.",
+      "scene": "open"
+    },
+    {
+      "a": 152.416,
+      "b": 154.358,
+      "text": "No real money moves.",
+      "scene": "open"
+    },
+    {
+      "a": 155.05,
+      "b": 156.044,
+      "text": "GAVEL.",
+      "scene": "outro"
+    },
+    {
+      "a": 156.166,
+      "b": 159.528,
+      "text": "Built by Harsh Bhanushali and Dhairya Patel.",
+      "scene": "outro"
+    },
+    {
+      "a": 159.695,
+      "b": 161.615,
+      "text": "Every bid is a hold.",
+      "scene": "outro"
+    },
+    {
+      "a": 161.615,
+      "b": 163.624,
+      "text": "The hammer is the payment.",
+      "scene": "outro"
+    }
+  ]
+}
