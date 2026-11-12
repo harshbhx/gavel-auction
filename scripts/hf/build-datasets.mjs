@@ -259,7 +259,7 @@ function card(spec, ns) {
     `source_commit: ${sha}`,
     `source_commit_date: ${repoCommitDate(sha)}`,
     `sandbox: ${flag('sandbox') || flag('real sandbox')}`,
-    `synthetic: ${flag('synthetic') || flag('synthetic audio')}`,
+    `synthetic: ${flag('synthetic') || flag('synthetic audio') || flag('generated speech')}`,
     `simulated: ${flag('simulated')}`,
     'production_data: false',
     ...(spec.configs ?? []),
@@ -1134,7 +1134,7 @@ const GATE_META = {
   G4: { method: 'real sandbox webhooks', label: 'real sandbox' },
   G5: {
     method: 'cached evaluation of recorded provider outputs on synthetic speech',
-    label: 'synthetic audio',
+    label: 'generated speech',
   },
 };
 
@@ -1229,7 +1229,9 @@ function buildGates(ctx) {
   const g3Line =
     g3.status === 'IN PROGRESS'
       ? 'G3 is a real multi-day probe that is still running.'
-      : `G3 status in docs/GATES.md at build time: ${g3.status}.`;
+      : g3.status === 'PASS'
+        ? 'G3 passed: the multi-day probe is finished and docs/GATES.md records PASS (final probe 12 Nov 2026).'
+        : `G3 status in docs/GATES.md at build time: ${g3.status}.`;
   const nightlyDir = join(ROOT, 'docs', 'evidence', 'nightly');
   const nightly = [];
   for (const f of readdirSync(nightlyDir)
@@ -1269,10 +1271,10 @@ function buildGates(ctx) {
         tags: ['evidence', 'sandbox', 'payments', 'verification', 'checksums', 'gavel'],
         labels: [
           'real sandbox',
-          'synthetic audio',
+          'generated speech',
           ...(g3.status === 'IN PROGRESS' ? ['in progress'] : []),
         ],
-        labelNote: `Gates G0 to G4 ran against the real PayPal sandbox, never against live money. G5 is a cached evaluation on synthetic speech. ${g3Line}`,
+        labelNote: `Gates G0 to G4 ran against the real PayPal sandbox, never against live money. G5 is a cached evaluation of recorded provider outputs. ${g3Line}`,
         verify: [
           'Every row of `evidence_files` gives the repository path, the sha256 and a link to the file at the build commit. Download the file from that link, run `sha256sum`, compare. `matches_claim` says whether the hash equals the one written in `docs/GATES.md`.',
           'Assurance rows carry a `query_url`; opening it in GitHub (with repository access) shows the same count as the row.',
@@ -1318,7 +1320,7 @@ function buildGates(ctx) {
                 "First date or timestamp on the gate's run line in `docs/GATES.md` (G3: start of the probe)",
               ],
               ['method', 'string', 'How the gate was run'],
-              ['label', 'string', 'Honest label: real sandbox, synthetic audio'],
+              ['label', 'string', 'Honest label: real sandbox, generated speech'],
               ['workflow_run_urls', 'string', 'GitHub Actions run URLs, separated by semicolons'],
               [
                 'evidence_files',
