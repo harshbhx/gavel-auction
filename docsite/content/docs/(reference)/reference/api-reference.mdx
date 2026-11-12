@@ -9,6 +9,18 @@ full: true
 
 The host serves a small HTTP API and one WebSocket. The HTTP API is described by an OpenAPI 3.1 document.
 
+<Cards>
+  <Card title="Interactive reference" href="/api-reference">
+    Every operation with parameters, schemas, examples, curl, TypeScript, Python and C# samples, left navigation by tag and a filter.
+  </Card>
+  <Card title="Call it live as a judge" href="/docs/judges/call-the-api">
+    Send real requests to the sandbox host from the browser with a judge key.
+  </Card>
+  <Card title="WebSocket protocol" href="/docs/reference/websocket-protocol">
+    Live bidding runs on a socket that OpenAPI cannot describe.
+  </Card>
+</Cards>
+
 <Callout type="info" title="Get the document">
   Read every endpoint, with schemas and examples, on the [API reference page](/api-reference). [Download openapi.yaml](/openapi.yaml). The same file lives in the repository at [openapi/gavel.yaml](https://github.com/harshbhx/gavel-auction/blob/main/openapi/gavel.yaml), and the docs site copies it at build time so the two never differ. Open it in any OpenAPI viewer, Postman, Insomnia or an SDK generator.
 </Callout>
