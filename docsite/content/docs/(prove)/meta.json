@@ -1,1 +1,8 @@
-{ "title": "Prove", "description": "Gates, evidence and limits", "icon": "FlaskConical", "root": true, "pages": ["proof"] }
+{
+ "title": "Prove",
+ "description": "Gates, evidence and limits",
+ "icon": "FlaskConical",
+ "pages": [
+  "proof"
+ ]
+}

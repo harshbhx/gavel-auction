@@ -1,1 +1,8 @@
-{ "title": "Reference", "description": "Protocol, data model, config", "icon": "Library", "root": true, "pages": ["reference"] }
+{
+ "title": "Reference",
+ "description": "Protocol, data model, config",
+ "icon": "Library",
+ "pages": [
+  "reference"
+ ]
+}

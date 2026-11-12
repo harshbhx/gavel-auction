@@ -1,4 +1,18 @@
 {
-  "title": "GAVEL docs",
-  "pages": ["index", "(learn)", "(prove)", "(judges)", "(builders)", "(operate)", "(reference)"]
+ "title": "GAVEL docs",
+ "pages": [
+  "index",
+  "---Learn---",
+  "...(learn)",
+  "---Prove---",
+  "...(prove)",
+  "---For judges---",
+  "...(judges)",
+  "---Builders---",
+  "...(builders)",
+  "---Operators---",
+  "...(operate)",
+  "---Reference---",
+  "...(reference)"
+ ]
 }

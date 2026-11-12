@@ -1,1 +1,23 @@
-{"title": "For judges", "icon": "Gavel", "pages": ["index", "two-minute-path", "ten-minute-path", "rubric-map", "evidence-index", "findings-that-mattered", "tough-questions", "trust-and-faq", "sandbox-buyers", "real-vs-simulated", "open-data", "data-engineering", "demo-script", "call-the-api"]}
+{
+ "title": "For judges",
+ "icon": "Gavel",
+ "pages": [
+  "index",
+  "---Start here---",
+  "two-minute-path",
+  "ten-minute-path",
+  "rubric-map",
+  "---Evidence---",
+  "evidence-index",
+  "findings-that-mattered",
+  "real-vs-simulated",
+  "open-data",
+  "data-engineering",
+  "---Trust---",
+  "tough-questions",
+  "trust-and-faq",
+  "sandbox-buyers",
+  "---API---",
+  "call-the-api"
+ ]
+}

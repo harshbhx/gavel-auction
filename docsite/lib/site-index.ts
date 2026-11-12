@@ -28,7 +28,7 @@ function urlOf(file: string): string {
 }
 
 function titleOf(src: string, fallback: string): string {
-  const m = /^---\n[\s\S]*?\ntitle:\s*(.+?)\s*\n[\s\S]*?---/.exec(src);
+  const m = /^---\n(?:[\s\S]*?\n)?title:\s*(.+?)\s*\n[\s\S]*?---/.exec(src);
   return m ? m[1].replace(/^["']|["']$/g, '') : fallback;
 }
 

@@ -140,11 +140,11 @@ const criteria = [
     n: 5,
     name: 'Presentation',
     open: [
-      ['Demo script', '/docs/judges/demo-script'],
+      ['Demo path', '/docs/start/demo'],
       ['Label sheet', '/docs/judges/real-vs-simulated'],
       ['Evidence index', '/docs/judges/evidence-index'],
     ],
-    state: 'Script written; the video is an open item in docs/SUBMISSION.md.',
+    state: 'The video is an open item in docs/SUBMISSION.md.',
     chip: 'open',
   },
 ] as const;

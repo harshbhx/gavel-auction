@@ -1,1 +1,10 @@
-{ "title": "Learn", "description": "What GAVEL is and how it works", "icon": "Compass", "root": true, "pages": ["start", "how-it-works", "roadmap"] }
+{
+ "title": "Learn",
+ "description": "What GAVEL is and how it works",
+ "icon": "Compass",
+ "pages": [
+  "start",
+  "how-it-works",
+  "roadmap"
+ ]
+}

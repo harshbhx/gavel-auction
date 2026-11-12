@@ -8,7 +8,6 @@ export default function Layout({ children }: LayoutProps<'/docs'>) {
     <DocsLayout
       tree={source.getPageTree()}
       {...baseOptions({ githubIcon: false })}
-      tabMode="top"
       sidebar={{
         footer: (
           <>
