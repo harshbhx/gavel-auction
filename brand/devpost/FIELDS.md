@@ -30,16 +30,26 @@ Two spare slots. Add `paypal-webhooks` or `speech-to-text` if you like. Removed 
 
 ## Try it out links
 
-| Label                            | URL                                                               |
-| -------------------------------- | ----------------------------------------------------------------- |
-| Live app: judge panel            | https://gavel.dualmindlab.tech/try                                |
-| Scripted demo (about 1 minute)   | https://gavel.dualmindlab.tech/demo/scripted                      |
-| Docs                             | https://docs.gavel.dualmindlab.tech                               |
-| API reference                    | https://docs.gavel.dualmindlab.tech/api-reference                 |
-| Call the API as a judge          | https://docs.gavel.dualmindlab.tech/docs/judges/call-the-api      |
-| Evidence Explorer (Hugging Face) | https://huggingface.co/spaces/harshbhx/gavel-evidence-explorer    |
-| SDKs (GitHub release)            | https://github.com/harshbhx/gavel-auction/releases/tag/sdk-v0.0.5 |
-| GitHub repository                | https://github.com/harshbhx/gavel-auction                         |
+| Label                                   | URL                                                                                                                   |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Live app: judge panel                   | https://gavel.dualmindlab.tech/try                                                                                    |
+| Scripted demo (about 1 minute)          | https://gavel.dualmindlab.tech/demo/scripted                                                                          |
+| Docs                                    | https://docs.gavel.dualmindlab.tech                                                                                   |
+| API reference                           | https://docs.gavel.dualmindlab.tech/api-reference                                                                     |
+| Call the API as a judge                 | https://docs.gavel.dualmindlab.tech/docs/judges/call-the-api                                                          |
+| Evidence Explorer (Hugging Face)        | https://huggingface.co/spaces/harshbhx/gavel-evidence-explorer                                                        |
+| GitHub repository                       | https://github.com/harshbhx/gavel-auction                                                                             |
+| Findings that mattered                  | https://docs.gavel.dualmindlab.tech/docs/judges/findings-that-mattered                                                |
+| Real versus simulated                   | https://docs.gavel.dualmindlab.tech/docs/judges/real-vs-simulated                                                     |
+| Evidence map                            | https://docs.gavel.dualmindlab.tech/docs/proof/evidence-map                                                           |
+| Gate file (GATES.md)                    | https://github.com/harshbhx/gavel-auction/blob/main/docs/GATES.md                                                     |
+| Real server kill evidence               | https://github.com/harshbhx/gavel-auction/blob/main/docs/evidence/server-kill/server-kill-evidence.md                 |
+| Live voice run evidence                 | https://github.com/harshbhx/gavel-auction/blob/main/docs/evidence/voice-live-socket/README.md                         |
+| Open datasets (Hugging Face collection) | https://huggingface.co/collections/harshbhx/gavel-evidence-auction-holds-hammer-and-receipts-6af0afebebb37eb4c9184504 |
+| Crash recovery                          | https://docs.gavel.dualmindlab.tech/docs/how-it-works/crash-recovery                                                  |
+| Security review                         | https://github.com/harshbhx/gavel-auction/blob/main/docs/SECURITY-REVIEW.md                                           |
+| Known limits                            | https://github.com/harshbhx/gavel-auction/blob/main/docs/LIMITATIONS.md                                               |
+| Rubric map                              | https://docs.gavel.dualmindlab.tech/docs/judges/rubric-map                                                            |
 
 The APIMatic developer portal is not listed: it is generated but not hosted (https://docs.gavel.dualmindlab.tech/portal returned 404 on 9 Nov). Add it only if it goes live.
 
@@ -67,16 +77,16 @@ Rule: at most one animated GIF in the gallery (the hero). Every other slide is a
 
 All files are in `brand/devpost/gallery/` (1200x800, 3:2, largest 1.4 MB). Thumbnail: `brand/devpost/thumbnail.png` (static).
 
-| #   | File                       | Type         | Caption                                                                                                                                                                                                                                                  |
-| --- | -------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | 01-hero.gif                | animated GIF | GAVEL is a live auction where every bid is a PayPal authorization hold and only the winner is charged, at the hammer. PayPal sandbox only, no real money. (`01-hero.png` is the static fallback if the GIF is refused.)                                  |
-| 2   | 02-how-it-works.png        | static PNG   | Four moves. A bidder approves a ceiling as a hold, bids in an ascending auction, the auctioneer hammers, and only the winning price is captured while every other hold is released.                                                                      |
-| 3   | 03-architecture.png        | static PNG   | One bid, four hops. The browser reaches a Cloudflare Worker, which reaches the auction API on Render. The API holds and captures with PayPal sandbox and appends every accepted bid to a hash-chained ledger.                                            |
-| 4   | 04-judge-flow.png          | static PNG   | Try it in two minutes, no login. Open /try, start a room, bid, hammer and read the receipt. /demo/scripted plays a recorded room in your tab in about a minute.                                                                                          |
-| 5   | 05-audit-and-verify.png    | static PNG   | Do not trust, verify. Every accepted bid goes into a hash-chained ledger, and anyone can re-check the public export. The hashes shown are shortened examples.                                                                                            |
-| 6   | 06-partners.png            | static PNG   | PayPal runs the holds, Cloudflare serves the web app and the docs, Render hosts the API, AG Grid draws the ledger, bids and holds tables, Hugging Face hosts the open evidence.                                                                          |
-| 7   | 07-open-data-and-gates.png | static PNG   | The evidence is open: five small datasets, each with a sha256 manifest and labelled for what it is. Gates G0, G1, G2 and G4 passed on the PayPal sandbox, G3 is a real probe running (final reading 12 Nov) and G5 is tested with synthetic voice clips. |
-| 8   | 08-ending.png              | static PNG   | Try it. Verify it. No login. Web app, docs and source links.                                                                                                                                                                                             |
+| #   | File                       | Type         | Caption                                                                                                                                                                                                                       |
+| --- | -------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | 01-hero.gif                | animated GIF | GAVEL is a live auction where every bid is a PayPal authorization hold and only the winner is charged, at the hammer. PayPal sandbox only, no real money. (`01-hero.png` is the static fallback if the GIF is refused.)       |
+| 2   | 02-how-it-works.png        | static PNG   | Four moves. A bidder approves a ceiling as a hold, bids in an ascending auction, the auctioneer hammers, and only the winning price is captured while every other hold is released.                                           |
+| 3   | 03-architecture.png        | static PNG   | One bid, four hops. The browser reaches a Cloudflare Worker, which reaches the auction API on Render. The API holds and captures with PayPal sandbox and appends every accepted bid to a hash-chained ledger.                 |
+| 4   | 04-judge-flow.png          | static PNG   | Try it in two minutes, no login. Open /try, start a room, bid, hammer and read the receipt. /demo/scripted plays a recorded room in your tab in about a minute.                                                               |
+| 5   | 05-audit-and-verify.png    | static PNG   | Do not trust, verify. Every accepted bid goes into a hash-chained ledger, and anyone can re-check the public export. The hashes shown are shortened examples.                                                                 |
+| 6   | 06-partners.png            | static PNG   | PayPal runs the holds, Cloudflare serves the web app and the docs, Render hosts the API, AG Grid draws the ledger, bids and holds tables, Hugging Face hosts the open evidence.                                               |
+| 7   | 07-open-data-and-gates.png | static PNG   | The evidence is open: five small datasets, each with a sha256 manifest and labelled for what it is. Gates G0, G1, G2 and G4 passed on the PayPal sandbox, G3 is a real probe running (final reading 12 Nov) and G5 is tested. |
+| 8   | 08-ending.png              | static PNG   | Try it. Verify it. No login. Web app, docs and source links.                                                                                                                                                                  |
 
 The credits outro GIF (`brand/devpost/outro/09-outro-credits.gif`, 1200x800, 0.8 MB, 7 s loop) goes in the description under "Try it", not in the gallery (the gallery takes one GIF, the hero). The older `16-ending.gif` is kept in `brand/archive/devpost-description/` as the fallback.
 
