@@ -108,43 +108,6 @@
     font-size: var(--font-size-2);
   }
 
-  /* The room guide becomes one slim row: title, steps in a line, hide control. */
-  .gv-hub .gv-instructor {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0 var(--space-4);
-    margin: 0;
-    padding-inline: var(--space-2);
-  }
-
-  .gv-hub .gv-instructor__head {
-    min-height: 36px;
-    gap: var(--space-3);
-  }
-
-  .gv-hub .gv-instructor__head + div {
-    flex: 1 1 24rem;
-    min-width: 0;
-  }
-
-  .gv-hub .gv-instructor__lead {
-    display: none;
-  }
-
-  .gv-hub .gv-instructor__steps {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0 var(--space-4);
-    margin: 0;
-    padding: 0;
-    list-style-position: inside;
-  }
-
-  .gv-hub .gv-instructor__steps li {
-    padding: 0;
-  }
-
   .gv-hub .gv-hub__grid {
     display: grid;
     flex: 1;

@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { VerifyPanel } from '../../chain/VerifyPanel';
 import { t } from '../../copy/t';
-import { Instructor } from '../../help';
 import { latestHubRoom } from '../hub/hubKeys';
 import { liveRoomFrom } from '../judge/liveRoom';
 import '../flows.css';
@@ -25,7 +24,6 @@ export function VerifyScreen({ apiBase }: VerifyScreenProps) {
       <h1 ref={heading} tabIndex={-1}>
         {t('verify.page.title')}
       </h1>
-      <Instructor screen="verify" judge current={0} />
       <VerifyPanel
         room={
           room === null

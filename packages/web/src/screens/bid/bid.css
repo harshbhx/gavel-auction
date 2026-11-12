@@ -171,20 +171,11 @@
   inline-size: 100%;
 }
 
-/* The paddle card and the instructor block share the panel's ink border and offset shadow. */
+/* The paddle card shares the panel's ink border and offset shadow. */
 .bid .ui-holdcard {
   border: var(--border-width-strong) solid var(--color-fg);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-1);
-}
-
-.bid .gv-instructor {
-  margin: 0;
-  padding: 0 var(--space-4);
-  border: var(--border-width) solid var(--color-fg);
-  border-radius: var(--radius-lg);
-  background: var(--color-raised);
-  color: var(--color-fg);
 }
 
 .bid__kicker {
