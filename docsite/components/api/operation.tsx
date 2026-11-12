@@ -1,6 +1,9 @@
 import { deref, refName, type J, type Operation, type Spec } from '@/lib/openapi';
 import { Prose } from './text';
 import { SchemaTable, exampleOf } from './schema';
+import { MethodBadge } from './method-badge';
+import { SnippetTabs } from './snippet-tabs';
+import { samplesFor } from './snippets';
 
 function Code({ value }: { value: unknown }) {
   const text = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
@@ -49,16 +52,19 @@ export function OperationView({ spec, o }: { spec: Spec; o: Operation }) {
   const { op } = o;
   const params: J[] = (op.parameters ?? []).map((p: J) => deref(spec.root, p)).filter(Boolean);
   const body = op.requestBody ? deref(spec.root, op.requestBody) : undefined;
+  const samples = samplesFor(spec, o);
   const responses: [string, J][] = Object.entries<J>(op.responses ?? {}).map(([code, r]) => [code, deref(spec.root, r)]);
   return (
     <article id={o.id} className="scroll-mt-20 border-t border-fd-foreground py-8">
-      <h3 className="flex flex-wrap items-baseline gap-x-3 font-mono text-base font-bold">
-        <span className="uppercase">{o.method}</span>
+      <h3 className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-base font-bold">
+        <MethodBadge method={o.method} />
         <span className="break-all">{o.path}</span>
       </h3>
-      <p className="mt-1 text-lg font-semibold">{op.summary}</p>
+      <p className="mt-2 text-lg font-semibold">{op.summary}</p>
       {op.deprecated ? <p className="text-sm font-semibold">Deprecated.</p> : null}
-      <Prose text={op.description} className="mt-3 text-sm" />
+      <div className="mt-3 grid gap-8 xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
+      <div className="min-w-0">
+      <Prose text={op.description} className="text-sm" />
 
       <H4>Authentication</H4>
       <Security spec={spec} op={op} />
@@ -137,7 +143,7 @@ export function OperationView({ spec, o }: { spec: Spec; o: Operation }) {
           return (
             <section key={code} aria-label={`Response ${code}`}>
               <p className="text-sm">
-                <span className="font-mono font-bold">{code}</span> {r?.description}
+                <span className={`mr-1 rounded-[2px] px-1.5 py-px font-mono text-xs font-bold ${code.startsWith('2') ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950 dark:text-emerald-200' : code.startsWith('4') ? 'bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200' : 'bg-red-100 text-red-900 dark:bg-red-950 dark:text-red-200'}`}>{code}</span> {r?.description}
               </p>
               {media.map(([type, m]) => {
                 const ex = exampleOf(spec.root, m);
@@ -152,6 +158,15 @@ export function OperationView({ spec, o }: { spec: Spec; o: Operation }) {
             </section>
           );
         })}
+      </div>
+      </div>
+      <aside aria-label="Request sample" className="min-w-0 xl:sticky xl:top-20 xl:self-start">
+        <p className="mb-2 text-xs font-bold tracking-wide uppercase">Request sample</p>
+        <SnippetTabs label={`${o.method.toUpperCase()} ${o.path}`} samples={samples} />
+        <p className="mt-2 text-xs text-fd-muted-foreground">
+          Plain HTTP against the sandbox host. Set the environment variable to a credential you hold; none is shown here.
+        </p>
+      </aside>
       </div>
     </article>
   );
