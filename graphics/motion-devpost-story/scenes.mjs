@@ -287,7 +287,7 @@ function update(t,h){
 
 /* ---------- 07 what is next ---------- */
 const nexts = [
-  ['G3 probe', 'Honor period and reauthorize, measured for real.', 'Running'],
+  ['G3 passed', 'Capturable at 3.5, 4 and 5 days; reauthorize accepted.', 'Passed'],
   ['Real-room voice', 'Speech on noisy, real bids (G5).', 'Next'],
   ['Deployed-host kill', 'A whole auction on the live host, killed and resumed.', 'Next'],
 ];
@@ -323,7 +323,7 @@ ${nexts
 function update(t,h){
   L(t,h);
   var p = h.pr(t, .9, 2.2, h.E.io);
-  h.$('#run').style.width = (888 * .38 * p) + 'px';
+  h.$('#run').style.width = (888 * p) + 'px';
 }
 `,
 };
