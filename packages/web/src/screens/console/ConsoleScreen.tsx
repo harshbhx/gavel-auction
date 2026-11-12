@@ -15,7 +15,6 @@ import { rowsFromAudit } from './BidStream';
 import { BidHistory } from './BidHistory';
 import { ConfirmQueue } from './ConfirmQueue';
 import { ConsoleEndDialog, type ConsoleEnd } from './ConsoleEndDialog';
-import { Instructor, consoleStep } from '../../help';
 import { ConsoleGuide } from './ConsoleGuide';
 import { PriceHeader } from './PriceHeader';
 import '../../a11y/a11y.css';
@@ -143,11 +142,6 @@ export function ConsoleScreen({
     <section className="gv-console-panel gv-console-panel--lot" aria-label={t('bid.price')}>
       {/* Reserved for the voice mic button (voice-web-mic); collapses while empty. */}
       <div className="gv-console-header" data-slot="console-header-mic" />
-      <Instructor
-        screen="console"
-        {...(auctionId === null ? {} : { roomId: auctionId })}
-        current={consoleStep({ status, ended: stopped || status === 'DONE' })}
-      />
       <ConsoleGuide status={status} stopped={stopped} noSale={noSale} roomId={auctionId} />
       {closed && hammer !== null && hammer.winnerId !== null && winnerPaddle !== null && (
         <p className="gv-console-result" role="status" data-field="result">

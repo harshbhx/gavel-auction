@@ -3,7 +3,6 @@ import { useMemo } from 'react';
 import { WideAside } from '../WideAside';
 import { ChainCheck } from '../../chain/ChainCheck';
 import { t } from '../../copy/t';
-import { Instructor } from '../../help';
 import { receiptSource } from '../../ladder/fromWire';
 import { SettlementPanel } from '../../ladder/SettlementPanel';
 import type { RoomState } from '../../store/roomReducer';
@@ -34,7 +33,6 @@ export function ReceiptView({ state, roomId, share, shared = false }: ReceiptVie
   return (
     <main data-route="receipt" {...(shared ? { 'data-shared': 'true' } : {})}>
       {!online && <Offline view="receipt" />}
-      <Instructor screen="receipt" roomId={roomId} current={view === null ? null : 0} />
       {stopped && <p role="status">{t('screen.stopped')}</p>}
       {shared && <p>{t('receipt.shared.readOnly')}</p>}
       {state.snapshot === null ? (
