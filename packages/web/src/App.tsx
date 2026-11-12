@@ -912,11 +912,6 @@ function RegisterRoute({
         <RegisterScreen
           minCents={range.minCents}
           maxCents={range.maxCents}
-          {...(presets === undefined
-            ? {}
-            : {
-                presetsCents: presets.filter((p) => p >= range.minCents && p <= range.maxCents),
-              })}
           allowCustom
           {...(draft === null ? {} : { initial: draft })}
           onApprove={(next) => {

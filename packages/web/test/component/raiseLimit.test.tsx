@@ -146,7 +146,7 @@ describe('raising a limit from the bid screen (FEAT-61)', () => {
     const box = screen.getByRole('textbox', { name: t('reg.custom') }) as HTMLInputElement;
     const slider = screen.getByRole('slider');
     fireEvent.change(box, { target: { value: '25000' } });
-    expect(slider.getAttribute('aria-valuemax')).toBe('2500000');
+    expect(slider.getAttribute('aria-valuemax')).toBe('10000000');
     expect(screen.queryByRole('alert')).toBeNull();
     fireEvent.change(box, { target: { value: '100001' } });
     expect(screen.getByRole('alert').textContent).toContain(t('reg.overCap', { max: '$100,000' }));
@@ -168,9 +168,9 @@ describe('raising a limit from the bid screen (FEAT-61)', () => {
     fireEvent.click(screen.getByRole('button', { name: t('raise.cta') }));
     const slider = screen.getByRole('slider');
     expect(slider.getAttribute('aria-valuemin')).toBe(String(minRaiseCents(1_500_000)));
-    expect(slider.getAttribute('aria-valuemax')).toBe('4000000');
+    expect(slider.getAttribute('aria-valuemax')).toBe('10000000');
     fireEvent.keyDown(slider, { key: 'End' });
-    expect(slider.getAttribute('aria-valuenow')).toBe('4000000');
+    expect(slider.getAttribute('aria-valuenow')).toBe('10000000');
   });
 
   it('keeps the typed limit when the bidder goes back from the approval (#2394)', async () => {

@@ -21,6 +21,8 @@ const ROOM = auctionId(7);
 const ME = bidderId(1);
 const API = { apiBase: 'http://api.test', payments: 'fake', paypalClientId: 'none' } as const;
 const PRESETS = [30_000, 50_000];
+/** The four picks the room range gives: about 1%, 10%, 50% and 100% of its $500 cap. */
+const PICKS = [500, 5_000, 25_000, 50_000];
 
 class FakeSocket {
   static all: FakeSocket[] = [];
@@ -102,23 +104,23 @@ afterEach(() => {
   FakeSocket.all = [];
 });
 
-describe('register route for a room that lists presets', () => {
-  it('offers the presets as quick picks and posts the one chosen', async () => {
-    for (const preset of PRESETS) {
+describe('register route for a room that has a cap', () => {
+  it('offers four picks from the room range and posts the one chosen', async () => {
+    for (const preset of PICKS) {
       saveSession(ROOM, { token: 'plainly-fake-session', bidderId: ME });
       const calls = stubFetch();
       openLive(`/r/${ROOM}/register`);
       fireEvent.change(screen.getByLabelText(t('reg.name')), { target: { value: 'Priya' } });
       fireEvent.click(screen.getByRole('button', { name: t('reg.continue') }));
-      expect(screen.getAllByRole('radio')).toHaveLength(PRESETS.length);
-      fireEvent.click(screen.getAllByRole('radio')[PRESETS.indexOf(preset)] as HTMLElement);
+      expect(screen.getAllByRole('radio')).toHaveLength(PICKS.length);
+      fireEvent.click(screen.getAllByRole('radio')[PICKS.indexOf(preset)] as HTMLElement);
       confirmHold();
       await flush();
       const posted = JSON.parse(calls.find((c) => c.url.endsWith('/api/holds'))?.body ?? '{}') as {
         ceilingCents?: number;
       };
       expect(posted.ceilingCents).toBe(preset);
-      expect(PRESETS.includes(posted.ceilingCents ?? -1)).toBe(true);
+      expect(PICKS.includes(posted.ceilingCents ?? -1)).toBe(true);
       cleanup();
       FakeSocket.all = [];
       roomStore.enter('');

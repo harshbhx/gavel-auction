@@ -65,15 +65,15 @@ describe('registration validation (T-WEB-031)', () => {
     expect(approve().getAttribute('aria-disabled')).toBe('true');
     expect(screen.getByTestId('held-block').textContent).not.toContain('The rest is released');
 
-    fireEvent.click(screen.getByLabelText('$250'));
+    fireEvent.click(screen.getByLabelText('$500'));
     const block = screen.getByTestId('held-block');
     expect(block.textContent).toContain(t('reg.heldNotCharged'));
-    expect(block.textContent).toContain(t('reg.heldExplain', { amount: '$250' }));
+    expect(block.textContent).toContain(t('reg.heldExplain', { amount: '$500' }));
     expect(approve().getAttribute('aria-disabled')).toBeNull();
 
     expect(onApprove).not.toHaveBeenCalled();
     confirmHold();
-    expect(onApprove).toHaveBeenCalledWith({ name: 'Priya', ceilingCents: 25000 });
+    expect(onApprove).toHaveBeenCalledWith({ name: 'Priya', ceilingCents: 50000 });
   });
 
   it('shows an inline range error for an out of range custom ceiling', () => {
@@ -121,7 +121,7 @@ describe('registration reasons for disabled buttons', () => {
     expect(screen.getByTestId('held-block').textContent).toContain(
       t('reg.heldExplainRange', { min: '$100', max: '$1,000' }),
     );
-    fireEvent.click(screen.getByLabelText('$250'));
+    fireEvent.click(screen.getByLabelText('$500'));
     expect(screen.queryByText(t('reg.chooseFirst'))).toBeNull();
   });
 });

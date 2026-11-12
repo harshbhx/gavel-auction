@@ -30,7 +30,7 @@ describe('register route sends the session bearer on the hold request', () => {
     render(<App initialPath="/r/room-9/register" api={API} />);
     fireEvent.change(screen.getByLabelText(t('reg.name')), { target: { value: 'Priya' } });
     fireEvent.click(screen.getByRole('button', { name: t('reg.continue') }));
-    fireEvent.click(screen.getByLabelText('$250'));
+    fireEvent.click(screen.getByLabelText('$100'));
     confirmHold();
 
     await waitFor(() => expect(calls.length).toBeGreaterThan(0));

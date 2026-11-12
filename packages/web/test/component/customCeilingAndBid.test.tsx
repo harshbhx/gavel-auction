@@ -34,14 +34,7 @@ describe('ceilingRange: min and max come from the room and the server cap', () =
 });
 
 function toCeilingStep(onApprove = vi.fn()) {
-  render(
-    <RegisterScreen
-      minCents={1000}
-      maxCents={250_000}
-      presetsCents={[2_000, 5_000]}
-      onApprove={onApprove}
-    />,
-  );
+  render(<RegisterScreen minCents={1000} maxCents={250_000} onApprove={onApprove} />);
   fireEvent.change(screen.getByLabelText(t('reg.name')), { target: { value: 'Priya' } });
   fireEvent.click(screen.getByRole('button', { name: t('reg.continue') }));
   return { onApprove, field: screen.getByRole('textbox', { name: t('reg.custom') }) };
@@ -50,7 +43,7 @@ function toCeilingStep(onApprove = vi.fn()) {
 describe('custom ceiling at registration', () => {
   it('sits next to the presets and shows the allowed range', () => {
     toCeilingStep();
-    expect(screen.getAllByRole('radio')).toHaveLength(2);
+    expect(screen.getAllByRole('radio')).toHaveLength(4);
     expect(screen.getByText(t('reg.customHint', { min: '$10', max: '$2,500' }))).toBeTruthy();
   });
 
@@ -83,19 +76,12 @@ describe('custom ceiling at registration', () => {
 
   it('still takes a preset with one tap', () => {
     const onApprove = vi.fn();
-    render(
-      <RegisterScreen
-        minCents={1000}
-        maxCents={250_000}
-        presetsCents={[2_000, 5_000]}
-        onApprove={onApprove}
-      />,
-    );
+    render(<RegisterScreen minCents={1000} maxCents={250_000} onApprove={onApprove} />);
     fireEvent.change(screen.getByLabelText(t('reg.name')), { target: { value: 'Priya' } });
     fireEvent.click(screen.getByRole('button', { name: t('reg.continue') }));
-    fireEvent.click(screen.getByLabelText('$50'));
+    fireEvent.click(screen.getByLabelText('$25'));
     confirmHold();
-    expect(onApprove).toHaveBeenCalledWith({ name: 'Priya', ceilingCents: 5_000 });
+    expect(onApprove).toHaveBeenCalledWith({ name: 'Priya', ceilingCents: 2_500 });
   });
 });
 

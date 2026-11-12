@@ -14,7 +14,7 @@ import { useLimitEntry } from './LimitEntry';
 import { NAME_MAX, nameHasForbidden, validName } from './validate';
 
 // The limit control moved to LimitEntry so the raise screen uses the very same one (FEAT-61).
-export { formatDigits, sliderMax, sliderStep } from './LimitEntry';
+export { formatDigits, rangePresets, sliderStep } from './LimitEntry';
 
 export interface RegistrationDraft {
   name: string;
@@ -25,7 +25,6 @@ export interface RegisterScreenProps {
   /** Room minimum and maximum cap (room.config.maxCeilingCents), in cents. */
   minCents: number;
   maxCents: number;
-  presetsCents?: readonly number[];
   /** False when the room takes only its presets: the Custom option and its range hint are left out. */
   allowCustom?: boolean;
   /** What the bidder entered before going back from the approval step; shown again as typed. */
@@ -33,13 +32,10 @@ export interface RegisterScreenProps {
   onApprove: (draft: RegistrationDraft) => void;
 }
 
-const DEFAULT_PRESETS: readonly number[] = [10000, 25000, 50000, 100000];
-
 /** Registration steps 1 and 2 (R-WEB-040..042, R-WEB-116). */
 export function RegisterScreen({
   minCents,
   maxCents,
-  presetsCents = DEFAULT_PRESETS,
   allowCustom = true,
   initial,
   onApprove,
@@ -50,7 +46,6 @@ export function RegisterScreen({
   const limit = useLimitEntry({
     minCents,
     maxCents,
-    presetsCents,
     allowCustom,
     initialCents: initial?.ceilingCents,
   });
