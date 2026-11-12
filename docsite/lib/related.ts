@@ -29,7 +29,7 @@ export const related: Record<string, string[]> = {
   '/docs/proof/latency': ['/docs/how-it-works/settlement-walkthrough', '/docs/proof/gates', '/docs/roadmap/limits'],
   '/docs/proof/simulation': ['/docs/how-it-works/honor-period', '/docs/judges/real-vs-simulated', '/docs/proof/gate-g3'],
   '/docs/proof/evidence-map': ['/docs/proof/gates', '/docs/judges/evidence-index', '/docs/judges/open-data'],
-  '/docs/judges/open-data': ['/docs/judges/data-engineering', '/docs/proof/evidence-map', '/docs/judges/real-vs-simulated'],
+  '/docs/judges/open-data': ['/docs/proof/evidence-map', '/docs/judges/real-vs-simulated'],
   '/docs/judges/evidence-index': ['/docs/proof/evidence-map', '/docs/proof/gates', '/docs/judges/open-data'],
   '/docs/judges/two-minute-path': ['/docs/judges/ten-minute-path', '/docs/start/demo', '/docs/judges/tough-questions'],
   '/docs/judges/ten-minute-path': ['/docs/judges/rubric-map', '/docs/proof/gates', '/docs/judges/findings-that-mattered'],

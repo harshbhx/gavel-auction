@@ -10,7 +10,7 @@ If you were given a judge key, you can drive a whole sandbox auction over plain 
 
 <Held title="Limits of a key">
 
-Each key has its own cap on rooms alive at once (2 by default) and on rooms created per hour (10 by default), and a personal key stops working on 30 November 2026 (`judge_key_expired`). Judges receive the one shared judging key in the Devpost testing instructions: it does not expire, so it works through the judging period to 15 December 2026; it opens sandbox rooms only and can be revoked. You do not need a key to try GAVEL: a keyless judge room on `/try` works without one. The host can revoke a key at any time (`judge_key_revoked`). A room lasts 30 minutes. Bids and holds in these rooms are simulated, with no PayPal login. Voice bidding is switched off in rooms opened with a key.
+Each key has its own cap on rooms alive at once (2 by default) and on rooms created per hour (10 by default), and a personal key stops working on 30 November 2026 (`judge_key_expired`). Judges receive the one shared judging key in the Devpost testing instructions: it does not expire (`expiresAt` is `null` in the key check), opens sandbox rooms only, and can be revoked. You do not need a key to try GAVEL: a keyless judge room on `/try` works without one. The host can revoke a key at any time (`judge_key_revoked`). A room lasts 30 minutes. Holds in these rooms are test holds, with no PayPal login. Voice bidding is switched off in rooms opened with a key.
 
 </Held>
 
@@ -39,7 +39,7 @@ curl -s -X POST $API/api/judge/rooms -H "x-judge-key: $JUDGE_KEY" \
 curl -s -X POST $API/api/judge/join -H 'content-type: application/json' \
   -d '{"code":"K7M2QX","displayName":"Asha"}'
 
-# 4. Simulated hold, so the bidder is in the room
+# 4. Test hold, so the bidder is in the room
 curl -s -X POST $API/api/judge/rooms/$ID/sim-hold -H "authorization: Bearer $SESSION" \
   -H 'content-type: application/json' -d '{"ceilingCents":5000,"name":"Asha"}'
 # To raise the limit later, send the same call with a higher ceilingCents (up to the room cap).
@@ -80,4 +80,8 @@ Live bidding in the app runs on a WebSocket, and the socket only accepts a brows
 | 409 | `bid_rejected` | The engine refused the bid. `reason` says why. |
 | 410 | `judge_room_expired` | The room ended. |
 
-The full request and response shapes are in the [API reference](/docs/reference/api-reference) and `openapi/gavel.yaml`.
+The full request and response shapes are in the [interactive API reference](/api-reference), the [API reference page](/docs/reference/api-reference) and `openapi/gavel.yaml`.
+
+## Client SDKs
+
+APIMatic generates beta client SDKs from the same OpenAPI document. They are sandbox only and are published as a GitHub Release, not on npm, PyPI or NuGet. See [SDKs with APIMatic](/docs/reference/api-reference#sdks-with-apimatic).

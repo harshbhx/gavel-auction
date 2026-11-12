@@ -1,70 +1,72 @@
 ---
 title: Two-minute path
-description: Five clicks on this site that show what GAVEL claims, what is proven and what is not.
+description: Five actions on the live sandbox app that show what GAVEL claims, then where to check what is proven and what is not.
 icon: Timer
 ---
 
-<Held title="Hosted in sandbox mode, recorded walk is next">
-
-The web app is hosted at [gavel.dualmindlab.tech](https://gavel.dualmindlab.tech) and the API at [api.gavel.dualmindlab.tech](https://api.gavel.dualmindlab.tech), both in sandbox mode, with a persistent disk. A recorded click-through of the five-minute path on that host is the next step, so this path reads the evidence on this site. The runnable demo with the <Term id="fake-paypal">fake PayPal</Term> is the local one, in the [ten-minute path](/docs/judges/ten-minute-path).
-
-</Held>
-
-If the host has <Term id="judge-room">judge rooms</Term> switched on (`JUDGE_ROOMS=true`), you can also start a key-less sandbox room from the web app; the page `/try` lists the steps. The help button on the bidder screens opens the <Term id="hold">hold</Term> explainer. See the [demo guide](/docs/start/demo).
+The web app is at [gavel.dualmindlab.tech](https://gavel.dualmindlab.tech) and the API at [api.gavel.dualmindlab.tech](https://api.gavel.dualmindlab.tech), both in sandbox mode with a persistent disk. You need no login and no key. A <Term id="judge-room">judge room</Term> lasts about 30 minutes, so do the five actions in one sitting.
 
 <Steps>
 <Step>
 
-### Read the promise and the status
+### Open /try
 
-Open [Start here](/docs/start) and then [Real, simulated, recorded](/docs/start/status).
+Open [gavel.dualmindlab.tech/try](https://gavel.dualmindlab.tech/try) and press "Start a demo auction". If judge rooms are off or the host is busy, the page says so and offers the [scripted demo](https://gavel.dualmindlab.tech/demo/scripted).
 
-Expected: one sentence (every bid is a PayPal authorization hold, only the winning price is <Term id="capture">captured</Term>, every other hold is <Term id="void">voided</Term>) and a table that labels each area as real sandbox, fake, simulated, recorded or not available.
-
-</Step>
-<Step>
-
-### Open the gates
-
-Open [Gates G0 to G5](/docs/proof/gates).
-
-Expected: a table with <Term id="gate-g0">G0</Term>, G1, G2, <Term id="gate-g3">G3</Term> and G4 as PASS and <Term id="gate-g5">G5</Term> as TESTED, SYNTHETIC CLIPS. The table is generated from `docs/GATES.md`, so it cannot differ from the repository.
+Expected: a room hub with a room code, a QR code and buttons for the big screen, the console and the bidder view.
 
 </Step>
 <Step>
 
-### See why voice goes through a confirm prompt
+### Join as a bidder
 
-Open [Voice and the confirm gate](/docs/how-it-works/voice-and-confirm).
+On the hub, join as a bidder with any name and a ceiling (by button, room code, or the QR code on a phone). Keep the big screen open in a second window. "Join with the demo" needs no PayPal login; to see a sandbox <Term id="hold">hold</Term> instead, press and hold the approve button for 3 seconds and use a buyer from [Sandbox buyers](/docs/judges/sandbox-buyers).
 
-Expected: the speech accuracy numbers, both providers above the 0.05 wrong-accept limit, and the decision that every spoken bid is confirmed before it counts.
-
-</Step>
-<Step>
-
-### See the money path
-
-Open [Settlement walkthrough](/docs/how-it-works/settlement-walkthrough) or [Money flow](/docs/how-it-works/money-flow).
-
-Expected: hatched means held, solid means charged, hollow means released. One winner is captured at the winning price and the other holds are released.
+Expected: you appear in the room with your ceiling, and the hold reads as held.
 
 </Step>
 <Step>
 
-### Check what is simulated
+### Bid
 
-Open [The 30-day simulation](/docs/proof/simulation).
+Place a bid from the bidder view.
 
-Expected: eight scenarios, all PASS, each labelled simulated. They run our code against a model of PayPal on a fake clock, so they do not replace the real sandbox result of gate G3.
+Expected: the price on the big screen moves. Hatched means held, nothing is charged yet.
+
+</Step>
+<Step>
+
+### Hold the hammer on the console
+
+Open the console from the hub and press and hold the hammer button.
+
+Expected: the lot closes. One winner is <Term id="capture">captured</Term> at the winning price and every other hold is <Term id="void">released</Term> (solid means charged, hollow means released).
+
+</Step>
+<Step>
+
+### Read the receipt and the ledger
+
+Open the receipt, then the audit trail, from the room.
+
+Expected: the receipt shows what was charged, and the audit trail is a <Term id="ledger">ledger</Term> chained by hash. You can re-check it in the [ten-minute path](/docs/judges/ten-minute-path).
 
 </Step>
 </Steps>
 
+## Then check what is proven
+
+The five actions show the product. These pages show what each claim is backed by.
+
+1. [Gates G0 to G5](/docs/proof/gates): <Term id="gate-g0">G0</Term> to G4 PASS on the real sandbox, <Term id="gate-g5">G5</Term> partial. The table is generated from `docs/GATES.md`, so it cannot differ from the repository.
+2. [Voice and the confirm gate](/docs/how-it-works/voice-and-confirm): why every spoken bid is confirmed before it counts.
+3. [Money flow](/docs/how-it-works/money-flow) and [Settlement walkthrough](/docs/how-it-works/settlement-walkthrough): one capture, the rest released.
+4. [The 30-day simulation](/docs/proof/simulation): eight scenarios, all PASS. They run our code against a model of PayPal on a fake clock, so they do not replace the real sandbox result of gate G3.
+
 ## What you have seen
 
 - Real on the PayPal sandbox: gates G0, G1, G2, G3 and G4.
-- Measured, with the fallback in place: gate G5 was tested with synthetic voice clips, tested with synthetic speech clips (fixes chosen on the same clips), and the confirm prompt protects every spoken bid.
-- Gate G3 passed: the authorization stayed capturable at 3.5, 4 and 5 days and reauthorize was accepted (sandbox, wallet buyer, 1.00 partial capture only).
-- Simulated: the multi-day run and whole-auction settlement on the fake PayPal, plus one lot of three holds on the real sandbox.
+- Partial: G5. Speech accuracy was measured on machine-generated test voice clips, and the confirm prompt protects every spoken bid.
+- Not yet proven: a room joined with "Join with the demo" uses test holds with no PayPal call. Real sandbox settlement has run for one lot of three holds; a whole auction settled through the hosted server on the real sandbox is a next step.
 
 Next: the [rubric map](/docs/judges/rubric-map) points each judging criterion at its evidence.
