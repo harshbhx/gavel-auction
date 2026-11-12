@@ -94,9 +94,10 @@ ${ln('evidence', { x: 58, y: 246, size: 150, a: 0.2, d: 0.85 })}
 ${ln('is <span class="or">open.</span>', { x: 58, y: 374, size: 150, a: 0.3, d: 0.85 })}
 ${ln('Real or simulated,', { x: 64, y: 528, size: 30, fam: 'b', a: 1.0, d: 0.7, w: 480 })}
 ${ln('every file says which.', { x: 64, y: 568, size: 30, fam: 'b', a: 1.08, d: 0.7, w: 480 })}
-${ln('G0 G1 G2 G4  pass on the sandbox', { x: 64, y: 640, size: 14, fam: 'm', color: 'var(--ink);text-transform:none', w: 560, a: 1.3, d: 0.6 })}
-${ln('G3  RUNNING, final reading 12 Nov', { x: 64, y: 674, size: 14, fam: 'm', color: 'var(--orange);text-transform:none', w: 560, a: 1.4, d: 0.6 })}
-${ln('G5  tested with synthetic voice clips, confirm on every voice bid', { x: 64, y: 708, size: 14, fam: 'm', color: 'var(--ink);text-transform:none', w: 560, a: 1.5, d: 0.6 })}
+${ln('G0 G1 G2 G4  pass on the sandbox', { x: 64, y: 634, size: 14, fam: 'm', color: 'var(--ink);text-transform:none', w: 560, a: 1.3, d: 0.6 })}
+${ln('G3  RUNNING, final reading 12 Nov', { x: 64, y: 662, size: 14, fam: 'm', color: 'var(--orange);text-transform:none', w: 560, a: 1.4, d: 0.6 })}
+${ln('G5  tested with synthetic voice clips,', { x: 64, y: 690, size: 14, fam: 'm', color: 'var(--ink);text-transform:none', w: 560, a: 1.5, d: 0.6 })}
+${ln('&nbsp;&nbsp;&nbsp;&nbsp;confirm on every voice bid', { x: 64, y: 712, size: 14, fam: 'm', color: 'var(--ink);text-transform:none', w: 560, a: 1.55, d: 0.6 })}
 <div id="led"></div>
 `,
   js: `

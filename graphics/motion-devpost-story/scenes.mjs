@@ -75,7 +75,7 @@ export const inspiration = {
   T: 4.4,
   poster: 3.3,
   html: `${frame('Inspiration', '01')}
-<div class="a mk" data-t=".05" data-d="1" style="left:48px;top:76px;clip-path:inset(-.25em 0 -.05em 0);font:800 330px/.84 var(--display);padding-bottom:.06em"><span style="display:block"><span class="cn" data-t=".15" data-d="1.1" data-f="0" data-v="20" data-p="$">$0</span></span></div>
+<div class="a mk" data-t=".05" data-d="1" style="left:48px;top:96px;clip-path:inset(-.25em 0 -.05em 0);font:800 290px/.84 var(--display);padding-bottom:.06em"><span style="display:block"><span class="cn" data-t=".15" data-d="1.1" data-f="0" data-v="20" data-p="$">$0</span></span></div>
 ${M(0.3, 'left:650px;top:110px;' + disp(64) + 'width:300px', 'A bid is')}
 ${M(0.42, 'left:650px;top:172px;' + disp(64) + 'width:300px', 'a promise.')}
 ${R(0.9, 0.9, 'left:56px;width:888px;top:392px')}
@@ -111,10 +111,10 @@ var act = [.35, 1.35, 2.35, 3.35];
 var imgs = [], rows = [], cap = [], num = [];
 function setup(h){
   var s = '';
-  SH.forEach(function(f,i){ s += '<div class="im a" style="left:0;top:0;width:590px;height:484px;overflow:hidden;z-index:' + i + '"><img src="' + f[0] + '" style="position:absolute;left:0;top:0;width:590px;height:484px;object-fit:contain;object-position:center;display:block"></div>'; });
+  SH.forEach(function(f,i){ s += '<div class="im a" style="left:0;top:0;width:590px;height:484px;overflow:hidden;background:var(--bg);z-index:' + i + '"><img src="' + f[0] + '" style="position:absolute;left:0;top:0;width:590px;height:484px;object-fit:contain;object-position:center;display:block"></div>'; });
   h.$('#shots').innerHTML = s; imgs = h.$$('.im');
   var r = '';
-  SH.forEach(function(f,i){ r += '<div class="a rw" style="left:56px;top:' + (82 + i*112) + 'px;width:340px"><div class="lab nm" style="margin-bottom:8px;color:var(--muted)">0' + (i+1) + '</div><div style="font:800 66px/.88 var(--display);text-transform:uppercase;letter-spacing:.004em">' + f[1] + '</div><div class="cap" style="margin-top:6px">' + f[2] + '</div></div>'; });
+  SH.forEach(function(f,i){ r += '<div class="a rw" style="left:56px;top:' + (78 + i*104) + 'px;width:340px"><div class="lab nm" style="margin-bottom:8px;color:var(--muted)">0' + (i+1) + '</div><div style="font:800 66px/.88 var(--display);text-transform:uppercase;letter-spacing:.004em">' + f[1] + '</div><div class="cap" style="margin-top:6px">' + f[2] + '</div></div>'; });
   h.$('#steps').innerHTML = r; rows = h.$$('.rw');
 }
 function update(t,h){
@@ -193,10 +193,10 @@ export const race = {
 ${M(0.1, 'left:56px;top:76px;' + disp(66) + 'width:800px', 'Two bids at once.')}
 ${M(0.22, 'left:56px;top:140px;' + disp(66) + 'width:800px', '<span class="or">One winner.</span>')}
 <div class="a" id="vr" style="left:500px;top:228px;width:1.5px;height:230px;background:var(--ink);transform-origin:50% 0;transform:scaleY(0)"></div>
-${F(0.9, 0.4, 'left:56px;top:238px', '<span class="lab">Paddle 12</span>')}
-${F(0.9, 0.4, 'left:524px;top:238px', '<span class="lab">Paddle 7</span>')}
-<div class="a" id="na" style="left:0;top:262px;overflow:visible;font:800 214px/.84 var(--display);padding-bottom:.06em;white-space:nowrap">$25</div>
-<div class="a" id="nb" style="left:0;top:262px;overflow:visible;font:800 214px/.84 var(--display);padding-bottom:.06em;white-space:nowrap">$25</div>
+${F(0.9, 0.4, 'left:56px;top:226px', '<span class="lab">Paddle 12</span>')}
+${F(0.9, 0.4, 'left:524px;top:226px', '<span class="lab">Paddle 7</span>')}
+<div class="a" id="na" style="left:0;top:278px;overflow:visible;font:800 196px/.84 var(--display);padding-bottom:.06em;white-space:nowrap">$25</div>
+<div class="a" id="nb" style="left:0;top:278px;overflow:visible;font:800 196px/.84 var(--display);padding-bottom:.06em;white-space:nowrap">$25</div>
 <div class="a" id="sk" style="left:524px;top:352px;width:0;height:6px;background:var(--ink)"></div>
 <div class="a" id="ua" style="left:56px;top:452px;width:0;height:6px;background:var(--orange)"></div>
 ${F(2.3, 0.4, 'left:56px;top:470px', '<span class="lab">Entry 41 &nbsp;/&nbsp; accepted</span>')}

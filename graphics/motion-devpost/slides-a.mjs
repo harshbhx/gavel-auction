@@ -60,9 +60,9 @@ function setup(h){
   // visuals per row
   var y1 = Y0, y2 = Y0 + RH, y3 = Y0 + 2*RH, y4 = Y0 + 3*RH;
   html += '<div class="a hb" style="left:690px;top:' + (y1+66) + 'px;width:446px;height:30px;border:1.5px solid #1d1712;overflow:hidden"><div class="hf" style="height:100%;width:100%;background:repeating-linear-gradient(135deg,#ff6a1f 0 2px,transparent 2px 11px);transform-origin:0 50%"></div></div>';
-  html += '<div class="ln" style="left:690px;top:' + (y2+46) + 'px;width:440px;height:92px"><span class="d pr" style="font-size:110px;line-height:92px;color:#1d1712">$10</span></div>';
+  html += '<div class="ln" style="left:690px;top:' + (y2+56) + 'px;width:440px;height:76px"><span class="d pr" style="font-size:92px;line-height:76px;color:#1d1712">$10</span></div>';
   html += '<div class="a hm" style="left:1030px;top:' + (y3+30) + 'px"></div>';
-  html += '<div class="ln" style="left:690px;top:' + (y3+46) + 'px;width:330px;height:92px"><span class="d sd" style="font-size:110px;line-height:92px;color:#ff6a1f">Sold</span></div>';
+  html += '<div class="ln" style="left:690px;top:' + (y3+56) + 'px;width:330px;height:76px"><span class="d sd" style="font-size:92px;line-height:76px;color:#ff6a1f">Sold</span></div>';
   html += '<svg class="a ck" viewBox="0 0 120 90" width="120" height="90" style="left:690px;top:' + (y4+48) + 'px;overflow:visible"><path class="ckp" pathLength="1" d="M8 48 L42 80 L112 8" fill="none" stroke="#ff6a1f" stroke-width="9" stroke-linecap="butt" stroke-linejoin="miter" stroke-dasharray="1"/></svg>';
   html += '<div class="rl rr" style="left:64px;top:' + (Y0 + 4*RH) + 'px;width:1072px"></div>';
   h.$('#rows').innerHTML = html;
@@ -185,6 +185,7 @@ export const judge = {
   T: 5,
   poster: 3.7,
   html: `
+<span class="b" style="position:absolute;opacity:0;left:0;top:0">x</span>
 <div class="a" id="pics" style="left:452px;top:0;width:748px;height:800px;overflow:hidden"></div>
 ${frame({ lot: '04', ruleW: 356, side: true })}
 ${ln('Try it', { x: 58, y: 132, size: 112, a: 0.15, d: 0.85 })}
