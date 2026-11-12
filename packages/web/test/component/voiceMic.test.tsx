@@ -194,6 +194,25 @@ describe('listening and sending', () => {
     expect(ws.closedWith).toBe(1000);
   });
 
+  it('says what became of a spoken bid: held for the bidder, or why there was none (UIX-77)', async () => {
+    renderVoice();
+    await start();
+    const ws = await hostReady();
+    act(() => ws.say({ t: 'caption', text: 'paddle three two hundred', final: true }));
+    // Heard text alone is not enough: no outcome line yet.
+    expect(document.querySelector('[data-slot="voice-outcome"]')).toBeNull();
+
+    act(() => ws.say({ t: 'outcome', kind: 'confirm', paddle: 3 }));
+    expect(screen.getByText(t('console.voice.outcome.confirm', { n: 3 }))).toBeTruthy();
+
+    act(() => ws.say({ t: 'outcome', kind: 'drop', reason: 'unregistered_paddle' }));
+    expect(screen.getByText(t('console.voice.outcome.noPaddle'))).toBeTruthy();
+    expect(screen.queryByText(t('console.voice.outcome.confirm', { n: 3 }))).toBeNull();
+
+    act(() => ws.say({ t: 'outcome', kind: 'drop', reason: 'no_amount' }));
+    expect(screen.getByText(t('console.voice.outcome.noAmount'))).toBeTruthy();
+  });
+
   it('turns the microphone off with the same button', async () => {
     renderVoice();
     await start();

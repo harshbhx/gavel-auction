@@ -41,6 +41,24 @@ export function extendsLeft(
   return Math.max(0, Math.floor(roomMs / extendMs));
 }
 
+/**
+ * The extend limit the console may rely on. The engine moves the hard close by the time the
+ * clock stood still in a pause, but the room snapshot does not carry that time, so after any
+ * pause the count worked out from `endTs` is too low (it reached 0 and Extend stayed disabled
+ * after Resume). Once a pause is known, or the deadline already passes the no-pause hard
+ * close (which only a pause can cause), the limit is unknown: null, and the engine decides.
+ */
+export function knownExtendsLeft(
+  config: ExtendLimitConfig,
+  endTs: number,
+  pausedBefore: boolean,
+  extendMs: number = DEFAULT_EXTEND_MS,
+): number | null {
+  const margin = Math.min(config.maxExtensions * config.softCloseExtensionMs, HARD_CLOSE_MARGIN_MS);
+  if (pausedBefore || endTs > config.endTs + margin) return null;
+  return extendsLeft(config, endTs, extendMs);
+}
+
 export type ControlName = 'open' | 'pause' | 'resume' | 'extend' | 'hammer';
 
 type ReasonKey = Extract<CopyKey, `controls.reason.${string}`>;

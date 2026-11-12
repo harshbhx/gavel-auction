@@ -859,6 +859,23 @@ export const en = {
   'console.mic.reason.unreachable': 'Could not ask the server about voice. Use manual entry.',
   'console.mic.reason.scripted': 'Voice is not part of the scripted demo. Use manual entry.',
   'console.mic.reason.closed': 'The lot is closed, so the microphone is off.',
+  'console.voice.outcome.confirm':
+    'Paddle {n}: waiting for that bidder to confirm on their phone. Nothing counts until they say yes.',
+  'console.voice.outcome.confirmAny':
+    'Waiting for the bidder to confirm on their phone. Nothing counts until they say yes.',
+  'console.voice.outcome.bid':
+    'Paddle {n}: bid sent to the room. If the room asks, the bidder confirms on their phone.',
+  'console.voice.outcome.bidAny':
+    'Bid sent to the room. If the room asks, the bidder confirms on their phone.',
+  'console.voice.outcome.noPaddle':
+    'No bid: no registered paddle heard. Say the paddle number and the amount, for example "paddle 3, two hundred".',
+  'console.voice.outcome.noAmount':
+    'No bid: no amount heard. Say the paddle and the amount, for example "paddle 3, two hundred".',
+  'console.voice.outcome.notOpen': 'No bid: the lot is not open for bids right now.',
+  'console.voice.outcome.lowConfidence':
+    'No bid: the speech was not clear enough. Say it again, or use manual entry.',
+  'console.voice.outcome.none':
+    'No bid taken from that. Say the paddle and the amount, for example "paddle 3, two hundred", or use manual entry.',
   'console.voice.heard': 'Heard: {text}',
   'console.voice.hearing': 'Hearing: {text}',
   'console.voice.privacy':
