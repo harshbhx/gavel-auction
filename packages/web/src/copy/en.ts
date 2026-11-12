@@ -343,6 +343,9 @@ export const en = {
   'try.a1.title': 'Try it',
   'try.a1.tag': 'No sign-up',
   'try.a1.body': 'Open the scripted demo with no login, or start a live sandbox room of your own.',
+  'try.a1.fact1': 'No login and no sign-up.',
+  'try.a1.fact2': 'About 30 seconds from opening bid to hammer.',
+  'try.a1.fact3': 'Names and amounts are made up, and no real money is used.',
   'try.a1.script': 'Watch the scripted demo',
   'try.a1.room': 'Start a live demo room',
   'try.a1.creating': 'Creating room',
@@ -372,6 +375,10 @@ export const en = {
   'try.a3.tag': 'Three views of one room',
   'try.a3.body':
     'The auctioneer console, the projection screen and the receipt. Each opens inside a room.',
+  'try.a3.fact.console': 'Console: run the lot',
+  'try.a3.fact.screen': 'Screen: what the room sees',
+  'try.a3.fact.receipt': 'Receipt: the settled receipt',
+  'try.a3.fact.verify': 'Verify: check the audit trail',
   'try.a3.console': 'Console',
   'try.a3.screen': 'Screen',
   'try.a3.receipt': 'Receipt',
@@ -539,6 +546,7 @@ export const en = {
   'scriptedDemo.duration': 'The whole recording takes about {seconds} seconds at {speed}.',
   'scriptedDemo.steps': 'Steps',
   'scriptedDemo.allSteps': 'All steps',
+  'scriptedDemo.stepsRegion': 'All steps, scrollable list',
   'scriptedDemo.reduced':
     'Reduced motion is on, so the demo waits for you. Use Next step to move on.',
   'scriptedDemo.done': 'End of the demo. Press Play again to watch it once more.',

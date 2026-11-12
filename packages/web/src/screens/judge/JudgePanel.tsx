@@ -378,6 +378,11 @@ export function JudgePanel({
               </div>
             </header>
             <p className="gv-judge__lead">{t('try.a1.body')}</p>
+            <ul className="gv-judge__facts">
+              {(['try.a1.fact1', 'try.a1.fact2', 'try.a1.fact3'] as const).map((k) => (
+                <li key={k}>{t(k)}</li>
+              ))}
+            </ul>
             <details className="gv-judge__more" {...(keyOffered ? { open: true } : {})}>
               <summary>{t('try.help.opts')}</summary>
               <div className="gv-judge__morebody">
@@ -473,6 +478,18 @@ export function JudgePanel({
                 <p className="gv-judge__tag">{t('try.a3.tag')}</p>
               </div>
             </header>
+            <ul className="gv-judge__facts">
+              {(
+                [
+                  'try.a3.fact.console',
+                  'try.a3.fact.screen',
+                  'try.a3.fact.receipt',
+                  'try.a3.fact.verify',
+                ] as const
+              ).map((k) => (
+                <li key={k}>{t(k)}</li>
+              ))}
+            </ul>
             <div className="gv-judge__row">
               {view('console', 'try.a3.console')}
               {view('screen', 'try.a3.screen')}

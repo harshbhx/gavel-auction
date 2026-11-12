@@ -130,6 +130,21 @@ describe('/try judge panel: the Ledger front page', () => {
     expect(screen.getByText(t('try.quote'))).toBeTruthy();
   });
 
+  it('fills the Try it and See it all cards with short lines, not empty space', () => {
+    render(<App initialPath="/try" />);
+    for (const k of ['try.a1.fact1', 'try.a1.fact2', 'try.a1.fact3'] as const) {
+      expect(screen.getByText(t(k))).toBeTruthy();
+    }
+    for (const k of [
+      'try.a3.fact.console',
+      'try.a3.fact.screen',
+      'try.a3.fact.receipt',
+      'try.a3.fact.verify',
+    ] as const) {
+      expect(screen.getByText(t(k))).toBeTruthy();
+    }
+  });
+
   it('labels the figure as simulated and the receipt as simulated', () => {
     render(panel({ autoplay: false }));
     expect(screen.getByText(t('try.simTag'))).toBeTruthy();
