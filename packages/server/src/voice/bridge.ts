@@ -67,7 +67,17 @@ export type VoiceFeedMsg =
       droppedFrames: number;
     }
   | { t: 'caption'; text: string; final: boolean }
-  | { t: 'confirm_expired'; promptId: string };
+  | { t: 'confirm_expired'; promptId: string }
+  /**
+   * What became of one spoken utterance, so the console can say it. Never carries the amount or
+   * the transcript of a held bid (R-RT-055); only the paddle and, for no bid, the reason.
+   */
+  | {
+      t: 'outcome';
+      kind: 'bid' | 'confirm' | 'drop';
+      paddle?: number;
+      reason?: string;
+    };
 
 /** Mean-square level above about -35 dBFS counts as speech for the speech health watch. */
 const SPEECH_MEAN_SQUARE = (32768 * 10 ** (-35 / 20)) ** 2;
@@ -106,6 +116,23 @@ export interface VoiceBridge {
 }
 
 /** The ceiling the pipeline sees: the room keeps real ceilings private and the engine enforces them. */
+/** The outcome line for one decision: which paddle it is about, or why there was no bid. */
+export function outcomeOf(
+  d: Decision,
+  bidderId: string | null,
+  view: VoiceView | undefined,
+): Extract<VoiceFeedMsg, { t: 'outcome' }> {
+  if (bidderId === null) {
+    return { t: 'outcome', kind: 'drop', reason: d.kind === 'drop' ? d.reason : d.evidence.reason };
+  }
+  const paddle = Number(view?.roster.find((r) => r.bidderId === bidderId)?.paddle);
+  return {
+    t: 'outcome',
+    kind: d.kind === 'confirm' ? 'confirm' : 'bid',
+    ...(Number.isSafeInteger(paddle) ? { paddle } : {}),
+  };
+}
+
 const OPEN_CEILING = Number.MAX_SAFE_INTEGER;
 
 function contextOf(view: VoiceView | undefined, nowMs: number): BidContext {
@@ -276,6 +303,7 @@ export function startVoiceBridge(deps: VoiceBridgeDeps): VoiceBridge {
       if (out.type !== 'decision') continue;
       record(out.decision);
       const bid = toBid(out.decision);
+      feed(outcomeOf(out.decision, bid?.bidderId ?? null, room.voiceView()));
       if (bid === null) {
         const record = room.recordVoiceDrop;
         if (record !== undefined) {

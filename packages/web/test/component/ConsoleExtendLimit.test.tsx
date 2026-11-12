@@ -8,6 +8,7 @@ import {
   HARD_CLOSE_MARGIN_MS,
   disabledReason,
   extendsLeft,
+  knownExtendsLeft,
 } from '../../src/screens/console/Controls';
 import { baseConfig } from '../../src/testing/builders';
 
@@ -119,6 +120,30 @@ describe('Extend at the limit (WEB-95)', () => {
   it('shows no count when the limit is not known', () => {
     render(bar(null));
     expect(note()).toBeNull();
+    expect(
+      screen.getByRole('button', { name: extendName }).getAttribute('aria-disabled'),
+    ).toBeNull();
+  });
+});
+
+describe('Extend after a pause (UIX-77)', () => {
+  const config = { endTs: 1_000_000, softCloseExtensionMs: 30_000, maxExtensions: 2 };
+
+  it('does not count a pause against the extend limit', () => {
+    // A 5 minute pause moved the end 300 s later; the engine moved its hard close with it.
+    const afterPause = config.endTs + 300_000;
+    expect(extendsLeft(config, afterPause)).toBe(0);
+    expect(knownExtendsLeft(config, afterPause, false)).toBeNull();
+    expect(knownExtendsLeft(config, config.endTs + 10_000, true)).toBeNull();
+  });
+
+  it('is unchanged for a lot that was never paused', () => {
+    expect(knownExtendsLeft(config, config.endTs, false)).toBe(2);
+    expect(knownExtendsLeft(config, config.endTs + 60_000, false)).toBe(0);
+  });
+
+  it('keeps Extend usable after Resume when the limit is unknown', () => {
+    render(bar(knownExtendsLeft(config, config.endTs + 300_000, true)));
     expect(
       screen.getByRole('button', { name: extendName }).getAttribute('aria-disabled'),
     ).toBeNull();

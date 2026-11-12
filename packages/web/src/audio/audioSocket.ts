@@ -15,7 +15,13 @@ export type AudioProblem =
 export type AudioFeed =
   | { t: 'caption'; text: string; final: boolean }
   | { t: 'status'; stt: 'ok' | 'degraded' | 'down'; llm: 'ok' | 'down' | 'off' }
-  | { t: 'confirm_expired'; promptId: string };
+  | { t: 'confirm_expired'; promptId: string }
+  | {
+      t: 'outcome';
+      kind: 'bid' | 'confirm' | 'drop';
+      paddle: number | null;
+      reason: string | null;
+    };
 
 export interface AudioSocketHandlers {
   onReady(): void;
@@ -88,6 +94,19 @@ function parseFeed(data: unknown): { ready: true } | { feed: AudioFeed } | null 
   }
   if (m['t'] === 'confirm_expired' && typeof m['promptId'] === 'string') {
     return { feed: { t: 'confirm_expired', promptId: m['promptId'] } };
+  }
+  if (
+    m['t'] === 'outcome' &&
+    (m['kind'] === 'bid' || m['kind'] === 'confirm' || m['kind'] === 'drop')
+  ) {
+    return {
+      feed: {
+        t: 'outcome',
+        kind: m['kind'],
+        paddle: typeof m['paddle'] === 'number' ? m['paddle'] : null,
+        reason: typeof m['reason'] === 'string' ? m['reason'] : null,
+      },
+    };
   }
   return null;
 }

@@ -1,4 +1,4 @@
-import { useMemo, useState, useSyncExternalStore } from 'react';
+import { useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import type { BidderId, Cents, MsgId } from '@gavel/shared';
 import { announce } from '../../a11y/announce';
 import { t } from '../../copy/t';
@@ -10,7 +10,7 @@ import { useRoom } from '../../store/roomStore';
 import { selectors } from '../../store/selectors';
 import type { AuctionStatus } from '../../wire';
 import { ChunkBoundary, lazyWithRetry } from '../states/ChunkBoundary';
-import { Controls, controlStatus, extendsLeft } from './Controls';
+import { Controls, controlStatus, knownExtendsLeft } from './Controls';
 import { ConsoleScreen } from './ConsoleScreen';
 import { KillSwitch } from './KillSwitch';
 import { ManualEntry, type ManualSendResult } from './ManualEntry';
@@ -81,8 +81,13 @@ export function LiveConsole({
   const status = controlStatus(rawStatus, lotPaused);
   const priceCents = useRoom((s) => s.snapshot?.price ?? 0);
   // The extend limit comes from the room config and the current end of the lot.
+  // A pause shifts the engine's hard close by a time the snapshot does not carry, so once this
+  // console has seen the lot paused the count is unknown and the engine decides.
+  const pausedBefore = useRef(false);
+  if (lotPaused) pausedBefore.current = true;
+  const wasPaused = pausedBefore.current;
   const extendsRemaining = useRoom((s) =>
-    s.snapshot === null ? null : extendsLeft(s.snapshot.config, s.snapshot.endTs),
+    s.snapshot === null ? null : knownExtendsLeft(s.snapshot.config, s.snapshot.endTs, wasPaused),
   );
   const roomState = useRoom((s) => s);
   const settlementView = useMemo(() => publicSource(roomState, true), [roomState]);
