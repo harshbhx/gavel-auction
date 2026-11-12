@@ -51,3 +51,40 @@ export function createVersionRoute(sha: string): Handler {
     return Promise.resolve();
   };
 }
+
+export interface RootInfoOptions {
+  /** Origin of the web app. Default: the public web app. */
+  webOrigin?: string;
+  /** Origin of the docs site. Default: the public docs site. */
+  docsOrigin?: string;
+}
+
+export const DEFAULT_WEB_ORIGIN = 'https://gavel.dualmindlab.tech';
+const DEFAULT_DOCS = 'https://docs.gavel.dualmindlab.tech';
+
+/**
+ * `GET /` and `HEAD /`: a small signpost for anyone who opens the API host in a browser. Public
+ * facts only, no secrets. Any other method on `/` keeps answering 404 (not handled here).
+ */
+export function createRootRoute(options: RootInfoOptions = {}): Handler {
+  const web = (options.webOrigin ?? DEFAULT_WEB_ORIGIN).replace(/\/+$/, '');
+  const docs = (options.docsOrigin ?? DEFAULT_DOCS).replace(/\/+$/, '');
+  const body = JSON.stringify({
+    name: 'GAVEL API',
+    note: 'PayPal sandbox only. No real money moves.',
+    web: `${web}/try`,
+    docs,
+    apiReference: `${docs}/api-reference`,
+    openapi: `${docs}/openapi.yaml`,
+    health: '/healthz',
+    version: '/version',
+  });
+  return (req, res) => {
+    res.statusCode = 200;
+    res.setHeader('content-type', 'application/json');
+    res.setHeader('cache-control', 'no-store');
+    res.setHeader('content-length', String(Buffer.byteLength(body)));
+    res.end(req.method === 'HEAD' ? undefined : body);
+    return Promise.resolve();
+  };
+}

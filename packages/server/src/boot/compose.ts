@@ -60,7 +60,12 @@ import { createAudioHost, AUDIO_PATH } from '../host/audio-ws';
 import { createNodeWsHost, type UpgradeDenied } from '../host/node-ws';
 import { DEMO_TIMELINE } from '@gavel/voice';
 import { chooseStt } from '../voice/stt';
-import { createHealthRoutes, createVersionRoute, resolveSha } from '../http/health';
+import {
+  createHealthRoutes,
+  createRootRoute,
+  createVersionRoute,
+  resolveSha,
+} from '../http/health';
 import { createMetricsRoute } from '../http/metrics';
 import {
   OPS_SETTLEMENT_PATH,
@@ -778,6 +783,9 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     (await apiRoutes(req, res)) ||
     (hostExtra !== undefined && (await hostExtra(req, res)));
   const versionRoute = createVersionRoute(resolveSha(env));
+  const rootRoute = createRootRoute(
+    config.WEB_ORIGIN === undefined ? {} : { webOrigin: config.WEB_ORIGIN },
+  );
 
   const handle = async (req: IncomingMessage, res: ServerResponse): Promise<void> => {
     const path = (req.url ?? '').split('?')[0] ?? '';
@@ -785,6 +793,7 @@ export async function composeServer(env: Env, opts: ComposeOptions = {}): Promis
     if (path === '/healthz') return health.healthz(req, res);
     if (path === '/readyz') return health.readyz(req, res);
     if (path === '/version') return versionRoute(req, res);
+    if (path === '/' && (req.method === 'GET' || req.method === 'HEAD')) return rootRoute(req, res);
     // R-RT-120: per-client HTTP limit; webhook routes are exempt inside checkHttp.
     const limited = limiter.checkHttp(
       sourceOf(req, config.TRUSTED_PROXY_HOPS) ?? 'unknown',
