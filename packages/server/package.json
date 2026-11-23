@@ -21,7 +21,7 @@
     "@gavel/shared": "0.1.0",
     "@gavel/voice": "0.0.0",
     "pg": "8.23.1",
-    "ws": "8.22.1",
+    "ws": "8.23.0",
     "zod": "3.25.76"
   },
   "devDependencies": {
@@ -31,6 +31,6 @@
     "esbuild": "0.28.2",
     "typescript": "5.6.3",
     "vite-node": "5.3.0",
-    "vitest": "4.1.11"
+    "vitest": "4.1.12"
   }
 }
